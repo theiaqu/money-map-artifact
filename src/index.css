@@ -1,0 +1,802 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
+
+:root {
+  /* palette */
+  --canvas-bg: #f3f4f6;
+  --card-bg: #ffffff;
+  --label: #949494;
+  --amount: #000000;
+  --amount-suffix: #c5c5c5;
+  --date-badge-bg: #e0e0e0;
+  --date-badge-text: #9e9e9e;
+  --pct-text: #525252;
+  --section-text: #000000;
+  --connector: #cbcbcb;
+
+  /* graph strip */
+  --graph-dotted: #b7b7b7;
+  --graph-blue: #49c7ef;
+  --graph-green: #37d67a;
+  --graph-pink: #ff2d8e;
+  --graph-yellow: #fff08d;
+  --graph-yellow-border: #ffea83;
+
+  /* type tokens (from Figma) */
+  --font-family: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --body-size-s: 14px;
+  --body-line-s: 20px;
+  --body-size-m: 16px;
+  --body-line-m: 24px;
+  --label-size-m: 12px;
+  --label-line-m: 16px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  color: #000;
+}
+
+/* ---------- stage (backdrop behind the phone) ---------- */
+.stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: radial-gradient(circle at 50% 25%, #eef0f3, #d5d8dd 90%);
+  overflow: hidden;
+}
+
+/* the scaled device sits in-flow to the right of the config rail and centers
+   itself in the remaining space (margin auto) — never overlapping the controls */
+.device-scale {
+  flex: 0 0 auto;
+  margin: auto;
+}
+
+/* ---------- iPhone 17 Pro frame ---------- */
+.device {
+  position: relative;
+  width: 430px;
+  height: 902px;
+  padding: 14px;
+  border-radius: 66px;
+  background: linear-gradient(145deg, #2b2b2f, #101012 55%, #17171a);
+  box-shadow:
+    0 2px 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 0 0 2px #050506,
+    0 44px 90px rgba(0, 0, 0, 0.4),
+    0 12px 30px rgba(0, 0, 0, 0.3);
+}
+/* subtle titanium edge highlight */
+.device::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 63px;
+  border: 1.5px solid rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+}
+
+/* side buttons */
+.btn {
+  position: absolute;
+  background: linear-gradient(90deg, #1a1a1d, #303035);
+  border-radius: 2px;
+}
+.btn-action { left: -2px; top: 150px; width: 4px; height: 30px; border-radius: 2px 0 0 2px; }
+.btn-vol-up { left: -2px; top: 208px; width: 4px; height: 56px; border-radius: 2px 0 0 2px; }
+.btn-vol-down { left: -2px; top: 278px; width: 4px; height: 56px; border-radius: 2px 0 0 2px; }
+.btn-power {
+  right: -2px;
+  top: 232px;
+  width: 4px;
+  height: 100px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(270deg, #1a1a1d, #303035);
+}
+
+/* ---------- screen ---------- */
+.device-screen {
+  position: relative;
+  width: 402px;
+  height: 874px;
+  border-radius: 52px;
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+
+.screen-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.screen-scroll::-webkit-scrollbar { width: 0; height: 0; }
+
+.board {
+  position: relative;
+  width: 402px;
+  height: 960px;
+  margin: 0 auto;
+}
+
+.node { position: absolute; transition: opacity 0.5s ease, filter 0.5s ease; }
+.node.dimmed { opacity: 0.4; filter: grayscale(1); }
+
+/* ---------- dynamic island + status bar ---------- */
+.dynamic-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 20;
+}
+
+.status-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px 0 34px;
+  z-index: 19;
+  pointer-events: none;
+}
+.status-bar .time {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #000;
+}
+.status-bar .status-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- replay control ---------- */
+/* ---------- play / pause / restart controls (in the left rail) ---------- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ctrl-btn {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #111114;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.ctrl-btn.primary {
+  background: #111114;
+  color: #fff;
+}
+.ctrl-btn:hover { transform: translateY(-1px); }
+
+/* speed slider (global pace multiplier) */
+.speed-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+}
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #111114;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.speed-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: none;
+  border-radius: 50%;
+  background: #111114;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- config toggles (left rail, outside the phone) ---------- */
+.config-bar {
+  position: relative;
+  z-index: 50;
+  flex: 0 0 268px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 12px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 8px 4px;
+}
+.config-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+}
+.config-label {
+  text-align: left;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #8a8d93;
+}
+.mode-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.mode-opt {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #6a6d73;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.mode-opt:hover:not(.active):not(:disabled) { color: #35383d; }
+.mode-opt.active {
+  background: #111114;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.mode-opt:disabled { opacity: 0.35; cursor: default; }
+
+/* ---------- pie-chart card style ---------- */
+/* .card.card-pie (higher specificity) so it overrides .card's column layout
+   regardless of source order */
+.card.card-pie {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  width: 216px;
+  padding: 12px 14px;
+}
+.pie {
+  position: relative;
+  width: 57px;
+  height: 57px;
+  flex-shrink: 0;
+}
+.pie-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pie-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.card-pie .card-label {
+  white-space: normal;
+}
+
+/* ---------- "progress bar, inside" card style (Figma 459:5178 etc.) ---------- */
+.card.card-progress { width: 216px; padding: 6px 14px; }
+
+.pbar {
+  position: relative;
+  width: 188px;
+  height: 32px;
+  flex-shrink: 0;
+}
+.pbar.pbar-tall { height: 34px; }
+
+.pbar-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: #e4e4e4;
+}
+.pbar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 10px;
+  /* width driven purely by the per-frame eased progressAt value (no CSS width
+     transition — that would re-animate every frame and fight the JS easing) */
+  /* width + background set inline (progress% + per-color pastel) */
+}
+.pbar-amount {
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #000;
+  white-space: nowrap;
+}
+.pbar-date {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 32px;
+  background: #d5d5d5;
+  color: #7d7d7d;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.pbar-date.reached { background: #624b52; color: #f7dfe9; }
+
+.pbar-title {
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 600;
+  color: #000;
+  white-space: nowrap;
+}
+
+/* ---------- "progress pill" chart style (Figma 462:6194 etc.) ---------- */
+.ppill-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.ppill-title {
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 600;
+  color: #111111;
+  white-space: nowrap;
+}
+.ppill-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 100px;
+  background: #ffffff;
+}
+.ppill-row-income { padding: 4px 8px; }
+.ppill-income-label {
+  font-family: var(--font-family);
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 450;
+  color: #000000;
+  white-space: nowrap;
+}
+.ppill-chip {
+  position: relative;
+  overflow: clip;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  transition: background 0.4s ease;
+}
+.ppill-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 28px;
+  border-radius: 15.5px;
+  /* left:0 + width:p% (inline) so a full chip fills edge-to-edge with no gap at
+     the rounded right edge; the chip's overflow:clip trims the rounded corners.
+     width driven purely by the per-frame eased progressAt value (no CSS width
+     transition — it would fight the JS easing and cause the jank) */
+  /* width + background set inline (progress% + per-color pastel) */
+}
+.ppill-amount {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-family);
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 450;
+  white-space: nowrap;
+  transition: color 0.4s ease;
+  /* color set inline (track text vs on-fill) */
+}
+.ppill-suffix {
+  font-family: var(--font-family);
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 450;
+  color: #5f5f5f;
+  white-space: nowrap;
+}
+
+/* ---------- progress-bar-as-background card style (Figma 459:5799 etc.) ---------- */
+.pbg {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 74px;
+  padding: 8px;
+  border-radius: 12px;
+  overflow: visible; /* labels spill past the fill onto white */
+  /* width is driven per-frame by progressAt (no CSS width transition — it would
+     fight the JS easing); keep a background transition for the income flip only */
+  transition: background 0.3s ease;
+}
+.pbg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pbg-ring { flex-shrink: 0; }
+.pbg-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.pbg-title {
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pbg-amount {
+  font-size: var(--label-size-m);
+  line-height: var(--label-line-m);
+  font-weight: 500; /* Figtree "Medium" (Figma token is 450) */
+  white-space: nowrap;
+}
+
+/* ---------- "Title tertiary" card style (Figma 413:12388) ---------- */
+/* No special frame: the title moves into a pill over the graph and the card
+   keeps the standard white frame (no black border / radius override). Goal and
+   account cards both use this treatment for a consistent look. */
+/* uppercase title pill overlaid on the top-left of the graph */
+.graph-title-pill {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #eebed4;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  z-index: 2;
+}
+.tert-text {
+  width: 100%;
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 600;
+  color: #000;
+  white-space: nowrap;
+}
+.tert-text.tert-wrap { white-space: normal; }
+.tert-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tert-muted { color: #b7b7b7; }
+.tert-strong { color: #000; }
+.tert-goal {
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  color: #b7b7b7;
+  white-space: nowrap;
+}
+
+/* ---------- "Today's money map" style ---------- */
+/* overlapping category pill at the graph's top-left (bg/text set inline) */
+.card-pill {
+  position: absolute;
+  left: 5px;
+  /* center the pill (height 16) on the money-map dotted baseline at y=9:
+     top 1 -> vertical center 9, so the line bisects the pill */
+  top: 1px;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 7px;
+  border-radius: 100px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  z-index: 3;
+}
+/* goal main text line (fund date / goal title). Grayed until the goal is
+   funded, then eases to black with a pink check alongside it. */
+.mm-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 600;
+  color: #b7b7b7;
+  white-space: normal;
+  transition: color 0.4s ease;
+}
+.mm-main.reached { color: #000; }
+/* borderless section text pill on the spine */
+.section-pill.borderless {
+  border: none;
+  background: #fff;
+  color: #111;
+}
+/* money-map pie card: grey helper line on top, black title below (inverted) */
+.card.card-pie.money-map { align-items: center; }
+.mm-pie-grey {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  color: #949494;
+  white-space: nowrap;
+  transition: color 0.4s ease;
+}
+/* money-map goal reached: fund date turns black next to the pink check */
+.mm-pie-grey.reached { color: #000; }
+.mm-pie-title {
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  font-weight: 600;
+  color: #000;
+  white-space: normal;
+}
+/* slightly larger pastel squircle badge for the money-map ring */
+.pie-badge.pie-badge-mm {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+}
+
+/* ---------- cards ---------- */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 216px;
+  padding: 6px 14px;
+  background: var(--card-bg);
+  border-radius: 16px;
+}
+
+.card-label {
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  color: var(--label);
+  white-space: nowrap;
+}
+
+.card-amount {
+  font-size: var(--body-size-m);
+  line-height: var(--body-line-m);
+  white-space: nowrap;
+}
+.card-amount .value { font-weight: 600; color: var(--amount); }
+.card-amount .suffix { font-weight: 500; color: var(--amount-suffix); }
+
+/* "fund by" pill, overlaid at the top-right of a goal card's graph strip */
+.fund-pill {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--date-badge-bg);
+  color: var(--date-badge-text);
+  font-size: var(--label-size-m);
+  line-height: var(--label-line-m);
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 2;
+}
+.fund-pill.reached {
+  padding: 0 8px 0 4px;
+  background: var(--graph-pink);
+  color: #fff;
+}
+
+/* ---------- section nodes ---------- */
+.section-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 8px;
+}
+.section-node .section-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+}
+.section-node .section-label {
+  width: 65px;
+  text-align: center;
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  color: var(--section-text);
+}
+
+/* compact branch style: small uppercase text pill (Figma 417:12561) */
+.node.section-pill-node { z-index: 5; }
+.section-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  padding: 0 5px;
+  background: #fff;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #111;
+  white-space: nowrap;
+}
+/* the monthly pill wraps to two lines (Figma 417:12659) */
+.section-pill.two-line {
+  height: auto;
+  min-height: 25px;
+  padding: 3px 5px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+
+/* "text only" gate style (Figma node 448:5036): plain bold-black uppercase label,
+   no box / pill / border / icon, sitting on the spine beside the colored ropes */
+.section-text {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  font-family: var(--font-family);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #000;
+  white-space: nowrap;
+}
+.section-text.two-line {
+  height: auto;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+/* ---------- percent badge ---------- */
+.pct-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 4px;
+  background: #fff;
+  border-radius: 6px;
+  color: var(--pct-text);
+  font-size: var(--label-size-m);
+  line-height: var(--label-line-m);
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+/* ---------- graph strip ---------- */
+.graph-strip {
+  position: relative;
+  width: 188px;
+  height: 37px;
+  overflow: hidden;
+}
+
+/* connectors (with flow ports + arrows) sit above nodes so the source
+   circles and destination arrows read clearly at the node edges */
+.connectors { position: absolute; left: 0; top: 0; overflow: visible; z-index: 4; pointer-events: none; }
+.node { z-index: 2; }
