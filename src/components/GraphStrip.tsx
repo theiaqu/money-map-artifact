@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import type { GraphColor, MapStyle } from '../data';
-import { CH_W, buildChart, incomeBars, isReached, type Mode } from '../scenario';
+import { CH_W, buildChart, incomeBars, isReached, firstIncomeMonth, type Dataset, type Mode } from '../scenario';
 
 const COLOR: Record<GraphColor, string> = {
   yellow: '#efc63e',
@@ -48,6 +48,7 @@ export default function GraphStrip({
   variant,
   now,
   mode,
+  dataset,
   badge,
   tertiary,
   pill,
@@ -58,6 +59,7 @@ export default function GraphStrip({
   variant: GraphVariant;
   now: number;
   mode: Mode;
+  dataset: Dataset;
   badge?: string;
   tertiary?: boolean; // "Title tertiary" card style: show a title pill, hide the date pill
   pill?: string;
@@ -70,7 +72,7 @@ export default function GraphStrip({
   const fillOp = money ? (color === 'pink' ? 0.5 : 0.7) : 0.3;
 
   if (variant === 'income') {
-    const bars = incomeBars(mode, now);
+    const bars = incomeBars(dataset, mode, now);
     const BASE_Y = 9; // dotted baseline ($10k) — most bars top out here
     const FLOOR = 35;
     return (
@@ -117,14 +119,18 @@ export default function GraphStrip({
     );
   }
 
+  // stocks/heart-monitor gate: before the first income event nothing but the
+  // dotted baseline shows — the solid data line/fill/highlight stay hidden.
+  const preIncome = now < firstIncomeMonth(dataset, mode);
+
   if (variant === 'goal') {
-    const reached = isReached(mode, id, now);
+    const reached = isReached(dataset, mode, id, now);
     // map a full goal (v=1) to the dotted baseline y, so a completed goal's
     // line/fill rises to EXACTLY the dotted line instead of stopping below it
     const dottedY = money ? 9 : 5;
     // easeSteps: goal line climbs smoothly and tops out at arrivalOffset (when the
     // comet lands + the reached check appears), rather than snapping full early
-    const { line, fill } = buildChart(mode, id, now, dottedY, true);
+    const { line, fill } = buildChart(dataset, mode, id, now, dottedY, true);
     const showFill = money || reached; // money map shows the soft fill throughout
     return (
       <div className="graph-strip">
@@ -136,8 +142,8 @@ export default function GraphStrip({
             </linearGradient>
           </defs>
           <Dotted y={money ? 9 : 5} />
-          {showFill && fill && <path d={fill} fill={`url(#fill-${id})`} />}
-          <path d={line} stroke={stroke} strokeWidth={lineW} strokeLinecap="round" strokeLinejoin="round" />
+          {!preIncome && showFill && fill && <path d={fill} fill={`url(#fill-${id})`} />}
+          {!preIncome && <path d={line} stroke={stroke} strokeWidth={lineW} strokeLinecap="round" strokeLinejoin="round" />}
         </svg>
         {money
           ? pill && <CategoryPill text={pill} color={color} />
@@ -165,9 +171,9 @@ export default function GraphStrip({
   // out exactly when the comet arrives (arrivalOffset) — so the account no longer
   // snaps full the instant the arm departs. Downward withdrawal steps stay instant
   // (see buildChart) so the sawtooth drain is preserved.
-  const { line, fill, hl, hlOn } = buildChart(mode, id, now, flowDottedY, true);
+  const { line, fill, hl, hlOn } = buildChart(dataset, mode, id, now, flowDottedY, true);
   // illustrative: once an account takes its first paycheck it is "complete"
-  const funded = !money && mode === 'illustrative' && isReached(mode, id, now);
+  const funded = !money && mode === 'illustrative' && isReached(dataset, mode, id, now);
   return (
     <div className="graph-strip">
       <svg width={CH_W} height={BOTTOM} viewBox={`0 0 ${CH_W} ${BOTTOM}`} fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -178,10 +184,10 @@ export default function GraphStrip({
           </linearGradient>
         </defs>
         <Dotted y={money ? 9 : 5} />
-        {fill && <path d={fill} fill={`url(#fill-${id})`} />}
-        {!money && hlOn > 0.01 && <path d={hl} stroke={stroke} strokeWidth="5.5" strokeLinecap="round" opacity={hlOn * 0.28} />}
-        <path d={line} stroke={stroke} strokeWidth={lineW} strokeLinecap="round" strokeLinejoin="round" />
-        {!money && hlOn > 0.01 && <path d={hl} stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity={hlOn * 0.4} />}
+        {!preIncome && fill && <path d={fill} fill={`url(#fill-${id})`} />}
+        {!preIncome && !money && hlOn > 0.01 && <path d={hl} stroke={stroke} strokeWidth="5.5" strokeLinecap="round" opacity={hlOn * 0.28} />}
+        {!preIncome && <path d={line} stroke={stroke} strokeWidth={lineW} strokeLinecap="round" strokeLinejoin="round" />}
+        {!preIncome && !money && hlOn > 0.01 && <path d={hl} stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity={hlOn * 0.4} />}
       </svg>
       {money
         ? pill && <CategoryPill text={pill} color={color} />

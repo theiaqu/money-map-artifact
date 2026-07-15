@@ -31,7 +31,7 @@ export default function ProgressBar({
         <div className="pbar-fill" style={{ width: `${p * 100}%`, background: FILL[color] }} />
       )}
       <span className="pbar-amount">{amount}</span>
-      {date && <span className={`pbar-date${reached ? ' reached' : ''}`}>{`By ${date}`}</span>}
+      {date && <span className={`pbar-date${reached ? ' reached' : ''}`}>{date}</span>}
     </div>
   );
 }

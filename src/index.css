@@ -234,7 +234,7 @@ body {
 .config-bar {
   position: relative;
   z-index: 50;
-  flex: 0 0 268px;
+  flex: 0 0 320px;
   align-self: stretch;
   display: flex;
   flex-direction: column;
@@ -245,12 +245,43 @@ body {
   overflow-y: auto;
   padding: 8px 4px;
 }
+.config-head {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.config-title {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #1c1d21;
+}
+.config-updated {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 500;
+  color: #8a8d93;
+}
 .config-row {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 5px;
   width: 100%;
+}
+.config-extras {
+  width: 100%;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .config-label {
   text-align: left;
@@ -293,6 +324,805 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 .mode-opt:disabled { opacity: 0.35; cursor: default; }
+
+/* ---------- account-style card picker (left rail) ---------- */
+.style-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+.style-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  font-family: var(--font-family);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease,
+    transform 0.12s ease;
+}
+.style-tile:hover:not(.active) {
+  border-color: rgba(0, 0, 0, 0.16);
+  transform: translateY(-1px);
+}
+.style-tile.active {
+  border-color: #111114;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14), inset 0 0 0 1.5px #111114;
+}
+.style-tile:focus-visible {
+  outline: 2px solid #49c7ef;
+  outline-offset: 2px;
+}
+.style-tile-label {
+  text-align: left;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.1px;
+  color: #6a6d73;
+}
+.style-tile.active .style-tile-label { color: #111114; }
+
+/* preview container: a soft card-canvas the mini-mock sits in */
+.style-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+.sp { position: relative; width: 100%; }
+
+/* progress bar, inside: gray track + pastel partial fill + tiny "By" pill */
+.sp-progress { height: 22px; }
+.sp-prog-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  background: #e4e4e4;
+}
+.sp-prog-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 58%;
+  border-radius: 7px;
+  background: #b0d9ff;
+}
+.sp-prog-pill {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  height: 13px;
+  padding: 0 5px;
+  border-radius: 32px;
+  background: #d5d5d5;
+  color: #7d7d7d;
+  font-family: var(--font-family);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* progress bar, background: card whose left ~60% is a pastel fill */
+.sp-bg { height: 34px; border-radius: 8px; background: #ffffff; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05); }
+.sp-bg-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 60%;
+  background: #eebed4;
+}
+.sp-bg-line {
+  position: absolute;
+  left: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.sp-bg-line-1 { top: 9px; width: 42%; }
+.sp-bg-line-2 { top: 20px; width: 28%; background: rgba(0, 0, 0, 0.22); }
+
+/* pie chart: pastel arc donut with neutral center */
+.sp-pie { height: 40px; display: flex; align-items: center; justify-content: center; }
+.sp-pie-ring {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: conic-gradient(#61bc76 0 62%, #e4e4e4 62% 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-pie-center {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f3f4f6;
+}
+
+/* stocks / heart monitor: income bars behind a dotted baseline + rising line */
+.sp-stocks { height: 40px; }
+.sp-stk-bar {
+  position: absolute;
+  bottom: 4px;
+  width: 12%;
+  border-radius: 2px 2px 0 0;
+  background: #f6dc72;
+  opacity: 0.85;
+}
+.sp-stk-baseline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  border-top: 1.5px dotted #b7b7b7;
+}
+.sp-stk-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* progress pill: a pill chip partially filled with pastel */
+.sp-pill { height: 22px; display: flex; align-items: center; justify-content: center; }
+.sp-pill-chip {
+  position: relative;
+  width: 74%;
+  height: 20px;
+  border-radius: 100px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.sp-pill-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 52%;
+  border-radius: 100px;
+  background: #f6dc72;
+}
+
+/* ---------- "super slim" card style (Figma 496:5864) ---------- */
+/* preview: small white pill · dotted line · small green target pill */
+.sp-slim { height: 20px; display: flex; align-items: center; gap: 4px; }
+.sp-slim-name {
+  flex: 0 0 auto;
+  width: 30%;
+  height: 13px;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.sp-slim-dots {
+  flex: 1 1 auto;
+  height: 0;
+  border-bottom: 2px dotted #b7b7b7;
+}
+.sp-slim-target {
+  flex: 0 0 auto;
+  width: 34%;
+  height: 13px;
+  border-radius: 4px;
+  background: #b0ddba;
+  box-shadow: inset 0 0 0 1px #054f31;
+}
+
+/* the on-board slim row: name pill · dotted connector · colored target pill.
+   width is set inline (fixed right edge) so target pills align across rows. */
+.slim-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slim-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: var(--font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  color: #191919;
+  white-space: nowrap;
+}
+.slim-dots {
+  flex: 1 1 auto;
+  min-width: 10px;
+  height: 0;
+  border-bottom: 2px dotted #b7b7b7;
+  transition: border-color 0.45s ease;
+}
+.slim-dots.funded { border-color: #9a9a9a; }
+.slim-target {
+  position: relative;
+  overflow: clip;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  white-space: nowrap;
+  /* pre-funding: neutral/inactive gray TRACK — the colored fill grows on top */
+  background: #f0f0f0;
+  border: 1px solid #b0b0b0;
+  color: #b0b0b0;
+  /* border/text ease to the funded palette; width is driven inline (no width
+     transition here — the fill is already frame-eased via progressAt/now). */
+  transition: border-color 0.45s ease, color 0.45s ease;
+}
+/* left-anchored colored fill: width set inline as p*100% so it grows left→right
+   and is clipped to the pill's rounded corners. NO width transition. */
+.slim-fill-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  border-radius: inherit;
+}
+.slim-fill-bar.slim-income { background: #fbedb8; }
+.slim-fill-bar.slim-blue { background: #d7ecff; }
+.slim-fill-bar.slim-green { background: #b0ddba; }
+.slim-fill-bar.slim-pink { background: #f7dfe9; }
+/* label rides above the fill so it stays legible at every fill level */
+.slim-target-label {
+  position: relative;
+  z-index: 1;
+}
+/* border + label text ease to the kind's darker funded color as soon as funding
+   begins — dark text reads cleanly over both the gray track and the pastel fill. */
+.slim-target.slim-income.funded { border-color: #706232; }
+.slim-target.slim-blue.funded { border-color: #232b33; }
+.slim-target.slim-green.funded { border-color: #054f31; }
+.slim-target.slim-pink.funded { border-color: #624b52; }
+.slim-target.slim-income.funded .slim-target-label { color: #706232; }
+.slim-target.slim-blue.funded .slim-target-label { color: #232b33; }
+.slim-target.slim-green.funded .slim-target-label { color: #054f31; }
+.slim-target.slim-pink.funded .slim-target-label { color: #624b52; }
+
+/* ---------- "minimalist icons" card style (Figma 729:6187) ---------- */
+/* preview: small square tile · two stacked text lines · small pink pill */
+.sp-icons { height: 22px; display: flex; align-items: center; gap: 4px; }
+.sp-icons-tile {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+.sp-icons-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sp-icons-line {
+  height: 3px;
+  border-radius: 2px;
+  background: #c4c4c4;
+}
+.sp-icons-line-1 { width: 70%; background: #8f8f8f; }
+.sp-icons-line-2 { width: 45%; }
+.sp-icons-pill {
+  flex: 0 0 auto;
+  width: 22%;
+  height: 10px;
+  border-radius: 4px;
+  background: #f7dfe9;
+  box-shadow: inset 0 0 0 1px #624b52;
+}
+
+/* the on-board icon row: white icon tile · name/amount text · optional goal pill.
+   width is set inline (fixed right edge) so goal date pills align across rows. */
+.icon-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.icon-tile {
+  position: relative;
+  overflow: clip;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+/* left-anchored pastel fill: width set inline as p*100% so it grows left→right
+   behind the icon and is clipped to the tile's rounded corners. NO width
+   transition (progressAt is already frame-eased). */
+.icon-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  border-radius: inherit;
+}
+.icon-fill.icon-income { background: #fbedb8; }
+.icon-fill.icon-blue { background: #d7ecff; }
+.icon-fill.icon-green { background: #b0ddba; }
+.icon-fill.icon-pink { background: #f7dfe9; }
+/* glyph rides above the fill so it stays readable at every fill level */
+.icon-glyph {
+  position: relative;
+  z-index: 1;
+}
+.icon-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  /* shrink (with ellipsis) before the far-right goal date pill so a long
+     "N mo. from now" label never collides with the name (mirrors Super slim). */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.icon-name {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #191919;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.icon-amount {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 450;
+  color: #191919;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* goal-only "fund by" date pill on the far right: gray track (unfunded) that
+   colors in to pink (funded), matching the Super slim goal target pill. */
+.icon-date {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--body-line-s);
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f0f0f0;
+  border: 1px solid #b0b0b0;
+  color: #b0b0b0;
+  transition: background 0.45s ease, border-color 0.45s ease, color 0.45s ease;
+}
+.icon-date.funded {
+  background: #f7dfe9;
+  border-color: #624b52;
+  color: #624b52;
+}
+
+/* ---------- "conversational" card style (Figma 731:9883) ---------- */
+/* preview: a small yellow header bar over two stacked mini-cards (illo + lines) */
+.sp-convo {
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sp-convo-header {
+  height: 12px;
+  border-radius: 4px 4px 0 0;
+  background: #f6dc72;
+}
+.sp-convo-card {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  box-shadow: inset 0 0 0 1px #e4e4e4;
+}
+.sp-convo-illo {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+.sp-convo-lines {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sp-convo-line {
+  height: 3px;
+  border-radius: 2px;
+  background: #c4c4c4;
+}
+.sp-convo-line-1 { width: 60%; background: #8f8f8f; }
+.sp-convo-line-2 { width: 85%; }
+
+/* the convo page sits on a clean white background (scoped to the style) */
+.board-convo { background: #ffffff; }
+
+/* the rounded "hero" income card at the top (soft lemon accent, no illustration).
+   Keeps the same ~64px height as the other cards so the tree tick stays centered
+   on it, with the text padded in cleanly now that the illustration slot is gone. */
+.convo-hero {
+  background: #fdf6d3;
+  border-color: #efe1a3;
+  border-radius: 12px;
+  min-height: 64px;
+  padding: 0 16px;
+}
+
+/* Spend illustration: a green wallet sleeve with a separable credit card that
+   slides up + tilts out of the pocket in the expanded (peek) state. */
+.convo-wallet {
+  position: relative;
+  width: 54px;
+  height: 45px;
+}
+.convo-card--expanded .convo-wallet {
+  width: 96px;
+  height: 80px;
+}
+.convo-wallet-back {
+  position: absolute;
+  left: 6%;
+  top: 26%;
+  width: 88%;
+  height: 64%;
+  background: #e8f5eb;
+  border: 1px solid #b0ddba;
+  border-radius: 12%;
+  z-index: 1;
+}
+.convo-wallet-card {
+  position: absolute;
+  left: 13%;
+  top: 8%;
+  width: 74%;
+  height: 52%;
+  background: #054f31;
+  border-radius: 9%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+  transform-origin: 50% 100%;
+  transition: transform 320ms cubic-bezier(0.22, 0.7, 0.16, 1);
+}
+.convo-wallet--peek .convo-wallet-card {
+  transform: translateY(-24%) rotate(-8deg);
+}
+.convo-wallet-chip {
+  position: absolute;
+  left: 12%;
+  top: 20%;
+  width: 24%;
+  height: 30%;
+  background: #c5c4c4;
+  border-radius: 2px;
+}
+.convo-wallet-logo {
+  position: absolute;
+  right: 9%;
+  top: 22%;
+  display: inline-flex;
+}
+.convo-wallet-front {
+  position: absolute;
+  left: 6%;
+  top: 42%;
+  width: 88%;
+  height: 48%;
+  background: #e8f5eb;
+  border: 1px solid #b0ddba;
+  border-top-color: #9cd0a8;
+  border-radius: 4% 4% 12% 12%;
+  z-index: 3;
+}
+
+/* the on-board convo card: illustration/date slot + title + chip sentence */
+.convo-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 312px;
+  padding: 0 16px 0 8px;
+  border: 1px solid #e4e4e4;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+.convo-slot {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.convo-illo {
+  display: block;
+  width: 52px;
+  height: auto;
+}
+/* goal left slot: a check above a stacked month/year (or relative months) */
+.convo-date {
+  flex-direction: column;
+  gap: 2px;
+}
+.convo-date-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.convo-date-mon {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #000;
+}
+.convo-date-year {
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 500;
+  color: #adadad;
+}
+.convo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 8px 0;
+}
+.convo-title {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+  width: 100%;
+}
+.convo-sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  width: 100%;
+}
+.convo-word {
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: #6f6f6f;
+  white-space: nowrap;
+}
+.convo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: #ffffff;
+}
+.convo-chip-icon { flex: 0 0 auto; }
+.convo-chip-text {
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: #6f6f6f;
+  white-space: nowrap;
+}
+
+/* centered gray caption dividers (replace the gate pills for the convo style) */
+.node.convo-caption-node { z-index: 5; width: 402px; }
+.convo-caption {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: #979797;
+}
+
+/* inline name-chip Fruitful logo (tinted per graph color) */
+.convo-chip-logo {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* resting convo cards are tappable to open their detail modal */
+.convo-card--tappable {
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.convo-card--tappable:hover {
+  border-color: #d3d3d3;
+  box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.02), 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- convo tap-to-expand detail modal (Figma 731:10200) ---------- */
+/* the enlarged "popup" card variant (Figma 731:10723) */
+.convo-card--expanded {
+  width: 356px;
+  border-radius: 18px;
+  box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.02), 0 4px 4px rgba(0, 0, 0, 0.06);
+  cursor: default;
+}
+.convo-card--expanded .convo-slot { width: 116px; height: 116px; }
+.convo-card--expanded .convo-illo { width: 94px; }
+.convo-card--expanded .convo-title { font-size: 18px; line-height: 24px; }
+.convo-card--expanded .convo-word,
+.convo-card--expanded .convo-chip-text { font-size: 15px; line-height: 20px; }
+.convo-card--expanded .convo-sentence { gap: 2px 5px; }
+.convo-card--expanded .convo-chip { padding: 0 2.5px; border-radius: 5px; }
+.convo-card--expanded .convo-date-mon { font-size: 18px; line-height: 22px; }
+.convo-card--expanded .convo-date-year { font-size: 15px; line-height: 18px; }
+
+/* the resting card is hidden while its morph modal is open (no duplicate) */
+.convo-card--hidden { visibility: hidden; }
+
+/* modal layer sits above the board but below the status bar/dynamic island */
+.convo-modal { position: absolute; inset: 0; z-index: 15; }
+.convo-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+  opacity: 1;
+  animation: convo-fade 220ms ease-out;
+  transition: opacity 220ms ease;
+}
+/* the focus card morphs IN PLACE (transform driven by the FLIP effect in JS);
+   transform-origin top-left so translate+scale maps cleanly onto the rest rect */
+.convo-pop-card {
+  position: absolute;
+  left: 21px;
+  top: 391px;
+  width: 356px;
+  z-index: 2;
+  transform-origin: top left;
+  will-change: transform;
+}
+/* the description sheet is DOCKED to the bottom of the 874px phone screen with a
+   ~30px gap (sheet height 273 -> top 571), constant regardless of which card was
+   tapped; the morphed card stays up top so there's clear separation. */
+.convo-sheet {
+  position: absolute;
+  left: 50%;
+  top: 571px;
+  width: 359px;
+  height: 273px;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 32px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02), 0 4px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  z-index: 2;
+  animation: convo-sheet-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: opacity 200ms ease, transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* dismiss: fade the scrim + drop the sheet away while the card morphs back */
+.convo-modal--closing .convo-scrim { opacity: 0; }
+.convo-modal--closing .convo-sheet {
+  opacity: 0;
+  transform: translate(-50%, 20px);
+  animation: none;
+}
+.convo-sheet-head {
+  position: absolute;
+  left: 50%;
+  top: 33px;
+  width: 291px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.convo-sheet-title {
+  font-family: var(--font-family);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  color: #000;
+}
+.convo-sheet-body {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  color: #7d7d7d;
+}
+.convo-sheet-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  width: 313px;
+  height: 48px;
+  transform: translateX(-50%);
+  border: none;
+  border-radius: 16px;
+  background: #1f1f1f;
+  color: #fff;
+  font-family: var(--font-family);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.convo-sheet-btn:hover { background: #2c2c2c; }
+
+@keyframes convo-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes convo-sheet-in {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
 
 /* ---------- pie-chart card style ---------- */
 /* .card.card-pie (higher specificity) so it overrides .card's column layout
@@ -377,7 +1207,7 @@ body {
 }
 .pbar-date {
   position: absolute;
-  right: 0;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 2;
@@ -498,7 +1328,11 @@ body {
   align-items: center;
   gap: 8px;
 }
-.pbg-ring { flex-shrink: 0; }
+.pbg-ring { flex-shrink: 0; animation: pbg-ring-in 0.3s ease both; }
+@keyframes pbg-ring-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
 .pbg-avatar {
   display: inline-flex;
   align-items: center;
@@ -669,6 +1503,160 @@ body {
 .card-amount .value { font-weight: 600; color: var(--amount); }
 .card-amount .suffix { font-weight: 500; color: var(--amount-suffix); }
 
+/* ---------- stocks V1 (Figma 519:6283): wide white cards ---------- */
+/* reuses .card (216px wide, 6px 14px padding, radius 16); only the inner content
+   layout differs from the other styles. */
+.v1-card { align-items: flex-start; }
+
+.v1-strip {
+  width: 100%;
+  height: 37px;
+  overflow: hidden;
+}
+.v1-strip .v1-bars { display: block; width: 188px; height: 37px; }
+
+.v1-income-label {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #949494;
+}
+.v1-income-amount {
+  margin-top: 4px;
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
+}
+.v1-income-amount .v1-amt-value { font-weight: 600; color: #000; }
+.v1-income-amount .v1-amt-suffix { font-weight: 500; color: #c5c5c5; }
+
+.v1-title {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+  white-space: nowrap;
+}
+.v1-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+}
+.v1-row .v1-chart { display: block; width: 140px; height: 37px; flex-shrink: 0; }
+.v1-amount {
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+  color: #9e9e9e;
+  white-space: nowrap;
+}
+.v1-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+  color: #9e9e9e;
+  white-space: nowrap;
+}
+
+/* V1 boxed gate label pill */
+.v1-gate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: #fff;
+  border-radius: 4px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #111;
+  white-space: nowrap;
+}
+.v1-gate.two-line {
+  white-space: normal;
+  text-align: right;
+  line-height: 1.15;
+}
+
+/* ---------- stocks Condensed (Figma 522:6440): compact horizontal cards ---------- */
+.card.condensed-card {
+  box-sizing: border-box;
+  width: 267px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid #d5d5d5;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.condensed-left {
+  flex-shrink: 0;
+  min-width: 0;
+  width: 125px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.condensed-title {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+  word-break: break-word;
+}
+.condensed-amount {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 450;
+  color: #000;
+}
+.condensed-card .condensed-chart { flex-shrink: 0; display: block; width: 50px; height: 37px; }
+.condensed-every {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 450;
+  color: #adadad;
+  white-space: nowrap;
+}
+.condensed-date {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.condensed-date-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.condensed-mon {
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  color: #000;
+}
+.condensed-year {
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 450;
+  color: #adadad;
+}
+
 /* "fund by" pill, overlaid at the top-right of a goal card's graph strip */
 .fund-pill {
   position: absolute;
@@ -800,3 +1788,146 @@ body {
    circles and destination arrows read clearly at the node edges */
 .connectors { position: absolute; left: 0; top: 0; overflow: visible; z-index: 4; pointer-events: none; }
 .node { z-index: 2; }
+
+/* ============================================================
+   MOBILE responsive layout (iPhone 17 Pro, 402×874 portrait)
+   Desktop rules above are untouched — these only apply when the
+   App renders the `.stage.is-mobile` branch (narrow / coarse
+   pointer viewport). The prototype fills the screen; configs and
+   playback controls float / slide up instead of a left rail.
+   ============================================================ */
+.stage.is-mobile {
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  background: var(--canvas-bg);
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+/* full-screen board wrapper — no bezel, no gray backdrop. The board is authored
+   for a 402-wide space, so we scale by viewportWidth/402 (top-anchored) and let
+   the taller-than-viewport board scroll vertically. */
+.stage.is-mobile .board-fill {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--canvas-bg);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.stage.is-mobile .board-fill::-webkit-scrollbar { width: 0; height: 0; }
+.stage.is-mobile .board-scaler {
+  /* the .board itself is scaled via inline transform; this wrapper reserves the
+     scaled footprint so the scroll area matches the visible height */
+  transform-origin: top left;
+}
+
+/* ---- floating controls group (bottom-right, above the safe area) ---- */
+.mobile-controls {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* the Play/Pause/Restart pill(s) sit to the LEFT of the round menu button */
+.mobile-controls .mobile-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mobile-controls .mobile-pills .ctrl-btn {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+/* circular menu button — opens the config drawer */
+.mobile-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 50%;
+  background: #111114;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: transform 0.12s ease, background 0.18s ease;
+}
+.mobile-menu-btn:active { transform: scale(0.94); }
+
+/* ---- config drawer (slide-up bottom sheet) ---- */
+.config-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+.config-drawer .drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.config-drawer .drawer-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+  border-radius: 22px 22px 0 0;
+  background: #f6f7f9;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.28);
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.config-drawer.open { pointer-events: auto; }
+.config-drawer.open .drawer-backdrop { opacity: 1; }
+.config-drawer.open .drawer-sheet { transform: translateY(0); }
+
+.config-drawer .drawer-grip {
+  width: 40px;
+  height: 5px;
+  margin: 2px auto 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  flex: 0 0 auto;
+}
+.config-drawer .drawer-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: #35383d;
+  cursor: pointer;
+  z-index: 2;
+}
+.config-drawer .drawer-close:active { background: rgba(0, 0, 0, 0.12); }
+/* the scrollable settings list inside the sheet */
+.config-drawer .drawer-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 0;
+}
+.config-drawer .drawer-body .config-extras { margin-top: 8px; }

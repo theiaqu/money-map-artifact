@@ -11,7 +11,7 @@ export const DEVICE_H = SCREEN_H + BEZEL * 2; // 902
 
 // horizontal space reserved for the left config rail (keeps its width in sync
 // with `.config-bar` in index.css so the phone never overlaps the controls)
-const CONFIG_RESERVE = 300;
+const CONFIG_RESERVE = 352;
 
 /* Scale the device to fit the viewport: never larger than true size (1:1),
    but shrink freely so it always fits the browser window (minus the config rail). */
