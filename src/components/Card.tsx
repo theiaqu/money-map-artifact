@@ -1,5 +1,5 @@
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type GraphColor, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_LEFT_CONDENSED, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type GraphColor, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, heroHeadline, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
@@ -83,10 +83,11 @@ function PbiChrome({ dataset, amount }: { dataset: Dataset; amount: string }) {
   return (
     <>
       <div className="pbi-hero-logo">
-        <FruitfulLogo size={34} color="#2f8f4e" />
+        <FruitfulLogo size={40} color="#2f8f4e" />
       </div>
       <p className="pbi-hero-sub">
-        Your Money Map is ready! Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+        Your Money Map is ready!<br />
+        Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
       </p>
       <h1 className="pbi-hero-title">{`${hero.pre} ${hero.date}`}</h1>
       <div className="pbi-income-row" title={amount} style={{ left: PBI_INCOME_LEFT, top: PBI_INCOME_TOP }}>
@@ -159,6 +160,7 @@ export default function Card({
   condensed = false,
   dateMode = 'date',
   iconLabeled = false,
+  pbiCondensed = false,
   onConvoTap,
   modalCardId = null,
 }: {
@@ -175,6 +177,7 @@ export default function Card({
   condensed?: boolean; // stocks "Version" Condensed sub-variant (horizontal cards)
   dateMode?: DateMode; // "Goal date" display: absolute badge vs "{N} mo. from now"
   iconLabeled?: boolean; // icons "Labeled" gate: income top-center + indented tiles
+  pbiCondensed?: boolean; // pbi "Condensed" gate: pull the card column left (shorter, bolder branches)
   onConvoTap?: (id: string, rect: DOMRect) => void; // "convo": tap a card to open its detail modal (passes rect for the FLIP morph)
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
 }) {
@@ -510,9 +513,10 @@ export default function Card({
     const p = progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
     const top = pbiRowTopFor(dataset)[node.id] ?? node.y;
+    const cardLeft = pbiCondensed ? PBI_CARD_LEFT_CONDENSED : PBI_CARD_LEFT;
     const Glyph = pbiIconFor(node);
     return (
-      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: cardLeft, top, width: PBI_CARD_W }}>
         <div className="pbi-card">
           <div className="pbi-card-head">
             <span className="pbi-tile" style={{ background: PBI_TILE_BG[node.graph] }}>

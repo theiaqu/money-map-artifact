@@ -51,10 +51,18 @@ const easeOutBack = (x: number) => {
   return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
 };
 
-/* ---- plant sprites (each drawn in a 34×46 box, rooted at the bottom) ----
-   Every species has THREE hand-drawn variants; `index` picks the variant, a
-   mirror, and a small base rotation so no two adjacent clusters look identical
-   (real planting, not one repeated blob). Shades are shuffled per cluster too. */
+/* ---- plant sprites (each drawn in a WIDE, SHORT 44×30 box, rooted at the bottom
+   edge y=30 which sits on the pot body's top / behind the lip) ----
+   The box is deliberately wide-and-short (aspect ≈ the segment width : band
+   height) so the sprites read as LOW, CONTAINED plants that stay within the gap
+   above the pot — matching the Figma silhouettes (802:9336): Core = a low bumpy
+   rounded HEDGE of bushes, Spend = short-to-medium spiky GRASS blades, goals =
+   delicate curling sprout VINES with small round leaves. Every species has THREE
+   hand-drawn variants; `index` picks the variant, a mirror, and (shrub) a small
+   base rotation so no two adjacent clusters look identical. Shades rotate per
+   cluster across the three Figma greens. */
+
+const VB = '0 0 44 30'; // shared wide/short sprite viewBox, soil line at y=30
 
 // deterministic shade triple rotation so clusters vary in their dark/mid/light mix
 const SHADES: [string, string, string][] = [
@@ -63,87 +71,101 @@ const SHADES: [string, string, string][] = [
   [LEAF_DARK, LEAF_LIGHT, LEAF_MID],
 ];
 
-// Core — layered rounded shrubs: a back row of big dark bushes + a front row of
-// smaller lighter bushes for depth (a rounded hedge cluster).
+// Core — a LOW rounded HEDGE: one bumpy bush per cluster (a dominant rounded
+// mound + a couple of smaller bumps) so the row reads as a compact, bushy hedge
+// sitting low on the rim (Figma: a row of soft overlapping dark-green mounds).
 function ShrubSprite({ index }: { index: number }) {
   const v = index % 3;
   const [a, b, c] = SHADES[index % 3];
   const flip = index % 2 === 1;
-  const rot = ((index % 3) - 1) * 4; // -4 / 0 / 4 deg
+  const rot = ((index % 3) - 1) * 3; // -3 / 0 / 3 deg
   const inner =
     v === 0 ? (
       <>
-        <circle cx="9" cy="35" r="10.5" fill={a} />
-        <circle cx="25" cy="34" r="11.5" fill={a} />
-        <circle cx="17" cy="26" r="10" fill={b} />
-        <circle cx="27" cy="27" r="7.5" fill={b} />
-        <circle cx="11" cy="27" r="5.5" fill={c} />
-        <circle cx="21" cy="20" r="6" fill={c} />
+        <circle cx="8" cy="24" r="7" fill={a} />
+        <circle cx="37" cy="24" r="7" fill={b} />
+        <circle cx="15" cy="19" r="10.5" fill={a} />
+        <circle cx="30" cy="20" r="10" fill={a} />
+        <circle cx="23" cy="14" r="8.5" fill={b} />
+        <circle cx="19" cy="12" r="5" fill={c} />
       </>
     ) : v === 1 ? (
       <>
-        <circle cx="11" cy="36" r="11" fill={a} />
-        <circle cx="24" cy="35" r="10" fill={a} />
-        <circle cx="18" cy="27" r="9.5" fill={b} />
-        <circle cx="9" cy="28" r="6.5" fill={b} />
-        <circle cx="24" cy="24" r="6.5" fill={c} />
-        <circle cx="16" cy="19" r="5" fill={c} />
+        <circle cx="7" cy="23" r="6.5" fill={b} />
+        <circle cx="38" cy="23" r="7.5" fill={a} />
+        <circle cx="14" cy="20" r="10" fill={a} />
+        <circle cx="29" cy="18" r="11" fill={a} />
+        <circle cx="21" cy="13" r="7.5" fill={b} />
+        <circle cx="33" cy="12" r="5" fill={c} />
       </>
     ) : (
       <>
-        <circle cx="8" cy="34" r="9.5" fill={a} />
-        <circle cx="20" cy="36" r="11.5" fill={a} />
-        <circle cx="29" cy="31" r="7.5" fill={a} />
-        <circle cx="14" cy="25" r="8.5" fill={b} />
-        <circle cx="25" cy="24" r="7" fill={b} />
-        <circle cx="19" cy="18" r="5.5" fill={c} />
+        <circle cx="9" cy="23" r="7.5" fill={a} />
+        <circle cx="36" cy="24" r="6.5" fill={a} />
+        <circle cx="17" cy="18" r="11" fill={a} />
+        <circle cx="31" cy="20" r="9.5" fill={b} />
+        <circle cx="24" cy="13" r="7" fill={c} />
+        <circle cx="12" cy="13" r="4.5" fill={b} />
       </>
     );
   return (
-    <svg viewBox="0 0 34 46" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
-      <g transform={`${flip ? 'scale(-1,1) translate(-34,0) ' : ''}rotate(${rot} 17 40)`}>{inner}</g>
+    <svg viewBox={VB} width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
+      <g transform={`${flip ? 'scale(-1,1) translate(-44,0) ' : ''}rotate(${rot} 22 28)`}>{inner}</g>
     </svg>
   );
 }
 
-// Spend — spiky grass blades fanning up from the soil, with varied heights/angles.
+// Spend — short-to-medium spiky GRASS: a fan of narrow, slightly-curved pointed
+// blades of VARIED height rising from the soil (Figma: clusters of sharp grass
+// spikes, modest height — never towering).
+const blade = (bx: number, tx: number, ty: number, hw = 2.5) =>
+  `M${bx - hw} 30 Q ${bx - hw * 0.4} ${(30 + ty) / 2} ${tx} ${ty} Q ${bx + hw * 0.4} ${(30 + ty) / 2} ${bx + hw} 30 Z`;
 function GrassSprite({ index }: { index: number }) {
   const v = index % 3;
   const [a, b, c] = SHADES[index % 3];
   const flip = index % 2 === 1;
-  const inner =
-    v === 0 ? (
-      <>
-        <path d="M5 46 C 3 32 3 22 8 7 C 10 22 11 34 10 46 Z" fill={a} />
-        <path d="M13 46 C 12 30 13 18 17 3 C 19 20 19 34 18 46 Z" fill={b} />
-        <path d="M21 46 C 21 33 23 22 27 11 C 27 26 27 37 26 46 Z" fill={a} />
-        <path d="M17 46 C 17 35 19 27 24 20 C 23 30 23 40 22 46 Z" fill={c} />
-        <path d="M27 46 C 28 36 30 29 33 22 C 32 31 31 39 31 46 Z" fill={b} />
-      </>
-    ) : v === 1 ? (
-      <>
-        <path d="M6 46 C 5 34 4 26 6 14 C 9 26 10 36 10 46 Z" fill={b} />
-        <path d="M12 46 C 11 28 12 16 15 2 C 18 18 17 33 17 46 Z" fill={a} />
-        <path d="M19 46 C 19 31 20 20 25 8 C 25 24 24 36 24 46 Z" fill={a} />
-        <path d="M24 46 C 25 34 27 25 31 16 C 30 28 30 38 29 46 Z" fill={c} />
-      </>
-    ) : (
-      <>
-        <path d="M4 46 C 3 36 3 28 6 18 C 8 29 9 38 9 46 Z" fill={a} />
-        <path d="M11 46 C 10 32 11 21 14 8 C 17 22 16 35 16 46 Z" fill={c} />
-        <path d="M18 46 C 18 34 19 24 22 12 C 23 26 22 37 22 46 Z" fill={b} />
-        <path d="M25 46 C 26 33 28 23 30 9 C 30 25 30 37 30 46 Z" fill={a} />
-        <path d="M29 46 C 30 38 31 32 33 26 C 33 33 32 40 32 46 Z" fill={b} />
-      </>
-    );
+  // [baseX, tipX, tipY] per blade — tipY smaller = taller blade
+  const blades: [number, number, number, string][] =
+    v === 0
+      ? [
+          [6, 4, 8, a],
+          [13, 14, 2, b],
+          [21, 20, 11, a],
+          [28, 30, 4, c],
+          [35, 34, 13, b],
+          [41, 42, 7, a],
+        ]
+      : v === 1
+        ? [
+            [5, 6, 12, b],
+            [12, 11, 4, a],
+            [19, 20, 14, c],
+            [26, 27, 3, a],
+            [33, 32, 9, b],
+            [40, 41, 6, a],
+          ]
+        : [
+            [6, 7, 5, a],
+            [13, 12, 13, c],
+            [20, 21, 2, a],
+            [27, 26, 9, b],
+            [34, 35, 6, a],
+            [41, 42, 12, b],
+          ];
   return (
-    <svg viewBox="0 0 34 46" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
-      <g transform={flip ? 'scale(-1,1) translate(-34,0)' : undefined}>{inner}</g>
+    <svg viewBox={VB} width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
+      <g transform={flip ? 'scale(-1,1) translate(-44,0)' : undefined}>
+        {blades.map(([bx, tx, ty, fill], i) => (
+          <path key={i} d={blade(bx, tx, ty)} fill={fill} />
+        ))}
+      </g>
     </svg>
   );
 }
 
-// goals — a curling sprout stem with small round leaves that curl outward.
+// goals — delicate curling sprout VINES: a thin stem that curls up with a hooked
+// tip plus small ROUND leaves, and a little side tendril curl (Figma: low, wispy
+// curling vines with round leaves).
 function VineSprite({ index }: { index: number }) {
   const v = index % 3;
   const [a, b, c] = SHADES[index % 3];
@@ -151,32 +173,34 @@ function VineSprite({ index }: { index: number }) {
   const inner =
     v === 0 ? (
       <>
-        <path d="M16 46 C 16 34 9 30 12 20 C 14 11 22 12 22 5" fill="none" stroke={b} strokeWidth="2.4" strokeLinecap="round" />
-        <ellipse cx="10" cy="27" rx="6" ry="3.6" transform="rotate(-32 10 27)" fill={a} />
-        <ellipse cx="22" cy="17" rx="5.6" ry="3.3" transform="rotate(34 22 17)" fill={c} />
-        <ellipse cx="22" cy="5" rx="4.6" ry="3" transform="rotate(-10 22 5)" fill={b} />
-        <circle cx="22" cy="5" r="1.7" fill={a} />
+        <path d="M18 30 C 18 22 11 21 13 14 C 14.6 8 23 9 22 3.5" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
+        <path d="M31 30 C 32 24 39 25 37 20 C 35.5 16.5 31.5 18 33.5 21" fill="none" stroke={b} strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="11" cy="18" r="3.1" fill={a} />
+        <circle cx="24" cy="10" r="2.9" fill={c} />
+        <circle cx="22" cy="3.5" r="2.5" fill={b} />
+        <circle cx="36" cy="18" r="2.5" fill={a} />
       </>
     ) : v === 1 ? (
       <>
-        <path d="M17 46 C 17 33 24 30 21 19 C 19 10 11 12 12 4" fill="none" stroke={b} strokeWidth="2.4" strokeLinecap="round" />
-        <ellipse cx="24" cy="26" rx="6" ry="3.5" transform="rotate(30 24 26)" fill={a} />
-        <ellipse cx="11" cy="16" rx="5.6" ry="3.3" transform="rotate(-36 11 16)" fill={c} />
-        <ellipse cx="12" cy="4" rx="4.4" ry="2.9" transform="rotate(12 12 4)" fill={b} />
-        <circle cx="12" cy="4" r="1.7" fill={a} />
+        <path d="M20 30 C 20 23 27 21 25 14 C 23.4 8 15 10 16 3.5" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
+        <path d="M9 30 C 8 25 3 25 5 20 C 6.5 16.8 10 18 8 21" fill="none" stroke={b} strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="27" cy="18" r="3.1" fill={a} />
+        <circle cx="14" cy="10" r="2.9" fill={c} />
+        <circle cx="16" cy="3.5" r="2.5" fill={b} />
+        <circle cx="6" cy="18" r="2.5" fill={a} />
       </>
     ) : (
       <>
-        <path d="M16 46 C 16 36 12 32 14 24 C 16 16 21 17 20 9 C 19.4 6 18 5 18 3" fill="none" stroke={b} strokeWidth="2.3" strokeLinecap="round" />
-        <ellipse cx="9" cy="30" rx="5.4" ry="3.3" transform="rotate(-30 9 30)" fill={a} />
-        <ellipse cx="24" cy="21" rx="5.4" ry="3.2" transform="rotate(32 24 21)" fill={c} />
-        <ellipse cx="11" cy="13" rx="4.8" ry="3" transform="rotate(-24 11 13)" fill={b} />
-        <circle cx="18" cy="3" r="2" fill={a} />
+        <path d="M22 30 C 22 24 15 22 17 15 C 18.4 9.5 26 11 25 5 C 24.4 2.5 23 2 23 1" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
+        <circle cx="14" cy="19" r="3.1" fill={a} />
+        <circle cx="27" cy="11" r="2.9" fill={c} />
+        <circle cx="12" cy="12" r="2.4" fill={b} />
+        <circle cx="23" cy="2.5" r="2.4" fill={a} />
       </>
     );
   return (
-    <svg viewBox="0 0 34 46" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
-      <g transform={flip ? 'scale(-1,1) translate(-34,0)' : undefined}>{inner}</g>
+    <svg viewBox={VB} width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
+      <g transform={flip ? 'scale(-1,1) translate(-44,0)' : undefined}>{inner}</g>
     </svg>
   );
 }

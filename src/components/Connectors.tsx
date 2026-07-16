@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressCondensedFor, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -165,10 +165,13 @@ export default function Connectors({
   // dataset-aware geometry: each set has a Simple and an Optimizer variant (the
   // Optimizer adds a 3rd goal gate on a compact rhythm). Simple returns its exact
   // original arrays.
+  // "Progress bar, inside" offers a THIRD gate ('pbi-condensed'): the same spine +
+  // labels but a left-pulled card column with shorter, bolder branches.
+  const isPbiCondensed = pbiTree && branch === 'pbi-condensed';
   const baseConns: Connector[] = potsTree
     ? connectorsPotsFor(dataset)
     : pbiTree
-    ? connectorsProgressFor(dataset)
+    ? (isPbiCondensed ? connectorsProgressCondensedFor(dataset) : connectorsProgressFor(dataset))
     : illoTree
     ? connectorsIlloFor(dataset)
     : sheetTree
@@ -358,6 +361,12 @@ export default function Connectors({
 
   if (pbiTree) {
     const pbiById = (id: string) => conns.find((c) => c.id === id)?.d;
+    // "Condensed" gate: BOLDER tree + pulse strokes (and a darker rest color) so
+    // the shorter left-pulled branches read as more prominent. Standard pbi keeps
+    // its thin (1.25px) gray tree.
+    const pbiTreeW = isPbiCondensed ? 2.5 : 1.25;
+    const pbiPulseW = isPbiCondensed ? 3.5 : 2;
+    const pbiTreeStroke = isPbiCondensed ? '#9aa0a7' : 'var(--connector)';
     const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
       const m = mids[armId];
       if (!m) return null;
@@ -375,12 +384,12 @@ export default function Connectors({
     });
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* thin static gray tree */}
+        {/* static gray tree (thin by default; bolder for the Condensed gate) */}
         {conns.map((c) => (
-          <path key={c.id} d={c.d} stroke="var(--connector)" strokeWidth={1.25} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path key={c.id} d={c.d} stroke={pbiTreeStroke} strokeWidth={pbiTreeW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         ))}
         {probes}
-        {/* thin colored pulse per in-flight income event */}
+        {/* colored pulse per in-flight income event */}
         {FLOW_META.map((m) => {
           const d = pbiById(m.id);
           const len = lens[m.id];
@@ -393,7 +402,7 @@ export default function Connectors({
                 key={`pbi-${m.id}-${j}`}
                 d={d}
                 stroke={m.color}
-                strokeWidth={2}
+                strokeWidth={pbiPulseW}
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"

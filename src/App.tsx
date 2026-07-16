@@ -204,6 +204,16 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'compact', label: 'Lines with %' },
 ];
 
+// "Progress bar, inside" offers a THIRD gate on top of Text only / Lines with %:
+// "Condensed" pulls the card column left with shorter, bolder branches so the
+// page's visual weight is balanced instead of sitting far right. It's pbi-only
+// (the geometry is pbi-scoped), so it's offered ONLY for the progress style.
+const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
+  { id: 'text-only', label: 'Text only' },
+  { id: 'compact', label: 'Lines with %' },
+  { id: 'pbi-condensed', label: 'Condensed' },
+];
+
 // "Skinny line" is the thin-tree pairing for the minimalist styles (Super slim,
 // Figma 496-5864; Minimalist icons, Figma 729:6187): the super-thin tree is
 // designed around their compact rows, so it's the sole gate offered for them.
@@ -411,7 +421,10 @@ export default function App() {
       // pin a stable, non-compact/non-thin gate so no % badges or foreign tree
       // ever render.
       if (s === 'sheet' || s === 'illo') return 'text-only';
-      return prev === 'skinny-line' || prev === 'icon-labeled' ? 'text-only' : prev;
+      // 'pbi-condensed' is pbi-only: falling back to any other style (or even
+      // re-entering progress from elsewhere) resets it to a valid shared gate so
+      // no non-pbi style ever renders the condensed geometry.
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-condensed' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -446,7 +459,14 @@ export default function App() {
   // gate options depend on the account style: "skinny line" is offered ONLY for
   // the slim card (and is the only gate there); all other styles keep text-only
   // + "Lines with %".
-  const gateOptions = style === 'icons' ? ICON_BRANCHES : style === 'slim' || style === 'convo' ? SLIM_BRANCHES : BRANCHES;
+  const gateOptions =
+    style === 'icons'
+      ? ICON_BRANCHES
+      : style === 'slim' || style === 'convo'
+        ? SLIM_BRANCHES
+        : style === 'progress'
+          ? PBI_BRANCHES
+          : BRANCHES;
 
   // Shared config fields (data type → time model). Rendered in BOTH the desktop
   // left rail and the mobile config drawer so the markup is authored once.
@@ -454,7 +474,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 12:52 PM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 1:26 PM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -704,7 +724,7 @@ export default function App() {
       ))}
 
       {cards.map((c) => (
-        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
+        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiCondensed={style === 'progress' && branch === 'pbi-condensed'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
       ))}
 
       {!stocksFixed && branch === 'compact' && style !== 'pots' &&

@@ -1353,7 +1353,7 @@ body {
 /* ---- hero header (centered): sprout logo · gray subtitle · serif headline ---- */
 .pbi-hero-logo {
   position: absolute;
-  top: 86px;
+  top: 78px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -1361,32 +1361,32 @@ body {
 }
 .pbi-hero-sub {
   position: absolute;
-  top: 138px;
+  top: 128px;
   left: 50%;
   transform: translateX(-50%);
-  width: 344px;
+  width: 274px;
   margin: 0;
   text-align: center;
   font-family: var(--font-family);
   font-size: 16px;
-  line-height: 22px;
+  line-height: 24px;
   font-weight: 450;
   color: #6b7280;
   z-index: 3;
 }
 .pbi-hero-title {
   position: absolute;
-  top: 204px;
+  top: 224px;
   left: 50%;
   transform: translateX(-50%);
   width: 338px;
   margin: 0;
   text-align: center;
   font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  font-size: 44px;
-  line-height: 0.96;
+  font-size: 48px;
+  line-height: 0.88;
   font-weight: 500;
-  letter-spacing: -1.6px;
+  letter-spacing: -2.4px;
   color: #111111;
   z-index: 3;
 }
