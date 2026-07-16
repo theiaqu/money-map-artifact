@@ -1607,9 +1607,11 @@ body {
   min-width: 56px;
 }
 
-/* ---- gate-label pills, centered ON the thin spine (x=50) ---- */
+/* ---- gate-label pills, centered ON the thin spine (x=50) AND vertically
+   centered on the gate's brace junction (info.top = the child midpoint), so the
+   label sits between its two child pots and the branch arms fan from its middle ---- */
 .pot-gate {
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1628,16 +1630,9 @@ body {
 }
 .pot-gate.two-line { white-space: normal; }
 
-/* ---- the pot: wider lighter rim band + solid body + white name inside ---- */
+/* ---- the pot: solid body (back), then the wider lighter RIM/LIP band drawn IN
+   FRONT of the body's top edge (Figma layer order: body → plants → lip → text) ---- */
 .pot-card { position: relative; height: 114px; }
-.pot-rim {
-  position: absolute;
-  top: 44px;
-  left: 0;
-  width: 223px;
-  height: 26px;
-  border-radius: 11px;
-}
 .pot-body {
   position: absolute;
   top: 54px;
@@ -1645,11 +1640,31 @@ body {
   width: 205px;
   height: 60px;
   border-radius: 16px;
+  z-index: 1;
+}
+.pot-rim {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  width: 223px;
+  height: 26px;
+  border-radius: 11px;
+  z-index: 3; /* lip overlays the front of the body + hides the plant bases */
+}
+/* text overlay on the body face (name + amount + goal date pill), above the lip */
+.pot-face {
+  position: absolute;
+  top: 54px;
+  left: 9px;
+  width: 205px;
+  height: 60px;
+  z-index: 4;
+  pointer-events: none;
 }
 .pot-name {
-  position: absolute; /* offset within .pot-body (60px tall): lower-left */
-  left: 10px;
-  top: 34px;
+  position: absolute;
+  left: 12px;
+  top: 22px;
   color: #ffffff;
   font-family: var(--font-family);
   font-size: 12px;
@@ -1657,13 +1672,45 @@ body {
   font-weight: 600;
   white-space: nowrap;
 }
+.pot-amount {
+  position: absolute;
+  left: 12px;
+  top: 41px;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: var(--font-family);
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pot-date {
+  position: absolute;
+  right: 10px;
+  top: 39px;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111111;
+  font-family: var(--font-family);
+  font-size: 9px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.pot-date.reached { background: #624b52; color: #f7dfe9; }
 
 /* ---- plant band across the pot's top edge (rooted at the rim, grows upward) ---- */
 .pot-plants {
   position: absolute;
   left: 9px;
   bottom: 60px; /* band bottom sits at the body/rim top edge */
-  z-index: 2;
+  z-index: 2; /* above the body, behind the lip (rim) */
 }
 .pot-plant {
   position: absolute;
@@ -1672,6 +1719,35 @@ body {
   transform-origin: bottom center;
   will-change: transform, opacity;
 }
+
+/* ---- "Lines with %" gate: a % pill sitting at each arm's check-disc spot, with
+   a small check disc that fades in NEXT TO it the moment the card funds ---- */
+.pot-pct-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+}
+.pot-pct {
+  color: #111111;
+  border: 1px solid #d9d9de;
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.06);
+}
+.pot-pct-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e6e7ea;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.pot-pct-check.done { opacity: 1; transform: scale(1); }
 
 /* ---- account-style picker preview tile: a mini pot with a couple of plants ---- */
 .sp-pots { height: 40px; }

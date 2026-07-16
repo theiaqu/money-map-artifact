@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsPotsFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -278,10 +278,39 @@ export default function Connectors({
   // funding (= plants span the pot's full width).
   if (potsTree) {
     const potById = (id: string) => conns.find((c) => c.id === id)?.d;
+    // "Lines with %" (compact) gate for pots: each goal/account arm's percentage
+    // pill sits EXACTLY at the check-disc location (the arm midpoint = `mids`),
+    // and a small check disc appears NEXT TO the pill the instant its card funds.
+    // The percentages reuse the same values every other style's % badges use
+    // (badgesFor), mapped from each arm to its badge id.
+    const POT_PCT_BADGE: Record<string, string> = {
+      'c-monthly-core': 'p70a',
+      'c-monthly-spend': 'p30a',
+      'c-goals1-ef1': 'p100',
+      'c-goals2-debt': 'p70b',
+      'c-goals2-ef6': 'p30b',
+      'c-goals3-travel': 'p100c',
+      'c-goals3-brokerage': 'p100d',
+    };
+    const pctText: Record<string, string> = Object.fromEntries(badgesFor(dataset).map((b) => [b.id, b.text]));
     const potBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
       const m = mids[armId];
       if (!m) return null;
       const done = cardDone(dataset, mode, cardId, now);
+      if (isCompact) {
+        const txt = pctText[POT_PCT_BADGE[armId]];
+        if (!txt) return null;
+        return (
+          <foreignObject key={`pot-pct-${armId}`} x={m.x - 48} y={m.y - 12} width={96} height={24} style={{ overflow: 'visible' }}>
+            <div className="pot-pct-wrap">
+              <span className="pct-badge pot-pct">{txt}</span>
+              <span className={`pot-pct-check${done ? ' done' : ''}`}>
+                <Check width={11} height={11} color="#111" strokeWidth={2.8} />
+              </span>
+            </div>
+          </foreignObject>
+        );
+      }
       return (
         <g
           key={`pot-chk-${armId}`}

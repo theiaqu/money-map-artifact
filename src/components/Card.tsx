@@ -266,10 +266,11 @@ export default function Card({
     }
     // pot fill fraction reuses progressAt so the plants grow in step with funding
     const p = progressAt(dataset, mode, node.id, now);
+    const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
     const top = potRowTopFor(dataset)[node.id] ?? node.y;
     return (
       <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: POT_CARD_LEFT, top, width: POT_CONTAINER_W, zIndex: 5 }}>
-        <PotCard node={node} progress={p} />
+        <PotCard node={node} progress={p} dateMode={dateMode} reached={reached} />
       </div>
     );
   }

@@ -454,7 +454,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 12:31 PM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 12:52 PM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -707,7 +707,7 @@ export default function App() {
         <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
       ))}
 
-      {!stocksFixed && branch === 'compact' &&
+      {!stocksFixed && branch === 'compact' && style !== 'pots' &&
         percentBadges.map((b) => (
           <div key={b.id} className={`node${dimmed.has(b.id) ? ' dimmed' : ''}`} style={{ left: b.x, top: b.y, zIndex: 6 }}>
             <div className="pct-badge">{b.text}</div>
