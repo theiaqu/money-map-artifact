@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import Card from './components/Card';
+import Card, { PbiGroupedPanels } from './components/Card';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
@@ -204,15 +204,15 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'compact', label: 'Lines with %' },
 ];
 
-// "Progress bar, inside" offers a THIRD gate on top of Text only / Lines with %:
-// "Condensed" pulls the card column left with shorter, bolder branches so the
-// page's visual weight is balanced instead of sitting far right. It's pbi-only
-// (the geometry is pbi-scoped), so it's offered ONLY for the progress style.
+// "Progress bar, inside" offers its OWN gate set: "Text only", "Locked path"
+// (bold white spine + padlocks), and "Grouped" (colored section panels behind the
+// cards, Figma 802:10601). Locked path + Grouped are pbi-scoped (their geometry is
+// pbi-only), so they're offered ONLY for the progress style; "Lines with %" and
+// "Condensed" are intentionally NOT offered here.
 const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'text-only', label: 'Text only' },
-  { id: 'compact', label: 'Lines with %' },
-  { id: 'pbi-condensed', label: 'Condensed' },
   { id: 'pbi-locked', label: 'Locked path' },
+  { id: 'pbi-grouped', label: 'Grouped' },
 ];
 
 // "Skinny line" is the thin-tree pairing for the minimalist styles (Super slim,
@@ -422,10 +422,13 @@ export default function App() {
       // pin a stable, non-compact/non-thin gate so no % badges or foreign tree
       // ever render.
       if (s === 'sheet' || s === 'illo') return 'text-only';
-      // 'pbi-condensed' / 'pbi-locked' are pbi-only: falling back to any other
-      // style (or even re-entering progress from elsewhere) resets to a valid
-      // shared gate so no non-pbi style ever renders the pbi-scoped geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-condensed' || prev === 'pbi-locked' ? 'text-only' : prev;
+      // "Progress bar, inside" offers only text-only / pbi-locked / pbi-grouped, so
+      // entering it from any other gate (e.g. 'compact' carried over from stocks)
+      // falls back to a valid pbi gate (default "Text only").
+      if (s === 'progress') return prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'text-only' ? prev : 'text-only';
+      // 'pbi-locked' / 'pbi-grouped' are pbi-only: leaving pbi for any other style
+      // resets to a valid shared gate so no non-pbi style renders pbi-scoped geometry.
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -475,7 +478,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 2:04 PM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 2:37 PM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -697,6 +700,8 @@ export default function App() {
       {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
           tree; scoped to this gate so no other gate/style is tinted. */}
       {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
+      {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
+      {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
       <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} />
 
       {style === 'icons' && branch === 'skinny-line' && (
@@ -728,7 +733,7 @@ export default function App() {
       ))}
 
       {cards.map((c) => (
-        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiCondensed={style === 'progress' && branch === 'pbi-condensed'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
+        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && branch === 'pbi-grouped'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
       ))}
 
       {!stocksFixed && branch === 'compact' && style !== 'pots' &&

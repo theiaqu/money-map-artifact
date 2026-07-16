@@ -159,6 +159,12 @@ export default function SectionNodeView({
       </div>
     );
   }
+  // "Grouped" pbi gate (Figma 802:10601): the section labels live INSIDE the
+  // colored panels (rendered by PbiGroupedPanels), so the on-spine gate nodes
+  // render nothing here.
+  if (pbi && branch === 'pbi-grouped') {
+    return null;
+  }
   // "Locked path" pbi gate (Figma 802:10378): plain title-case GRAY text labels
   // (no pill) sitting to the LEFT of the bold white spine, right-aligned and
   // color-tinted per section. Takes precedence over the standard pbi pills.

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressCondensedFor, connectorsProgressLockedFor, pbiLockDiscsFor, PBI_LOCK_SPINE_X, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, pbiLockDiscsFor, pbiGroupedLockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -165,16 +165,16 @@ export default function Connectors({
   // dataset-aware geometry: each set has a Simple and an Optimizer variant (the
   // Optimizer adds a 3rd goal gate on a compact rhythm). Simple returns its exact
   // original arrays.
-  // "Progress bar, inside" offers a THIRD gate ('pbi-condensed'): the same spine +
-  // labels but a left-pulled card column with shorter, bolder branches.
-  const isPbiCondensed = pbiTree && branch === 'pbi-condensed';
   // "Locked path": bold white spine + heavy white curvy branches + animated
   // padlock discs (Figma 802:10378). pbi-scoped, so it's offered only for pbi.
   const isPbiLocked = pbiTree && branch === 'pbi-locked';
+  // "Grouped": thin light spine + white curvy branches + padlock discs + colored
+  // section panels behind the cards (Figma 802:10601). pbi-scoped.
+  const isPbiGrouped = pbiTree && branch === 'pbi-grouped';
   const baseConns: Connector[] = potsTree
     ? connectorsPotsFor(dataset)
     : pbiTree
-    ? (isPbiCondensed ? connectorsProgressCondensedFor(dataset) : isPbiLocked ? connectorsProgressLockedFor(dataset) : connectorsProgressFor(dataset))
+    ? (isPbiLocked ? connectorsProgressLockedFor(dataset) : isPbiGrouped ? connectorsProgressGroupedFor(dataset) : connectorsProgressFor(dataset))
     : illoTree
     ? connectorsIlloFor(dataset)
     : sheetTree
@@ -431,14 +431,85 @@ export default function Connectors({
     );
   }
 
+  // ---------- pbi "Grouped": thin LIGHT spine + white curvy branches + padlock discs ----------
+  // (Figma 802:10601) Closely related to Locked path, but with a thin light spine
+  // (instead of the bold white track) and colored section panels behind the cards
+  // (the panels are board-level chrome — see PbiGroupedPanels in App). Padlock discs
+  // sit ON the spine at each level boundary and UNLOCK the moment every card of the
+  // level above finishes funding (same cardDone source the check discs use). Money
+  // still travels as thin colored pulses over the white branches.
+  if (isPbiGrouped) {
+    const grpById = (id: string) => conns.find((c) => c.id === id)?.d;
+    const lockDiscs = pbiGroupedLockDiscsFor(dataset).map((d) => {
+      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now));
+      return (
+        <g key={d.id} transform={`translate(${PBI_GROUPED_SPINE_X} ${d.y})`}>
+          <circle r={12} fill="#ffffff" stroke="#e6e7ea" strokeWidth={1} />
+          <g style={{ opacity: unlocked ? 0 : 1, transition: 'opacity 0.45s ease' }}>
+            <Lock x={-7} y={-7} width={14} height={14} color="#6b7280" strokeWidth={2.2} />
+          </g>
+          <g style={{ opacity: unlocked ? 1 : 0, transition: 'opacity 0.45s ease' }}>
+            <LockOpen x={-7} y={-7} width={14} height={14} color="#2f8f57" strokeWidth={2.2} />
+          </g>
+        </g>
+      );
+    });
+    // spine = the vertical hops (everything NOT a wishbone arm); arms = the white
+    // curvy branches into each card (the ARM_CARD ids).
+    const isArm = (id: string) => id in ARM_CARD;
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* thin LIGHT vertical spine (Figma Vector 808) */}
+        {conns.filter((c) => !isArm(c.id)).map((c) => (
+          <path key={`spine-${c.id}`} d={c.d} stroke="#c9ccd1" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {/* white curvy branches over the light spine + colored panels (soft shadow so
+            they read on the tinted panels) */}
+        <defs>
+          <filter id="grp-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.1" />
+          </filter>
+        </defs>
+        <g filter="url(#grp-branch-shadow)">
+          {conns.filter((c) => isArm(c.id)).map((c) => (
+            <path key={`br-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+        </g>
+        {probes}
+        {/* colored pulse per in-flight income event (over the white branches) */}
+        {FLOW_META.map((m) => {
+          const d = grpById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`grp-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={2.5}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {lockDiscs}
+      </svg>
+    );
+  }
+
   if (pbiTree) {
     const pbiById = (id: string) => conns.find((c) => c.id === id)?.d;
-    // "Condensed" gate: BOLDER tree + pulse strokes (and a darker rest color) so
-    // the shorter left-pulled branches read as more prominent. Standard pbi keeps
-    // its thin (1.25px) gray tree.
-    const pbiTreeW = isPbiCondensed ? 2.5 : 1.25;
-    const pbiPulseW = isPbiCondensed ? 3.5 : 2;
-    const pbiTreeStroke = isPbiCondensed ? '#9aa0a7' : 'var(--connector)';
+    const pbiTreeW = 1.25;
+    const pbiPulseW = 2;
+    const pbiTreeStroke = 'var(--connector)';
     const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
       const m = mids[armId];
       if (!m) return null;

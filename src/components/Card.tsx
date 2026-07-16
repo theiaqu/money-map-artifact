@@ -1,5 +1,5 @@
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_LEFT_CONDENSED, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, heroHeadline, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
@@ -89,6 +89,28 @@ function PbiChrome({ dataset, amount }: { dataset: Dataset; amount: string }) {
   );
 }
 
+// "Grouped" pbi gate (Figma 802:10601): the rounded COLORED SECTION PANELS that
+// sit BEHIND the pbi cards/branches — a teal/mint panel behind Monthly Expenses
+// (Core + Spend) and a pink panel behind Goals (all goal cards) — each with a small
+// section label in its top-left. Board-level chrome rendered once (behind the
+// connectors + cards) when the Grouped gate is active. Own .pbi-grouped-* classes.
+export function PbiGroupedPanels({ dataset }: { dataset: Dataset }) {
+  const panels = pbiGroupedPanelsFor(dataset);
+  return (
+    <>
+      {panels.map((p) => (
+        <div
+          key={p.id}
+          className={`pbi-grouped-panel pbi-grouped-panel--${p.tint}`}
+          style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
+        >
+          <span className="pbi-grouped-label">{p.label}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
 // "Pots" hero + income chrome (Figma 802:9336): the same centered hero family as
 // pbi (sprout logo · gray subtitle · large serif headline derived from the
 // dataset's milestone goal), then a single yellow INCOME pill sitting at the top
@@ -149,7 +171,7 @@ export default function Card({
   condensed = false,
   dateMode = 'date',
   iconLabeled = false,
-  pbiCondensed = false,
+  pbiGrouped = false,
   onConvoTap,
   modalCardId = null,
 }: {
@@ -166,7 +188,7 @@ export default function Card({
   condensed?: boolean; // stocks "Version" Condensed sub-variant (horizontal cards)
   dateMode?: DateMode; // "Goal date" display: absolute badge vs "{N} mo. from now"
   iconLabeled?: boolean; // icons "Labeled" gate: income top-center + indented tiles
-  pbiCondensed?: boolean; // pbi "Condensed" gate: pull the card column left (shorter, bolder branches)
+  pbiGrouped?: boolean; // pbi "Grouped" gate: goals section pushed down for the pink panel
   onConvoTap?: (id: string, rect: DOMRect) => void; // "convo": tap a card to open its detail modal (passes rect for the FLIP morph)
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
 }) {
@@ -501,8 +523,8 @@ export default function Card({
     }
     const p = progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
-    const top = pbiRowTopFor(dataset)[node.id] ?? node.y;
-    const cardLeft = pbiCondensed ? PBI_CARD_LEFT_CONDENSED : PBI_CARD_LEFT;
+    const top = (pbiGrouped ? pbiGroupedRowTopFor(dataset) : pbiRowTopFor(dataset))[node.id] ?? node.y;
+    const cardLeft = PBI_CARD_LEFT;
     const Glyph = pbiIconFor(node);
     return (
       <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: cardLeft, top, width: PBI_CARD_W }}>

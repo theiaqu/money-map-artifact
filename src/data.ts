@@ -12,15 +12,18 @@ export type CardKind = 'income' | 'account' | 'goal';
 // a labeled left spine (gate-label pills) + straight thin brackets (same clean
 // vocabulary as the "Bracket" gate) into indented icon tiles + a left-aligned
 // income tile with a straight gray drop onto the spine (Figma 738:7107).
-// 'pbi-condensed' is a THIRD gate offered ONLY for the "Progress bar, inside"
-// (progress/pbi) style: the same spine + labels, but the card column is pulled
-// left with shorter, bolder branches so the page's weight isn't so far right.
-// 'pbi-locked' is a FOURTH gate offered ONLY for the "Progress bar, inside" style
+// 'pbi-locked' is a gate offered ONLY for the "Progress bar, inside" style
 // (Figma 802:10378): a bold WHITE rounded spine + heavy organic white curvy
 // branches, plain title-case gray gate labels (no pill), gray padlock discs ON
 // the spine at each level boundary that UNLOCK as the flow completes that level,
 // and a soft vertical gold→green→pink page gradient behind the tree.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-condensed' | 'pbi-locked';
+// 'pbi-grouped' is ANOTHER "Progress bar, inside"-only gate (Figma 802:10601):
+// closely related to Locked path — same hero + income pills, a thin light left
+// spine with circular PADLOCK discs at each level boundary, and white curvy
+// branches into the pbi cards — but the cards of each SECTION are wrapped in a
+// rounded COLORED SECTION PANEL sitting behind them (teal "Monthly Expenses"
+// group, pink "Goals" group) with a small section label in the panel's top-left.
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -1400,46 +1403,6 @@ export const connectorsProgressOptimizer: Connector[] = [
   { id: 'c-goals3-down', d: 'M50 940 L 50 1186', arrow: false },
 ];
 
-/* ---- "Condensed" gate (pbi-scoped, BranchStyle 'pbi-condensed') ----
-   The SAME spine (x=50), gate labels, and junctions as the standard pbi tree,
-   but the whole card column is pulled LEFT (card left 120 vs 170) so the page's
-   visual weight is balanced/centered instead of sitting far right, and the branch
-   arms are correspondingly SHORT + compact (they end at x=110, a 10px gap before
-   the condensed card left 120). The connector renderer draws these arms with a
-   BOLDER stroke. Reuses the pbi row TOPS (same vertical rhythm) + gate labels;
-   only the horizontal card position + arm length change, so no other style or the
-   standard pbi tree is touched. */
-export const PBI_CARD_LEFT_CONDENSED = 120;
-const PBI_ARM_C = (jy: number, cy: number): string =>
-  `M84 ${jy} C 100 ${jy}, 100 ${cy}, 110 ${cy}`;
-export const connectorsProgressCondensed: Connector[] = [
-  { id: 'c-income-monthly', d: 'M50 360 L 50 448', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M50 480 L 50 591', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M50 613 L 50 724', arrow: false },
-  { id: 'c-goals2-down', d: 'M50 756 L 50 946', arrow: false },
-  { id: 'c-monthly-core', d: PBI_ARM_C(464, 418), arrow: false },
-  { id: 'c-monthly-spend', d: PBI_ARM_C(464, 510), arrow: false },
-  { id: 'c-goals1-ef1', d: 'M72 602 L 110 602', arrow: false },
-  { id: 'c-goals2-debt', d: PBI_ARM_C(740, 694), arrow: false },
-  { id: 'c-goals2-ef6', d: PBI_ARM_C(740, 786), arrow: false },
-];
-export const connectorsProgressCondensedOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M50 360 L 50 448', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M50 480 L 50 591', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M50 613 L 50 729', arrow: false },
-  { id: 'c-monthly-core', d: PBI_ARM_C(464, 418), arrow: false },
-  { id: 'c-monthly-spend', d: PBI_ARM_C(464, 510), arrow: false },
-  { id: 'c-goals1-ef1', d: 'M72 602 L 110 602', arrow: false },
-  { id: 'c-goals2-debt', d: PBI_ARM_C(740, 694), arrow: false },
-  { id: 'c-goals2-ef6', d: PBI_ARM_C(740, 786), arrow: false },
-  { id: 'c-goals2-goals3', d: 'M50 751 L 50 908', arrow: false },
-  { id: 'c-goals3-travel', d: PBI_ARM_C(924, 878), arrow: false },
-  { id: 'c-goals3-brokerage', d: PBI_ARM_C(924, 970), arrow: false },
-  { id: 'c-goals3-down', d: 'M50 940 L 50 1186', arrow: false },
-];
-export const connectorsProgressCondensedFor = (dataset: Dataset): Connector[] =>
-  dataset === 'optimizer' ? connectorsProgressCondensedOptimizer : connectorsProgressCondensed;
-
 // pbi gate-label pills (white, on the spine). Simple has two goal gates (1st Goal
 // + Financial health); Optimizer inserts a 2nd Goal between them. `top` centers
 // each pill on its gate junction; two-line pills wrap within `width`.
@@ -1556,6 +1519,124 @@ export const pbiLockDiscs: Record<Dataset, PbiLockDisc[]> = {
 };
 export const pbiLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
   dataset === 'optimizer' ? pbiLockDiscs.optimizer : pbiLockDiscs.simple;
+
+/* ---- "Grouped" gate (pbi-scoped, BranchStyle 'pbi-grouped') — Figma 802:10601 ----
+   Closely related to "Locked path": it reuses the pbi hero + INCOME/PAYCHECK pill
+   row, the pbi white cards (standalone icon + inner amount bar + date pill), a thin
+   LIGHT left spine with circular PADLOCK discs at each level boundary (same
+   `cardDone` unlock timing as pbi-locked), and soft WHITE curvy wishbone branches
+   from the spine into each card. THE DEFINING FEATURE: each section's cards are
+   wrapped in a rounded COLORED SECTION PANEL sitting BEHIND them — a teal/mint panel
+   behind the Monthly Expenses group (Core + Spend), a pink panel behind the Goals
+   group (all goal cards) — each with a small section label in its top-left.
+
+   Figma spec (802:10601, 402-wide frame): panels x=61 w=329 r=12; teal panel fill
+   rgba(56,195,203,0.15), pink panel fill #f1e1ea; labels 12px semibold — teal
+   "Monthly Expenses" rgba(0,127,125,0.53), pink "Goals" #a17187; the spine (Vector
+   808) sits at x=40 with padlock discs (white disc + lock glyph) centered on it.
+
+   The card column stays at PBI_CARD_LEFT (170) — the pbi cards don't move — but the
+   GOALS section is pushed down by a section gap (matching the Figma's larger Spend→
+   Starter pitch) so the two panels read as distinct blocks. Its own row-top map +
+   connector set + panel rects so it never touches the other pbi gates. */
+export const PBI_GROUPED_SPINE_X = 40;
+
+// grouped card TOPS: Core/Spend on the pbi 92px pitch, then a +19px SECTION GAP
+// before the goals (matching Figma's Spend→Starter 111px pitch), goals on 92px.
+export const pbiGroupedRowTop: Record<string, number> = {
+  income: PBI_INCOME_TOP,
+  core: 378,
+  spend: 470, // 378 + 92
+  ef1: 581, // 470 + 92 + 19 (section gap)
+  debt: 673, // 581 + 92
+  ef6: 765, // 673 + 92
+};
+export const pbiGroupedRowTopOptimizer: Record<string, number> = {
+  income: PBI_INCOME_TOP,
+  core: 378,
+  spend: 470,
+  ef1: 581,
+  debt: 673,
+  ef6: 765,
+  travel: 857, // 765 + 92
+  brokerage: 949, // 857 + 92
+};
+
+// soft white wishbone arm from the light spine (x=40) into a card (x=160), leaving
+// and arriving horizontally — a longer sweep than the locked/standard pbi arm so it
+// crosses from the spine (left of the panel) into the card.
+const PBI_GRP_ARM = (jy: number, cy: number): string =>
+  `M40 ${jy} C 112 ${jy}, 112 ${cy}, 160 ${cy}`;
+export const connectorsProgressGrouped: Connector[] = [
+  // continuous light spine (x=40): income drop → monthly → goals1 → goals2 → bottom
+  { id: 'c-income-monthly', d: 'M40 360 L 40 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M40 464 L 40 621', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M40 621 L 40 759', arrow: false },
+  { id: 'c-goals2-down', d: 'M40 759 L 40 946', arrow: false },
+  // monthly wishbone -> core(418) / spend(510), junction at their midpoint 464
+  { id: 'c-monthly-core', d: PBI_GRP_ARM(464, 418), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_GRP_ARM(464, 510), arrow: false },
+  // 1st goal — straight white branch at the ef1 card center (621)
+  { id: 'c-goals1-ef1', d: 'M40 621 L 160 621', arrow: false },
+  // financial-health wishbone -> debt(713) / ef6(805), junction 759
+  { id: 'c-goals2-debt', d: PBI_GRP_ARM(759, 713), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_GRP_ARM(759, 805), arrow: false },
+];
+// Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
+// goals2 -> goals3 (junction at the travel/brokerage midpoint 943), then a
+// symmetric wishbone up to travel(897) / down to brokerage(989).
+export const connectorsProgressGroupedOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M40 360 L 40 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M40 464 L 40 621', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M40 621 L 40 759', arrow: false },
+  { id: 'c-monthly-core', d: PBI_GRP_ARM(464, 418), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_GRP_ARM(464, 510), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M40 621 L 160 621', arrow: false },
+  { id: 'c-goals2-debt', d: PBI_GRP_ARM(759, 713), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_GRP_ARM(759, 805), arrow: false },
+  { id: 'c-goals2-goals3', d: 'M40 759 L 40 943', arrow: false },
+  { id: 'c-goals3-travel', d: PBI_GRP_ARM(943, 897), arrow: false },
+  { id: 'c-goals3-brokerage', d: PBI_GRP_ARM(943, 989), arrow: false },
+  { id: 'c-goals3-down', d: 'M40 943 L 40 1186', arrow: false },
+];
+export const connectorsProgressGroupedFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsProgressGroupedOptimizer : connectorsProgressGrouped;
+
+export const pbiGroupedRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? pbiGroupedRowTopOptimizer : pbiGroupedRowTop;
+
+/* Grouped padlock discs — same `cardDone` unlock semantics as pbi-locked, retuned
+   to the grouped rows (a level unlocks the instant every card in the level ABOVE it
+   finishes funding). `y` centers each disc on the light spine (x=40) at the level
+   boundary. */
+export const pbiGroupedLockDiscs: Record<Dataset, PbiLockDisc[]> = {
+  simple: [
+    { id: 'lock-monthly', y: 566, cards: ['core', 'spend'] }, // sits in the panel gap
+    { id: 'lock-goals1', y: 667, cards: ['ef1'] },
+  ],
+  optimizer: [
+    { id: 'lock-monthly', y: 566, cards: ['core', 'spend'] },
+    { id: 'lock-goals1', y: 667, cards: ['ef1'] },
+    { id: 'lock-goals2', y: 851, cards: ['debt', 'ef6'] },
+  ],
+};
+export const pbiGroupedLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
+  dataset === 'optimizer' ? pbiGroupedLockDiscs.optimizer : pbiGroupedLockDiscs.simple;
+
+/* Rounded colored SECTION PANELS sitting BEHIND the grouped cards (Figma 802:10601).
+   Monthly Expenses (teal) wraps Core + Spend; Goals (pink) wraps every goal card
+   (it grows for the Optimizer's 5 goals). Rects are the pbi card bounds + soft
+   padding; fills/labels/radius are the Figma tokens. */
+export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink'; label: string }
+export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
+  // pink Goals panel grows to enclose the last goal card (ef6 for Simple,
+  // brokerage for Optimizer): bottom = last card top + card height (80) + pad (14).
+  const goalsBottom = (dataset === 'optimizer' ? 949 : 765) + 80 + 14;
+  return [
+    { id: 'monthly', x: 61, y: 367, w: 329, h: 194, tint: 'mint', label: 'Monthly Expenses' },
+    { id: 'goals', x: 61, y: 567, w: 329, h: goalsBottom - 567, tint: 'pink', label: 'Goals' },
+  ];
+}
 
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336.

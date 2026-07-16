@@ -1565,6 +1565,32 @@ body {
   );
 }
 
+/* ---- "Grouped" gate (Figma 802:10601): rounded colored section panels sitting
+   BEHIND the pbi cards + branches. Teal/mint behind Monthly Expenses, pink behind
+   Goals; each carries a small section label in its top-left. Scoped to .pbi-grouped-*
+   + z-index 0 so they sit behind the connectors (z-4) / cards and never leak into
+   other gates/styles or the config panel. ---- */
+.pbi-grouped-panel {
+  position: absolute;
+  border-radius: 12px;
+  z-index: 0;
+  pointer-events: none;
+}
+.pbi-grouped-panel--mint { background: rgba(56, 195, 203, 0.15); }
+.pbi-grouped-panel--pink { background: #f1e1ea; }
+.pbi-grouped-label {
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  width: 71px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.pbi-grouped-panel--mint .pbi-grouped-label { color: rgba(0, 127, 125, 0.53); }
+.pbi-grouped-panel--pink .pbi-grouped-label { color: #a17187; }
+
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336. Each account/goal card is a colored POT
    whose top-edge PLANT BAND grows left→right with funding (the plants ARE the
