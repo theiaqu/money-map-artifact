@@ -1532,6 +1532,179 @@ body {
 }
 .pbi-bar-date.reached { background: #624b52; color: #f7dfe9; }
 
+/* ============================================================================
+   "Pots" (pots) — Figma node 802:9336. Each account/goal card is a colored POT
+   whose top-edge PLANT BAND grows left→right with funding (the plants ARE the
+   progress bar). Shares the pbi hero/spine chrome family; all classes .pot-
+   prefixed + scoped so they never collide with any other style.
+   ============================================================================ */
+.board-pots { background: #f3f4f6; }
+
+/* ---- hero header (centered): sprout logo · gray subtitle · serif headline ---- */
+.pot-hero-logo {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  z-index: 3;
+}
+.pot-hero-sub {
+  position: absolute;
+  top: 138px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 344px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 450;
+  color: #6b7280;
+  z-index: 3;
+}
+.pot-hero-title {
+  position: absolute;
+  top: 204px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 338px;
+  margin: 0;
+  text-align: center;
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-size: 44px;
+  line-height: 0.96;
+  font-weight: 500;
+  letter-spacing: -1.6px;
+  color: #111111;
+  z-index: 3;
+}
+
+/* ---- income pill at the top of the left spine (x=50) ---- */
+.pot-income-row {
+  position: absolute;
+  top: 340px;
+  left: 50px;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+.pot-income-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  background: #f6dc72;
+  color: #111111;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 56px;
+}
+
+/* ---- gate-label pills, centered ON the thin spine (x=50) ---- */
+.pot-gate {
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111111;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+}
+.pot-gate.two-line { white-space: normal; }
+
+/* ---- the pot: wider lighter rim band + solid body + white name inside ---- */
+.pot-card { position: relative; height: 114px; }
+.pot-rim {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  width: 223px;
+  height: 26px;
+  border-radius: 11px;
+}
+.pot-body {
+  position: absolute;
+  top: 54px;
+  left: 9px;
+  width: 205px;
+  height: 60px;
+  border-radius: 16px;
+}
+.pot-name {
+  position: absolute; /* offset within .pot-body (60px tall): lower-left */
+  left: 10px;
+  top: 34px;
+  color: #ffffff;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---- plant band across the pot's top edge (rooted at the rim, grows upward) ---- */
+.pot-plants {
+  position: absolute;
+  left: 9px;
+  bottom: 60px; /* band bottom sits at the body/rim top edge */
+  z-index: 2;
+}
+.pot-plant {
+  position: absolute;
+  bottom: 0;
+  height: 100%;
+  transform-origin: bottom center;
+  will-change: transform, opacity;
+}
+
+/* ---- account-style picker preview tile: a mini pot with a couple of plants ---- */
+.sp-pots { height: 40px; }
+.sp-pots-plants {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 16px;
+  overflow: visible;
+}
+.sp-pots-rim {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 6px;
+  border-radius: 3px;
+  background: #7ba3c6;
+}
+.sp-pots-body {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 14px;
+  border-radius: 5px;
+  background: #5e8dba;
+}
+
 /* ---------- "progress pill" chart style (Figma 462:6194 etc.) ---------- */
 .ppill-card {
   display: flex;

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsPotsFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -125,6 +125,7 @@ export default function Connectors({
   sheetTree = false,
   illoTree = false,
   pbiTree = false,
+  potsTree = false,
 }: {
   now: number;
   mode: Mode;
@@ -139,6 +140,7 @@ export default function Connectors({
   sheetTree?: boolean; // "Sheet" style: use the grouped-panel wishbone tree set
   illoTree?: boolean; // "Illustrated" style: 4px progress-track spine + branch->bar fill
   pbiTree?: boolean; // "Progress bar, inside" style: thin gray spine + curvy arms
+  potsTree?: boolean; // "Pots" style: thin gray spine + curvy arms + check discs (mirrors pbi)
 }) {
   // Gate-style precedence (a gate choice can OVERRIDE the visual identity):
   //   compact     -> skinny-arrow connectors + % badges, REGARDLESS of identity
@@ -163,7 +165,9 @@ export default function Connectors({
   // dataset-aware geometry: each set has a Simple and an Optimizer variant (the
   // Optimizer adds a 3rd goal gate on a compact rhythm). Simple returns its exact
   // original arrays.
-  const baseConns: Connector[] = pbiTree
+  const baseConns: Connector[] = potsTree
+    ? connectorsPotsFor(dataset)
+    : pbiTree
     ? connectorsProgressFor(dataset)
     : illoTree
     ? connectorsIlloFor(dataset)
@@ -225,7 +229,7 @@ export default function Connectors({
     setMids(nextMids);
     // conns is derived purely from branch + map + v1 + condensed + dataset
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree]);
+  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree, potsTree]);
 
   // check badges on decommissioned (fully funded) branch arms — shared by both
   // the money-map and flow/compact renderers. Rendered last so it sits on top of
@@ -266,6 +270,63 @@ export default function Connectors({
   // travels as thin colored pulses (income yellow / core blue / spend green /
   // goals pink), and a light-gray check disc lands on an arm the moment its card
   // finishes funding — mirroring the Figma "checkmark in a disc" badge.
+  // ---------- pots: thin gray spine + soft curvy arms + landing check discs ----------
+  // Same clean tree family as the pbi tree (Figma 802:9336): a left spine broken by
+  // gaps at each white gate-label pill, soft cubic-S wishbone arms into each pot,
+  // thin colored pulses (income yellow / core blue / spend green / goals pink), and
+  // a light-gray check disc that lands on an arm the instant its pot finishes
+  // funding (= plants span the pot's full width).
+  if (potsTree) {
+    const potById = (id: string) => conns.find((c) => c.id === id)?.d;
+    const potBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
+      const m = mids[armId];
+      if (!m) return null;
+      const done = cardDone(dataset, mode, cardId, now);
+      return (
+        <g
+          key={`pot-chk-${armId}`}
+          transform={`translate(${m.x} ${m.y})`}
+          style={{ opacity: done ? 1 : 0, transition: 'opacity 0.45s ease' }}
+        >
+          <circle r={10} fill="#e6e7ea" />
+          <Check x={-6.5} y={-6.5} width={13} height={13} color="#111" strokeWidth={2.6} />
+        </g>
+      );
+    });
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {conns.map((c) => (
+          <path key={c.id} d={c.d} stroke="var(--connector)" strokeWidth={1.25} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {probes}
+        {FLOW_META.map((m) => {
+          const d = potById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`pot-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={2}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {potBadges}
+      </svg>
+    );
+  }
+
   if (pbiTree) {
     const pbiById = (id: string) => conns.find((c) => c.id === id)?.d;
     const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {

@@ -1404,3 +1404,123 @@ export const pbiRowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
 export const connectorsProgressFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsProgressOptimizer : connectorsProgress;
+
+/* ============================================================================
+   "Pots" (pots) — Figma node 802:9336.
+
+   BRAND-NEW account style: each account/goal card is a colored POT (a rounded
+   body with a slightly-lighter wider RIM band near its top and the account NAME
+   in white inside). Along the pot's TOP edge, PLANTS grow left→right as the card
+   funds — the plant band IS the progress bar: at 0% the pot is bare soil, and as
+   progressAt climbs, plant clusters pop in one-by-one across the top until, at
+   100%, plants span the full width (pot "full" = funded, its check disc lands).
+
+   Reuses the SAME chrome family as "Progress bar, inside" (pbi): a centered hero
+   (sprout logo · gray subtitle · large serif headline), a thin gray left SPINE
+   (x=50) with on-spine white gate-label pills + gray check discs, and soft curvy
+   wishbone arms into the pots. Fully self-contained (own geometry + selectors +
+   .pot-* CSS) so it never collides with any other style.
+
+   Card layout (from the Figma frame): a 223-wide rim band at left=164 (calc(25%+
+   63.5)) with a 205-wide body centered under it (body left=173). The node WRAPPER
+   is placed at the plant-band top; the pot body starts 54px below it (the plant
+   band + rim overhang sit above the body). Body TOPS in Figma: Core 383, Spend
+   488, Starter EF 602, Pay off debt 692, Full EF 782 → wrapper top = bodyTop − 54.
+   The wishbone arms attach at each pot BODY's vertical center = wrapper top + 84:
+   core 413 / spend 518 / ef1 632 / debt 722 / ef6 812. ========================= */
+export const POT_CARD_LEFT = 164; // rim / container left (calc(25%+63.5) on 402)
+export const POT_CONTAINER_W = 223; // rim (widest) width; body 205 is centered under it
+export const POT_BODY_W = 205;
+export const POT_PLANT_BAND_H = 46; // plant band height above the rim
+export const POT_WRAPPER_TO_BODY = 54; // wrapper top -> pot body top
+
+// income renders the hero + INCOME pill (no pot); its row-top is the pill row.
+export const POT_INCOME_TOP = 340;
+
+export const potRowTop: Record<string, number> = {
+  income: POT_INCOME_TOP,
+  core: 329, // body top 383 − 54
+  spend: 434, // 488 − 54
+  ef1: 548, // 602 − 54
+  debt: 638, // 692 − 54
+  ef6: 728, // 782 − 54
+};
+// Optimizer: shared rows verbatim, then travel/brokerage continue the 90px pitch
+export const potRowTopOptimizer: Record<string, number> = {
+  income: POT_INCOME_TOP,
+  core: 329,
+  spend: 434,
+  ef1: 548,
+  debt: 638,
+  ef6: 728,
+  travel: 818, // 728 + 90
+  brokerage: 908, // 818 + 90
+};
+
+/* pot connector geometry — a thin (~1.25px) gray SPINE at x=50 broken by ~32px
+   gaps centered on each gate label, with soft cubic-S wishbone arms into the LEFT
+   edge of each pot (arms end at x=160, ~13px before the body left edge 173). Body
+   centers = wrapper top + 84: core 413 / spend 518 / ef1 632 / debt 722 / ef6 812.
+   Gate junctions sit at each gate's child MIDPOINT so the wishbones mirror:
+   monthly 465.5 (core 413 / spend 518); goals1 straight at ef1 632; goals2 767
+   (debt 722 / ef6 812). Reuses the SAME connector ids the pulse engine expects so
+   causal pulses (income yellow / core blue / spend green / goals pink) travel it
+   unchanged. */
+const POT_ARM = (jy: number, cy: number): string =>
+  `M84 ${jy} C 122 ${jy}, 122 ${cy}, 160 ${cy}`;
+export const connectorsPots: Connector[] = [
+  // income pill -> monthly gate: straight spine drop (income sits at the top)
+  { id: 'c-income-monthly', d: 'M50 366 L 50 449', arrow: false },
+  // vertical spine hops, broken by a gap at each gate label
+  { id: 'c-monthly-goals1', d: 'M50 481 L 50 620', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M50 644 L 50 752', arrow: false },
+  { id: 'c-goals2-down', d: 'M50 784 L 50 946', arrow: false },
+  // monthly wishbone -> core(413) / spend(518)
+  { id: 'c-monthly-core', d: POT_ARM(465.5, 413), arrow: false },
+  { id: 'c-monthly-spend', d: POT_ARM(465.5, 518), arrow: false },
+  // 1st goal — soft straight-ish branch at the ef1 body center
+  { id: 'c-goals1-ef1', d: 'M72 632 C 110 632, 122 632, 160 632', arrow: false },
+  // financial-health wishbone -> debt(722) / ef6(812)
+  { id: 'c-goals2-debt', d: POT_ARM(767, 722), arrow: false },
+  { id: 'c-goals2-ef6', d: POT_ARM(767, 812), arrow: false },
+];
+// Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
+// goals2 -> goals3 (junction at the travel/brokerage midpoint 947), then a
+// symmetric wishbone up to travel(902) / down to brokerage(992).
+export const connectorsPotsOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M50 366 L 50 449', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M50 481 L 50 620', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M50 644 L 50 752', arrow: false },
+  { id: 'c-monthly-core', d: POT_ARM(465.5, 413), arrow: false },
+  { id: 'c-monthly-spend', d: POT_ARM(465.5, 518), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M72 632 C 110 632, 122 632, 160 632', arrow: false },
+  { id: 'c-goals2-debt', d: POT_ARM(767, 722), arrow: false },
+  { id: 'c-goals2-ef6', d: POT_ARM(767, 812), arrow: false },
+  // 3rd gate (appended): spine hop goals2 -> goals3, then the shifted wishbone
+  { id: 'c-goals2-goals3', d: 'M50 784 L 50 932', arrow: false },
+  { id: 'c-goals3-travel', d: POT_ARM(947, 902), arrow: false },
+  { id: 'c-goals3-brokerage', d: POT_ARM(947, 992), arrow: false },
+  { id: 'c-goals3-down', d: 'M50 964 L 50 1186', arrow: false },
+];
+
+// pot gate-label pills (white, on the spine). Simple has two goal gates (1st Goal
+// + Financial health); Optimizer inserts a 2nd Goal between them. `top` centers
+// each pill on its gate junction (reuses the pbi label shape).
+export const potLabels: Record<Dataset, Record<string, PbiLabelInfo>> = {
+  simple: {
+    monthly: { label: 'Monthly expenses', top: 465, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', top: 632 },
+    goals2: { label: 'Financial health', top: 767, twoLine: true, width: 56 },
+  },
+  optimizer: {
+    monthly: { label: 'Monthly expenses', top: 465, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', top: 632 },
+    goals2: { label: '2nd Goal', top: 767 },
+    goals3: { label: 'Financial health', top: 947, twoLine: true, width: 56 },
+  },
+};
+
+export const potRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? potRowTopOptimizer : potRowTop;
+export const connectorsPotsFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsPotsOptimizer : connectorsPots;

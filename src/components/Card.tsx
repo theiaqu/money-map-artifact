@@ -1,5 +1,5 @@
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, type CardNode, type GraphColor, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type GraphColor, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, heroHeadline, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
@@ -14,11 +14,12 @@ import IlloCard, { IlloIncome } from './IlloCard';
 import { SheetIncome, SheetAccountCard, SheetGoalCard } from './SheetCard';
 import StocksV1Card from './StocksV1Card';
 import StocksCondensedCard from './StocksCondensedCard';
+import PotCard from './PotCard';
 
 // 'progress' = "progress bar, inside"; 'progress-pill' = amount-chip-as-bar;
 // 'progress-bg' = the card itself is the bar (goal bars can run off-page);
 // 'slim' = "super slim" — a name pill · dotted line · colored target pill row.
-export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo';
+export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo' | 'pots';
 
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
@@ -93,6 +94,29 @@ function PbiChrome({ dataset, amount }: { dataset: Dataset; amount: string }) {
         {[0, 1, 2, 3, 4].map((i) => (
           <span key={i} className="pbi-pill">Paycheck</span>
         ))}
+      </div>
+    </>
+  );
+}
+
+// "Pots" hero + income chrome (Figma 802:9336): the same centered hero family as
+// pbi (sprout logo · gray subtitle · large serif headline derived from the
+// dataset's milestone goal), then a single yellow INCOME pill sitting at the top
+// of the left spine (no PAYCHECK pills here — the Figma income is just the pill).
+// Own .pot-* classes so it stays scoped to this style.
+function PotChrome({ dataset }: { dataset: Dataset }) {
+  const hero = heroHeadline(dataset);
+  return (
+    <>
+      <div className="pot-hero-logo">
+        <FruitfulLogo size={34} color="#2f8f4e" />
+      </div>
+      <p className="pot-hero-sub">
+        Your Money Map is ready! Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+      </p>
+      <h1 className="pot-hero-title">{`${hero.pre} ${hero.date}`}</h1>
+      <div className="pot-income-row">
+        <span className="pot-income-pill">Income</span>
       </div>
     </>
   );
@@ -222,8 +246,33 @@ export default function Card({
   // goal checks colorize + celebrate when their bar fills.
   const isIllo =
     style === 'illo' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
+  // "pots" — each account/goal card is a colored pot whose top-edge plant band
+  // grows left→right with funding (the plant band IS the progress bar). Income
+  // renders the hero + INCOME pill chrome (no pot). Illustrative-only.
+  const isPots =
+    style === 'pots' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
   // reached-check colour derives from the active visual identity's pink
   const checkColor = map === 'money-map' ? PINK_MM : PINK_FLOW;
+
+  if (isPots) {
+    if (node.kind === 'income') {
+      // full-board-width wrapper so the centered hero resolves 50% against the
+      // 402-wide board and the income pill can be placed in board coordinates.
+      return (
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: 0, top: 0, width: 402, height: 0 }}>
+          <PotChrome dataset={dataset} />
+        </div>
+      );
+    }
+    // pot fill fraction reuses progressAt so the plants grow in step with funding
+    const p = progressAt(dataset, mode, node.id, now);
+    const top = potRowTopFor(dataset)[node.id] ?? node.y;
+    return (
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: POT_CARD_LEFT, top, width: POT_CONTAINER_W, zIndex: 5 }}>
+        <PotCard node={node} progress={p} />
+      </div>
+    );
+  }
 
   if (isIllo) {
     if (node.kind === 'income') {

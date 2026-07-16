@@ -38,6 +38,7 @@ const DATASET_OPTS: { id: Dataset; label: string }[] = [
 // bottom of the account-style picker (kept around but not front-and-center).
 const STYLES: { id: ChartStyle; label: string; older?: boolean }[] = [
   { id: 'progress', label: 'Progress bar, inside' },
+  { id: 'pots', label: 'Pots' },
   { id: 'icons', label: 'Minimalist icons' },
   { id: 'illo', label: 'Illustrated' },
   { id: 'sheet', label: 'Sheet' },
@@ -178,6 +179,19 @@ function StylePreview({ id }: { id: ChartStyle }) {
           <div className="sp-pill-chip">
             <div className="sp-pill-fill" />
           </div>
+        </div>
+      );
+    case 'pots':
+      return (
+        <div className="sp sp-pots" aria-hidden>
+          <svg className="sp-pots-plants" viewBox="0 0 40 16" preserveAspectRatio="xMidYMax meet">
+            <circle cx="9" cy="12" r="5" fill="#22592f" />
+            <circle cx="16" cy="11" r="5.5" fill="#357a45" />
+            <circle cx="24" cy="12" r="5" fill="#22592f" />
+            <circle cx="31" cy="12" r="4.5" fill="#4e9e63" />
+          </svg>
+          <span className="sp-pots-rim" />
+          <span className="sp-pots-body" />
         </div>
       );
     default:
@@ -440,7 +454,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 11:35 AM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 12:31 PM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -658,8 +672,8 @@ export default function App() {
   const iconHero = heroHeadline(dataset);
   const iconFooterTop = dataset === 'optimizer' ? 877 : 828;
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}`} style={{ height: boardH }}>
-      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} />
+    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}`} style={{ height: boardH }}>
+      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} />
 
       {style === 'icons' && branch === 'skinny-line' && (
         <>
@@ -686,7 +700,7 @@ export default function App() {
       {style === 'illo' && <IlloCircle />}
 
       {style !== 'sheet' && sectionsFor(dataset).map((s) => (
-        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} />
+        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} pots={style === 'pots'} />
       ))}
 
       {cards.map((c) => (
