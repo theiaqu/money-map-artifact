@@ -1,6 +1,6 @@
 import { CalendarSync, Goal } from 'lucide-react';
 import type { BranchStyle, MapStyle, SectionNode } from '../data';
-import { DATASETS, type Dataset } from '../scenario';
+import { type Dataset } from '../scenario';
 
 type LabelInfo = { label: string; left: number; top: number; twoLine?: boolean; width?: number };
 
@@ -61,16 +61,64 @@ const CONDENSED_LABELS: Record<Dataset, Record<string, LabelInfo>> = {
   },
 };
 
-/* "Conversational" caption dividers (Figma 731:9883): instead of gate pills, two
-   centered gray captions sit above the account cards ("Monthly Funds", at the
-   monthly gate) and above the goals ("Goals will receive ~$X per month", at the
-   1st-goal gate — X = the monthly surplus = income − core − spend). The deeper
-   gates (goals2 / goals3) render nothing. `top` is the top of the ~16px caption
-   line, placed just above its first card (Monthly Funds above core top 377;
-   Goals caption above ef1 top 585.65). */
-const CONVO_CAPTION_TOP: Record<string, number> = {
-  monthly: 353,
-  goals1: 563,
+/* "Labeled" icon gate (Figma 738:7107): render the section gates AS white label
+   pills sitting ON the left spine (x=49) — the default icon thin-bracket gate
+   hides these. Each pill's vertical CENTER sits on its gate's branch junction so
+   the curvy branches read as fanning out of the labeled gate: monthly 311.9
+   (two-line "MONTHLY EXPENSES"), 1st goal 408.43, 2nd goal 509.3, and (Optimizer)
+   3rd goal 657.3 (the travel/brokerage wishbone midpoint). `top` = junction − half
+   the pill height. Pills reuse the boxed `.v1-gate` treatment (radius 4 / pad 6 /
+   10px semibold uppercase / letter-spacing 0.5). */
+const ICON_LABELED: Record<Dataset, Record<string, LabelInfo>> = {
+  simple: {
+    monthly: { label: 'Monthly expenses', left: 14, top: 294, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', left: 18, top: 397 },
+    goals2: { label: '2nd Goal', left: 16, top: 498 },
+  },
+  optimizer: {
+    monthly: { label: 'Monthly expenses', left: 14, top: 294, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', left: 18, top: 397 },
+    goals2: { label: '2nd Goal', left: 16, top: 498 },
+    goals3: { label: '3rd Goal', left: 16, top: 646 },
+  },
+};
+
+/* "Conversational" gate labels (Figma 738:7662): plain GRAY uppercase text beside
+   the left spine at each gate's junction — NOT boxed pills. `top` puts each label's
+   vertical CENTER on its gate's wishbone junction (monthly 315 / goals1 451 / goals2
+   586 / Optimizer goals3 760). Monthly is two-line; the goals are single-line
+   ordinal labels. Matches the convo caption aesthetic (~10px semibold, uppercase,
+   letter-spacing 0.5, muted gray). */
+const CONVO_LABELS: Record<Dataset, Record<string, LabelInfo>> = {
+  simple: {
+    monthly: { label: 'Monthly expenses', left: 12, top: 302, twoLine: true, width: 58 },
+    goals1: { label: '1st Goal', left: 16, top: 444 },
+    goals2: { label: '2nd Goal', left: 14, top: 579 },
+  },
+  optimizer: {
+    monthly: { label: 'Monthly expenses', left: 12, top: 302, twoLine: true, width: 58 },
+    goals1: { label: '1st Goal', left: 16, top: 444 },
+    goals2: { label: '2nd Goal', left: 14, top: 579 },
+    goals3: { label: '3rd Goal', left: 14, top: 753 },
+  },
+};
+
+/* "Illustrated" gate labels (Figma 760:8522): small WHITE rounded pills (p-6 /
+   radius 4 / 10px semibold uppercase #111) sitting beside the 4px spine. `top`
+   centers each pill on its gate's wishbone junction: monthly 411 (two-line),
+   1st goal 549, 2nd goal 687, and (Optimizer) 3rd goal 871. */
+const ILLO_LABELS: Record<Dataset, Record<string, LabelInfo>> = {
+  simple: {
+    monthly: { label: 'Monthly expenses', left: 16, top: 395, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', left: 19, top: 538 },
+    goals2: { label: '2nd Goal', left: 17, top: 676 },
+  },
+  optimizer: {
+    monthly: { label: 'Monthly expenses', left: 16, top: 395, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', left: 19, top: 538 },
+    goals2: { label: '2nd Goal', left: 17, top: 676 },
+    goals3: { label: '3rd Goal', left: 17, top: 860 },
+  },
 };
 
 export default function SectionNodeView({
@@ -82,6 +130,7 @@ export default function SectionNodeView({
   v1 = false,
   condensed = false,
   convo = false,
+  illo = false,
 }: {
   node: SectionNode;
   dimmed?: boolean;
@@ -91,22 +140,31 @@ export default function SectionNodeView({
   v1?: boolean;
   condensed?: boolean;
   convo?: boolean;
+  illo?: boolean;
 }) {
-  // "Conversational" style: render the gray caption dividers in place of gate
-  // pills. Only the monthly + 1st-goal gates carry a caption; deeper gates render
-  // nothing. Takes precedence over the skinny-line null return below.
-  if (convo) {
-    const top = CONVO_CAPTION_TOP[node.id];
-    if (top === undefined) return null;
-    const cfg = DATASETS[dataset];
-    const surplus = cfg.income - cfg.coreMax - cfg.spendMax;
-    const label =
-      node.id === 'monthly'
-        ? 'Monthly Funds'
-        : `Goals will receive ~$${surplus.toLocaleString('en-US')} per month`;
+  // "Illustrated" style: white rounded gate-label pills beside the 4px spine.
+  if (illo) {
+    const info = ILLO_LABELS[dataset][node.id];
+    if (!info) return null;
     return (
-      <div className={`node convo-caption-node${dimmed ? ' dimmed' : ''}`} style={{ left: 0, top }}>
-        <div className="convo-caption">{label}</div>
+      <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: info.left, top: info.top }}>
+        <div className={`illo-gate${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>
+          {info.label}
+        </div>
+      </div>
+    );
+  }
+  // "Conversational" style (Figma 738:7662): render plain gray uppercase gate
+  // labels beside the left spine at each gate junction. Takes precedence over the
+  // skinny-line null return below.
+  if (convo) {
+    const info = CONVO_LABELS[dataset][node.id];
+    if (!info) return null;
+    return (
+      <div className={`node convo-gate-node${dimmed ? ' dimmed' : ''}`} style={{ left: info.left, top: info.top }}>
+        <div className={`convo-gate-label${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>
+          {info.label}
+        </div>
       </div>
     );
   }
@@ -115,6 +173,19 @@ export default function SectionNodeView({
   if (v1 || condensed) {
     const labels = condensed ? CONDENSED_LABELS[dataset] : V1_LABELS[dataset];
     const info = labels[node.id] ?? { label: node.label, left: 15, top: node.y };
+    return (
+      <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: info.left, top: info.top }}>
+        <div className={`v1-gate${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>
+          {info.label}
+        </div>
+      </div>
+    );
+  }
+  // "Labeled" icon gate (Figma 738:7107): render boxed white gate-label pills on
+  // the left spine. Takes precedence over the skinny-line null return below.
+  if (branch === 'icon-labeled') {
+    const info = ICON_LABELED[dataset][node.id];
+    if (!info) return null;
     return (
       <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: info.left, top: info.top }}>
         <div className={`v1-gate${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>

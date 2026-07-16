@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, convoRowTopFor, CONVO_CARD_LEFT, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, type CardNode, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, type CardNode, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, type Dataset, type Mode, type DateMode } from '../scenario';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -8,14 +8,16 @@ import ProgressPill from './ProgressPill';
 import ProgressBgCard from './ProgressBgCard';
 import SuperSlimCard from './SuperSlimCard';
 import IconRowCard from './IconRowCard';
-import ConvoCard, { ConvoHero } from './ConvoCard';
+import ConvoCard, { ConvoIncome } from './ConvoCard';
+import IlloCard, { IlloIncome } from './IlloCard';
+import { SheetIncome, SheetAccountCard, SheetGoalCard } from './SheetCard';
 import StocksV1Card from './StocksV1Card';
 import StocksCondensedCard from './StocksCondensedCard';
 
 // 'progress' = "progress bar, inside"; 'progress-pill' = amount-chip-as-bar;
 // 'progress-bg' = the card itself is the bar (goal bars can run off-page);
 // 'slim' = "super slim" — a name pill · dotted line · colored target pill row.
-export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo';
+export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo';
 
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
@@ -82,6 +84,7 @@ export default function Card({
   v1 = false,
   condensed = false,
   dateMode = 'date',
+  iconLabeled = false,
   onConvoTap,
   modalCardId = null,
 }: {
@@ -97,6 +100,7 @@ export default function Card({
   v1?: boolean; // stocks "Version" V1 sub-variant (wide cards, own row layout)
   condensed?: boolean; // stocks "Version" Condensed sub-variant (horizontal cards)
   dateMode?: DateMode; // "Goal date" display: absolute badge vs "{N} mo. from now"
+  iconLabeled?: boolean; // icons "Labeled" gate: income top-center + indented tiles
   onConvoTap?: (id: string, rect: DOMRect) => void; // "convo": tap a card to open its detail modal (passes rect for the FLIP morph)
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
 }) {
@@ -156,19 +160,85 @@ export default function Card({
   // with an illustration/date slot + a chip-filled sentence). Illustrative-only.
   const isConvo =
     style === 'convo' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
+  // "sheet" — a grouped-panel layout: income card + spine, a mint MONTHLY
+  // EXPENSES panel (black amount pills → white name cards) and a pink GOALS panel
+  // (black weight-% pills → white goal cards with a dark FUNDING/FUNDED footer).
+  // Illustrative-only; the panels + pills are board-level chrome (SheetChrome).
+  const isSheet =
+    style === 'sheet' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
+  // "illustrated" — a progress-track spine + colorizing illustration cards
+  // (income top-center card + account/goal cards). Illustrative-only; the branch
+  // fill continues into the in-card progress bar, and account illustrations /
+  // goal checks colorize + celebrate when their bar fills.
+  const isIllo =
+    style === 'illo' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
   // reached-check colour derives from the active visual identity's pink
   const checkColor = map === 'money-map' ? PINK_MM : PINK_FLOW;
 
+  if (isIllo) {
+    if (node.kind === 'income') {
+      return (
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: ILLO_INCOME_LEFT, top: ILLO_INCOME_TOP }}>
+          <IlloIncome node={node} dataset={dataset} mode={mode} now={now} />
+        </div>
+      );
+    }
+    const top = illoRowTopFor(dataset)[node.id] ?? node.y;
+    return (
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: ILLO_CARD_LEFT, top, width: ILLO_CARD_W }}>
+        <IlloCard
+          node={node}
+          now={now}
+          mode={mode}
+          dataset={dataset}
+          dateMode={dateMode}
+          hidden={modalCardId === node.id}
+          onTap={onConvoTap && node.kind === 'account' ? (rect) => onConvoTap(node.id, rect) : undefined}
+        />
+      </div>
+    );
+  }
+
+  if (isSheet) {
+    // branch-assembly reveal: this card pops in (scale 0.9→1 + fade) the instant
+    // the growing branch tip reaches it, and sits as a faint gray ghost before
+    // then. Driven off `now` (sim months) so pause/scrub/restart stay in sync.
+    const rs = sheetRevealStyle(now, sheetRevealMonths(dataset, mode)[node.id] ?? 0);
+    // transition:none so the pop tracks the sim clock exactly (the global .node
+    // 0.5s opacity transition would otherwise smear/lag it). Sheet is
+    // illustrative-only so it never uses the dimmed grayscale transition.
+    const revealStyle = { opacity: rs.opacity, transform: `scale(${rs.scale})`, transition: 'none' };
+    if (node.kind === 'income') {
+      return (
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: SHEET_INCOME_LEFT, top: SHEET_INCOME_TOP, ...revealStyle }}>
+          <SheetIncome node={node} />
+        </div>
+      );
+    }
+    const top = sheetRowTopFor(dataset)[node.id] ?? node.y;
+    if (node.kind === 'account') {
+      return (
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: SHEET_ACCT_LEFT, top, ...revealStyle }}>
+          <SheetAccountCard node={node} />
+        </div>
+      );
+    }
+    return (
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: SHEET_GOAL_LEFT, top, width: SHEET_GOAL_W, ...revealStyle }}>
+        <SheetGoalCard node={node} now={now} mode={mode} dataset={dataset} />
+      </div>
+    );
+  }
+
   if (isConvo) {
-    // the income node becomes the rounded "hero" income card near the top of the
-    // board; account/goal cards use the convo card at the fixed left column and
-    // their own compact convo row rhythm (Figma 731:9883). The left tree spine
-    // originates from the hero card.
+    // income renders as a plain top-left text block; account/goal cards use the
+    // convo card at the fixed left column and their own compact convo row rhythm
+    // (Figma 738:7662). The gray left spine drops from just below the income text.
     const convoTop = convoRowTopFor(dataset)[node.id] ?? node.y;
     if (node.kind === 'income') {
       return (
-        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: CONVO_CARD_LEFT, top: convoTop }}>
-          <ConvoHero node={node} />
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: CONVO_INCOME_LEFT, top: CONVO_INCOME_TOP }}>
+          <ConvoIncome node={node} />
         </div>
       );
     }
@@ -188,8 +258,20 @@ export default function Card({
   }
 
   if (isIcons) {
-    // icon rows use their own compact, evenly-spaced Y layout (Figma 729:6187) —
-    // NOT the tall shared node.y used by the other styles.
+    // icon rows use their own compact, evenly-spaced Y layout — NOT the tall
+    // shared node.y. The default "Bracket" gate hangs income on the left spine
+    // (Figma 729:6187); the "Labeled" gate puts income TOP-CENTER with its text
+    // stacked above the tile and indents the account/goal tiles right (738:7107).
+    if (iconLabeled) {
+      const isIncome = node.kind === 'income';
+      const top = isIncome ? ICON_LABELED_INCOME_TOP : iconLabeledRowTopFor(dataset)[node.id] ?? node.y;
+      const left = isIncome ? ICON_LABELED_INCOME_LEFT : ICON_LABELED_TILE_LEFT;
+      return (
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left, top }}>
+          <IconRowCard node={node} now={now} mode={mode} dataset={dataset} dateMode={dateMode} labeled />
+        </div>
+      );
+    }
     const iconTop = iconRowTopFor(dataset)[node.id] ?? node.y;
     return (
       <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: node.x, top: iconTop }}>

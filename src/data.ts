@@ -1,4 +1,4 @@
-import { DATASETS, type Dataset } from './scenario';
+import { DATASETS, sheetGrowWindows, type Dataset, type Mode } from './scenario';
 
 export type GraphColor = 'yellow' | 'blue' | 'green' | 'pink';
 
@@ -8,7 +8,11 @@ export type CardKind = 'income' | 'account' | 'goal';
 // the "skinny line" super-thin tree (only paired with the "super slim" account
 // style). text-only renders bold uppercase text with no box alongside colored
 // ropes; skinny-line renders a ~1px spine + thin elbows to each slim row.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line';
+// `icon-labeled` is a SECOND gate offered only for the "Minimalist icons" style:
+// a labeled left spine (gate-label pills) + straight thin brackets (same clean
+// vocabulary as the "Bracket" gate) into indented icon tiles + a left-aligned
+// income tile with a straight gray drop onto the spine (Figma 738:7107).
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -349,51 +353,178 @@ export const connectorsIcon: Connector[] = [
   { id: 'c-goals2-ef6', d: 'M40 555.95 L 56 555.95 L 56 579.3 Q 56 587.3 64 587.3 L 74 587.3', arrow: false },
 ];
 
-/* "Conversational" (Figma 731:9883) — a narrative variant: a big lemon-yellow
-   income header at the very top, then a vertical stack of full-width (312px)
-   cards at left=65, each with a 64px illustration/date slot + a wrapping
-   "conversational" sentence. Like slim/icons it uses its OWN compact vertical
-   rhythm (NOT the tall shared node.y). Values below are the card node-wrapper TOP
-   (taken from the Figma frame): core 377, spend 457, then a ~46px extra gap for
-   the "Goals will receive…" caption before the first goal, ef1 585.65, debt
-   667.65, ef6 747.65 (≈80px pitch). Income is rendered as the header block, so
-   its row-top is unused (0). Only the convo style reads these (via Card.tsx). */
-export const convoRowTop: Record<string, number> = {
-  income: 150, // the rounded "hero" income card near the top (replaces the old header)
-  core: 377,
-  spend: 457,
-  ef1: 585.65,
-  debt: 667.65,
-  ef6: 747.65,
-};
-export const CONVO_CARD_LEFT = 65;
+/* ============================================================================
+   "Labeled" gate style for the Minimalist icons card (Figma node 738:7107).
 
-/* "Conversational" connector geometry — the SAME clean thin rounded-bracket tree
-   as the "Minimalist icons" (connectorsIcon) and "Super slim" (connectorsSkinny)
-   styles: a straight thin vertical spine at x=40 with compact rounded right-angle
-   brackets branching horizontally into each card (no arrowheads / gate labels /
-   check badges / organic curves). Retuned to the convo rows: the cards sit at
-   left=65, so bracket arms end at x=61 (a 4px gap before the card's left edge).
-   Attach centers are the card vertical centers (row top + 36, the illustration
-   slot's center): hero income 186 / core 413 / spend 493 / ef1 621.65 / debt
-   703.65 / ef6 783.65. The hero income card is the tree origin — a straight tick
-   from its left edge (x61) meets the spine at x40,186 where the spine begins.
-   Nubs sit at each gate's child midpoint (monthly 453, goals2 743.65); the 1st
-   goal is a straight tick. Bracket bar x=48, corner r=8. */
+   A DISTINCT layout used ONLY when Account style = icons + Gate style = Labeled
+   (BranchStyle 'icon-labeled'). Same look as the default icon thin-bracket tree,
+   but with on-spine gate LABEL pills and the brackets spaced right to clear them:
+   - INCOME is LEFT-ALIGNED at the top of the left spine: the 52px tile at left 11
+     (center x≈37) with its "Income / $X/mo" text stacked ABOVE it (text top≈62).
+   - a straight GRAY income branch drops from the income tile onto the vertical
+     LEFT SPINE at x≈49 (no yellow swoop — gray at rest, colored only while a pulse
+     travels).
+   - the section gates render AS labeled white pills ON the spine (MONTHLY
+     EXPENSES / 1ST / 2ND [/ 3RD]) — see SectionNodeView's ICON_LABELED map.
+   - STRAIGHT thin BRACKETS (the same clean right-angle/rounded vocabulary as the
+     Bracket gate's connectorsIcon) fan from each gate junction on the spine into
+     the LEFT edge of each icon tile, with the bracket bar pushed right (x=90) so
+     the label pills are never cramped. Tiles are INDENTED right (tile left≈116;
+     text left≈182; goal date pills far right).
+
+   Row TOPS are taken directly from the Figma frame (already in the 402-wide
+   board space): core 252, spend 319.82, ef1 382.43, debt 452, ef6 514.61; income
+   is positioned specially (text top 62 / tile top ~107). Optimizer appends the
+   3rd-gate goals continuing the within-gate pitch: travel 600 (Figma "6th row"),
+   brokerage 662.61 (= 600 + the debt→ef6 pitch 62.61). Tile CENTER = top + 26. */
+export const iconLabeledRowTop: Record<string, number> = {
+  income: 62, // text top; the centered tile follows below (~top 107)
+  core: 252,
+  spend: 319.82,
+  ef1: 382.43,
+  debt: 452,
+  ef6: 514.61,
+};
+export const iconLabeledRowTopOptimizer: Record<string, number> = {
+  income: 62,
+  core: 252,
+  spend: 319.82,
+  ef1: 382.43,
+  debt: 452,
+  ef6: 514.61,
+  travel: 600,
+  brokerage: 662.61,
+};
+
+// income block position + indented tile column (board coords). Income is
+// LEFT-ALIGNED at the top of the left spine (tile left 11, matching the default
+// "Bracket" icon gate), with its "Income / $X/mo" text stacked above the tile —
+// so the tree reads as starting from a left-aligned income. Its tile center
+// (x≈37) sits over the spine (x=49) and the income→spine connector drops from it.
+export const ICON_LABELED_INCOME_LEFT = 11;
+export const ICON_LABELED_INCOME_TOP = 62;
+export const ICON_LABELED_TILE_LEFT = 116;
+
+/* "Labeled" connector geometry — an ALL-GRAY thin tree that reuses the SAME clean
+   STRAIGHT-BRACKET vocabulary as the default "Bracket" icon gate (connectorsIcon):
+   a left spine + short right-angle brackets (nub off the spine → vertical bar →
+   r=8 rounded corner → horizontal arm into the tile). NO curvy/wavy S-branches.
+   Uses the SAME connector ids the scenario/pulse engine expects so causal pulses
+   travel it unchanged (income yellow / core blue / spend green / goals pink) over
+   the gray resting strokes.
+
+   Difference vs. the Bracket gate: the spine stays at x=49 (so the on-spine white
+   gate-label pills — "MONTHLY EXPENSES" / "1ST" / "2ND" [/ "3RD"] — stay put), and
+   the bracket VERTICAL BAR is pushed RIGHT to x=90 (past the label pills, which end
+   ~x=82) so the labels are never cramped/overlapped by the brackets. Each bracket:
+   nub M49→x90 at the gate junction (its first ~30px hidden behind the label pill,
+   so it reads as fanning out of the labeled gate), bar up/down to the child center,
+   r=8 corner, then a short horizontal arm ending at x=112 (a small gap before the
+   tile left edge 116).
+
+   The income→spine connector is a straight gray vertical drop from the LEFT-aligned
+   income tile center (x≈37, bottom y≈158) with a single r=8 rounded elbow onto the
+   spine at the monthly junction (49,311.9) — the elbow sits behind the MONTHLY pill,
+   so the visible income branch reads as one clean straight line. Gray at rest, no
+   permanent yellow (no reintroduced swoop).
+
+   Gate junctions sit on the spine (x=49) at each gate's child MIDPOINT so the
+   brackets mirror: monthly 311.9 (core 278 / spend 345.82); 1st goal is a straight
+   branch at the ef1 center 408.43; 2nd goal 509.3 (debt 478 / ef6 540.61). Tile
+   centers = row top + 26. */
+export const connectorsIconLabeled: Connector[] = [
+  // income → spine: straight gray drop from the left income tile center (37,158),
+  // r=8 elbow onto the spine at the monthly junction (49,311.9) — elbow behind pill
+  { id: 'c-income-monthly', d: 'M37 158 L 37 303.9 Q 37 311.9 45 311.9 L 49 311.9', arrow: false },
+  // vertical spine hops (broken visually by the on-spine white gate pills)
+  { id: 'c-monthly-goals1', d: 'M49 311.9 L 49 408.43', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M49 408.43 L 49 509.3', arrow: false },
+  // monthly bracket — nub→bar(x90)→r8 corner→arm up to core(278) / down to spend(345.82)
+  { id: 'c-monthly-core', d: 'M49 311.9 L 90 311.9 L 90 286 Q 90 278 98 278 L 112 278', arrow: false },
+  { id: 'c-monthly-spend', d: 'M49 311.9 L 90 311.9 L 90 337.82 Q 90 345.82 98 345.82 L 112 345.82', arrow: false },
+  // 1st goal — straight thin branch at the ef1 center
+  { id: 'c-goals1-ef1', d: 'M49 408.43 L 112 408.43', arrow: false },
+  // 2nd goal bracket — up to debt(478) / down to ef6(540.61)
+  { id: 'c-goals2-debt', d: 'M49 509.3 L 90 509.3 L 90 486 Q 90 478 98 478 L 112 478', arrow: false },
+  { id: 'c-goals2-ef6', d: 'M49 509.3 L 90 509.3 L 90 532.61 Q 90 540.61 98 540.61 L 112 540.61', arrow: false },
+];
+
+// Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
+// goals2 → goals3 (junction at the travel/brokerage midpoint 657.3), then the SAME
+// straight bracket up to travel(626) / down to brokerage(688.61).
+export const connectorsIconLabeledOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M37 158 L 37 303.9 Q 37 311.9 45 311.9 L 49 311.9', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M49 311.9 L 49 408.43', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M49 408.43 L 49 509.3', arrow: false },
+  { id: 'c-monthly-core', d: 'M49 311.9 L 90 311.9 L 90 286 Q 90 278 98 278 L 112 278', arrow: false },
+  { id: 'c-monthly-spend', d: 'M49 311.9 L 90 311.9 L 90 337.82 Q 90 345.82 98 345.82 L 112 345.82', arrow: false },
+  { id: 'c-goals1-ef1', d: 'M49 408.43 L 112 408.43', arrow: false },
+  { id: 'c-goals2-debt', d: 'M49 509.3 L 90 509.3 L 90 486 Q 90 478 98 478 L 112 478', arrow: false },
+  { id: 'c-goals2-ef6', d: 'M49 509.3 L 90 509.3 L 90 532.61 Q 90 540.61 98 540.61 L 112 540.61', arrow: false },
+  // 3rd gate (appended): spine hop goals2 → goals3, then the straight bracket
+  { id: 'c-goals2-goals3', d: 'M49 509.3 L 49 657.3', arrow: false },
+  { id: 'c-goals3-travel', d: 'M49 657.3 L 90 657.3 L 90 634 Q 90 626 98 626 L 112 626', arrow: false },
+  { id: 'c-goals3-brokerage', d: 'M49 657.3 L 90 657.3 L 90 680.61 Q 90 688.61 98 688.61 L 112 688.61', arrow: false },
+];
+
+/* "Conversational" (Figma 738:7662) — a narrative variant. Income is a plain
+   top-left TEXT block ("Income / $X/mo", no card); a gray left spine at x=49 runs
+   down from below it; gate labels sit beside the spine as plain gray uppercase
+   text; and curvy WISHBONE branches (the icons "Labeled" gate vocabulary) fan from
+   each gate's child-midpoint on the spine into the LEFT edge of each 262px-wide
+   card at left=121. Row TOPS are taken directly from the Figma frame (74px cards):
+   core 238, spend 318, ef1 414 (extra gap for the 1st-goal gate), debt 510, ef6
+   588. Illustration-slot center = row top + 37. Income is rendered separately (see
+   CONVO_INCOME_*), so its row-top is unused. Only the convo style reads these. */
+export const convoRowTop: Record<string, number> = {
+  income: 159, // unused for card layout — income is a plain text block (CONVO_INCOME_TOP)
+  core: 238,
+  spend: 318,
+  ef1: 414,
+  debt: 510,
+  ef6: 588,
+};
+export const CONVO_CARD_LEFT = 121;
+
+// income plain-text block position (Figma 738:7685): "Income" over "$X/mo" at the
+// top-left, with the spine dropping from just below it.
+export const CONVO_INCOME_LEFT = 24;
+export const CONVO_INCOME_TOP = 159;
+
+/* "Conversational" connector geometry (Figma 738:7662) — a gray left spine at x=49
+   with smooth CURVY WISHBONE S-branches into the LEFT-center of each card. Income
+   is a plain top-left text block sitting directly above the spine, so
+   `c-income-monthly` is a straight vertical spine drop (no swoop). Uses the SAME
+   connector ids the pulse engine expects, so causal pulses travel it unchanged
+   (income yellow / core blue / spend green / goals pink).
+
+   Each wishbone arm is a single cubic whose handle ratios are taken straight from
+   the Figma branch vector (path - bills: `M47 41 C 12.9 41, 37.5 2, 2 2` in a 45px
+   box → ~0.77 handle length with the two control handles OVERSHOOTING past each
+   other). That gives every arm a uniformly-rounded flowing S: it leaves the spine
+   horizontally, makes its vertical transition in the middle, and arrives into the
+   card horizontally — no tight kink near the spine, no sharp elbows. `CV_ARM`
+   builds that arm for a junction `jy` on the spine (x=49) into a card center `cy`
+   (arms end at x=115, a 6px gap before the card left edge 121; dx=66, handle=51.5
+   ≈ 0.78·dx). Gate junctions sit at each gate's child MIDPOINT so the arms mirror:
+   monthly 315 (core 275 / spend 355); the 1st goal is a straight branch at the ef1
+   center 451; 2nd goal 586 (debt 547 / ef6 625). Card centers = row top + 37. */
+const CV_ARM = (jy: number, cy: number): string =>
+  `M49 ${jy} C 100 ${jy}, 64 ${cy}, 115 ${cy}`;
 export const connectorsConvo: Connector[] = [
-  // hero income origin: a straight tick into its left edge (x61,186) then the spine
-  // turns down at x=40 and runs to the monthly-gate nub (this is the yellow pulse path)
-  { id: 'c-income-monthly', d: 'M61 186 L 40 186 L 40 453', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M40 453 L 40 621.65', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M40 621.65 L 40 743.65', arrow: false },
-  // monthly gate — compact rounded bracket up to core(413) / down to spend(493)
-  { id: 'c-monthly-core', d: 'M40 453 L 48 453 L 48 421 Q 48 413 56 413 L 61 413', arrow: false },
-  { id: 'c-monthly-spend', d: 'M40 453 L 48 453 L 48 485 Q 48 493 56 493 L 61 493', arrow: false },
-  // 1st goal — straight thin tick off the spine at the ef1 row center
-  { id: 'c-goals1-ef1', d: 'M40 621.65 L 61 621.65', arrow: false },
-  // 2nd goal gate — compact rounded bracket up to debt(703.65) / down to ef6(783.65)
-  { id: 'c-goals2-debt', d: 'M40 743.65 L 48 743.65 L 48 711.65 Q 48 703.65 56 703.65 L 61 703.65', arrow: false },
-  { id: 'c-goals2-ef6', d: 'M40 743.65 L 48 743.65 L 48 775.65 Q 48 783.65 56 783.65 L 61 783.65', arrow: false },
+  // income (plain top-left text) -> straight spine drop to the monthly junction
+  { id: 'c-income-monthly', d: 'M49 200 L 49 315', arrow: false },
+  // vertical spine hops between gates
+  { id: 'c-monthly-goals1', d: 'M49 315 L 49 451', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M49 451 L 49 586', arrow: false },
+  // monthly wishbone — flowing S-branches up to core(275) / down to spend(355)
+  { id: 'c-monthly-core', d: CV_ARM(315, 275), arrow: false },
+  { id: 'c-monthly-spend', d: CV_ARM(315, 355), arrow: false },
+  // 1st goal — straight organic branch at the ef1 center
+  { id: 'c-goals1-ef1', d: 'M49 451 L 115 451', arrow: false },
+  // 2nd goal wishbone — up to debt(547) / down to ef6(625)
+  { id: 'c-goals2-debt', d: CV_ARM(586, 547), arrow: false },
+  { id: 'c-goals2-ef6', d: CV_ARM(586, 625), arrow: false },
 ];
 
 /* "Stocks V1" (Figma node 519:6283) uses its OWN wider card rows — a centered
@@ -631,39 +762,39 @@ export const connectorsIconOptimizer: Connector[] = [
   { id: 'c-goals3-brokerage', d: 'M40 681.2 L 56 681.2 L 56 704.5 Q 56 712.5 64 712.5 L 74 712.5', arrow: false },
 ];
 
-/* Conversational rows: EQUAL Simple's convoRowTop for the shared rows (already an
-   ~80px pitch), then travel/brokerage appended at that SAME 80px pitch: income 0
-   / core 377 / spend 457 / ef1 585.65 / debt 667.65 / ef6 747.65 / travel 827.65
-   / brokerage 907.65. brokerage card bottom (~980) fits the taller 1200px
-   Optimizer board (which scrolls to reach the appended goals). */
+/* Conversational rows (Figma 738:7662): EQUAL Simple's convoRowTop for the shared
+   rows, then travel/brokerage appended below ef6 continuing the gate rhythm (a ~96px
+   gate gap before the 3rd gate, then the 78px within-gate pitch): core 238 / spend
+   318 / ef1 414 / debt 510 / ef6 588 / travel 684 / brokerage 762. brokerage card
+   bottom (~836) fits the taller 1200px Optimizer board (which scrolls). */
 export const convoRowTopOptimizer: Record<string, number> = {
-  income: 150,
-  core: 377,
-  spend: 457,
-  ef1: 585.65,
-  debt: 667.65,
-  ef6: 747.65,
-  travel: 827.65,
-  brokerage: 907.65,
+  income: 159,
+  core: 238,
+  spend: 318,
+  ef1: 414,
+  debt: 510,
+  ef6: 588,
+  travel: 684,
+  brokerage: 762,
 };
 
-// Shared rows verbatim from `connectorsConvo` (hero origin tick + spine; monthly
-// nub 453 / goals2 nub 743.65). 3rd gate appended: spine hops goals2 -> goals3
-// (nub at the travel/brokerage midpoint 903.65), then a compact rounded bracket
-// up to travel(863.65) / down to brokerage(943.65). Centers = row top + 36.
+// Shared rows verbatim from `connectorsConvo` (income spine drop; monthly junction
+// 315 / goals2 junction 586; ef1 straight branch). 3rd gate appended: spine hops
+// goals2 -> goals3 (junction at the travel/brokerage midpoint 760), then the SAME
+// flowing wishbone up to travel(721) / down to brokerage(799). Centers = row top + 37.
 export const connectorsConvoOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M61 186 L 40 186 L 40 453', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M40 453 L 40 621.65', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M40 621.65 L 40 743.65', arrow: false },
-  { id: 'c-monthly-core', d: 'M40 453 L 48 453 L 48 421 Q 48 413 56 413 L 61 413', arrow: false },
-  { id: 'c-monthly-spend', d: 'M40 453 L 48 453 L 48 485 Q 48 493 56 493 L 61 493', arrow: false },
-  { id: 'c-goals1-ef1', d: 'M40 621.65 L 61 621.65', arrow: false },
-  { id: 'c-goals2-debt', d: 'M40 743.65 L 48 743.65 L 48 711.65 Q 48 703.65 56 703.65 L 61 703.65', arrow: false },
-  { id: 'c-goals2-ef6', d: 'M40 743.65 L 48 743.65 L 48 775.65 Q 48 783.65 56 783.65 L 61 783.65', arrow: false },
-  // 3rd gate (appended): spine hop goals2 -> goals3, then the compact rounded bracket
-  { id: 'c-goals2-goals3', d: 'M40 743.65 L 40 903.65', arrow: false },
-  { id: 'c-goals3-travel', d: 'M40 903.65 L 48 903.65 L 48 871.65 Q 48 863.65 56 863.65 L 61 863.65', arrow: false },
-  { id: 'c-goals3-brokerage', d: 'M40 903.65 L 48 903.65 L 48 935.65 Q 48 943.65 56 943.65 L 61 943.65', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 200 L 49 315', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M49 315 L 49 451', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M49 451 L 49 586', arrow: false },
+  { id: 'c-monthly-core', d: CV_ARM(315, 275), arrow: false },
+  { id: 'c-monthly-spend', d: CV_ARM(315, 355), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M49 451 L 115 451', arrow: false },
+  { id: 'c-goals2-debt', d: CV_ARM(586, 547), arrow: false },
+  { id: 'c-goals2-ef6', d: CV_ARM(586, 625), arrow: false },
+  // 3rd gate (appended): spine hop goals2 -> goals3, then the SAME flowing wishbone
+  { id: 'c-goals2-goals3', d: 'M49 586 L 49 760', arrow: false },
+  { id: 'c-goals3-travel', d: CV_ARM(760, 721), arrow: false },
+  { id: 'c-goals3-brokerage', d: CV_ARM(760, 799), arrow: false },
 ];
 
 /* Stocks V1 wide rows: EQUAL Simple's v1RowTop for the shared rows, then
@@ -744,6 +875,376 @@ export const CONDENSED_PINK_SEGMENTS_OPTIMIZER: { y1: number; y2: number }[] = [
   { y1: 660, y2: 700 },
 ];
 
+/* ============================================================================
+   "Sheet" (Figma node 753:7971) — a grouped-panel layout. Income is a small
+   white card TOP-LEFT with a gray left spine (x=52.5) dropping from it. The
+   Core/Spend rows live inside a soft-MINT "MONTHLY EXPENSES" panel; each row is
+   a BLACK amount pill on the connector linked to a WHITE name card. A BLACK
+   "~$X/mo" surplus pill + gray "for goals" sits between the panels. The goal
+   rows live inside a soft-PINK "GOALS" panel; each row is a BLACK weight-% pill
+   on the connector linked to a WHITE goal card with a dark FUNDING/FUNDED footer.
+   Reuses the same connector ids the pulse engine expects (income yellow / core
+   blue / spend green / goals pink) so causal pulses travel it unchanged.
+
+   Row TOPS are the node-wrapper top of each card: account cards are ~40px tall
+   (center = top + 20), goal cards are 70px tall (center = top + 35). Simple stops
+   at the 2nd gate (3 goals); Optimizer appends the 3rd gate (travel + brokerage),
+   growing the GOALS panel + board. Only the sheet style reads these. */
+export const SHEET_INCOME_LEFT = 24;
+export const SHEET_INCOME_TOP = 110;
+export const SHEET_ACCT_LEFT = 232; // white name-card left (Core / Spend)
+export const SHEET_GOAL_LEFT = 168; // white goal-card left
+export const SHEET_GOAL_W = 198; // fixed goal-card width so the names fit one line + footers read consistently
+
+export const sheetRowTop: Record<string, number> = {
+  income: 110,
+  core: 232, // center 252
+  spend: 306, // center 326
+  ef1: 509, // center 544 (h70)
+  debt: 604, // center 639
+  ef6: 689, // center 724
+};
+export const sheetRowTopOptimizer: Record<string, number> = {
+  income: 110,
+  core: 232,
+  spend: 306,
+  ef1: 509,
+  debt: 604,
+  ef6: 689,
+  travel: 784, // center 819
+  brokerage: 869, // center 904
+};
+
+/* Sheet connector geometry (Figma 753:7971) — a thin DARK/near-black left spine at
+   x=52.5 with ORTHOGONAL (right-angle) elbow connectors whose corners are slightly
+   ROUNDED (radius 8, taken straight from the Figma vectors: the spine + brackets
+   are all `H/V` runs joined by r=8 quarter-arcs, e.g. Vector 772/774/779). Each
+   two-child gate is an orthogonal wishbone: a short horizontal STUB leaves the
+   spine at the gate's child MIDPOINT, meets a vertical BAR at x=96, and the bar
+   turns (r=8) into the two horizontal arms at the child card centers. Single-child
+   gates (the 1st goal) are a straight horizontal branch. The black amount/% pills
+   sit ON these horizontal arms between the bar and the card, then the arm carries
+   on as a short stub INTO the card. Account arms end at x=228 (name-card left minus
+   a gap); goal arms end at x=164 (goal-card left minus a gap). Uses the SAME
+   connector ids the pulse engine expects (income yellow / core blue / spend green /
+   goals pink) so causal pulses travel the elbows unchanged.
+
+   SH_ARM builds one orthogonal arm from a spine junction `jy` (stub -> bar x=96 ->
+   r=8 corner -> horizontal into `endX`) at the card center `cy`. Monthly junction
+   289 (core 252 / spend 326); 1st goal straight at ef1 544; 2nd goal junction 681.5
+   (debt 639 / ef6 724). */
+const SH_BAR = 96; // orthogonal wishbone vertical-bar x (matches Figma Vector 774/779)
+const SH_R = 8; // elbow corner radius
+const SH_ARM = (jy: number, cy: number, endX: number): string => {
+  const vy = cy < jy ? cy + SH_R : cy - SH_R; // vertical run stops SH_R short of the corner
+  return `M52.5 ${jy} L ${SH_BAR} ${jy} L ${SH_BAR} ${vy} Q ${SH_BAR} ${cy} ${SH_BAR + SH_R} ${cy} L ${endX} ${cy}`;
+};
+export const connectorsSheet: Connector[] = [
+  { id: 'c-income-monthly', d: 'M52.5 158 L 52.5 289', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M52.5 289 L 52.5 544', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M52.5 544 L 52.5 681.5', arrow: false },
+  // monthly orthogonal wishbone — up to core(252) / down to spend(326)
+  { id: 'c-monthly-core', d: SH_ARM(289, 252, 228), arrow: false },
+  { id: 'c-monthly-spend', d: SH_ARM(289, 326, 228), arrow: false },
+  // 1st goal — straight branch at the ef1 center
+  { id: 'c-goals1-ef1', d: 'M52.5 544 L 164 544', arrow: false },
+  // 2nd goal orthogonal wishbone — up to debt(639) / down to ef6(724)
+  { id: 'c-goals2-debt', d: SH_ARM(681.5, 639, 164), arrow: false },
+  { id: 'c-goals2-ef6', d: SH_ARM(681.5, 724, 164), arrow: false },
+];
+
+// Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
+// goals2 → goals3 (junction at the travel/brokerage midpoint 861.5), then a
+// symmetric orthogonal wishbone up to travel(819) / down to brokerage(904).
+export const connectorsSheetOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M52.5 158 L 52.5 289', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M52.5 289 L 52.5 544', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M52.5 544 L 52.5 681.5', arrow: false },
+  { id: 'c-monthly-core', d: SH_ARM(289, 252, 228), arrow: false },
+  { id: 'c-monthly-spend', d: SH_ARM(289, 326, 228), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M52.5 544 L 164 544', arrow: false },
+  { id: 'c-goals2-debt', d: SH_ARM(681.5, 639, 164), arrow: false },
+  { id: 'c-goals2-ef6', d: SH_ARM(681.5, 724, 164), arrow: false },
+  { id: 'c-goals2-goals3', d: 'M52.5 681.5 L 52.5 861.5', arrow: false },
+  { id: 'c-goals3-travel', d: SH_ARM(861.5, 819, 164), arrow: false },
+  { id: 'c-goals3-brokerage', d: SH_ARM(861.5, 904, 164), arrow: false },
+];
+
+export interface SheetPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink'; label: string; }
+export interface SheetPill { id: string; x: number; y: number; text: string; kind: 'amount' | 'pct' | 'surplus'; }
+
+const fmtMoney = (n: number) => `$${n.toLocaleString('en-US')}`;
+
+// the two grouped panels; the GOALS panel grows for Optimizer's 5 goals
+export function sheetPanelsFor(dataset: Dataset): SheetPanel[] {
+  const goalsH = dataset === 'optimizer' ? 500 : 320;
+  return [
+    { id: 'monthly', x: 72, y: 200, w: 304, h: 173, tint: 'mint', label: 'MONTHLY EXPENSES' },
+    { id: 'goals', x: 72, y: 459, w: 304, h: goalsH, tint: 'pink', label: 'GOALS' },
+  ];
+}
+
+// the black pills that sit ON the connectors: Core/Spend monthly amounts, the
+// surplus divider, and each goal's funding-weight %. Amounts + surplus come from
+// the active dataset's real money model; % is the goal's weight.
+export function sheetPillsFor(dataset: Dataset): SheetPill[] {
+  const cfg = DATASETS[dataset];
+  const surplus = cfg.income - cfg.coreMax - cfg.spendMax;
+  const pills: SheetPill[] = [
+    { id: 'amt-core', x: 145, y: 252, text: `${cfg.coreAmount}/mo`, kind: 'amount' },
+    { id: 'amt-spend', x: 145, y: 326, text: `${cfg.spendAmount}/mo`, kind: 'amount' },
+    { id: 'surplus', x: 71, y: 421, text: `~${fmtMoney(surplus)}/mo`, kind: 'surplus' },
+  ];
+  const pctY: Record<string, number> = { ef1: 544, debt: 639, ef6: 724, travel: 819, brokerage: 904 };
+  // single-goal gates read 100%; multi-goal gates read each goal's weight
+  const levelCounts: Record<number, number> = {};
+  cfg.goals.forEach((g) => (levelCounts[g.level] = (levelCounts[g.level] ?? 0) + 1));
+  for (const g of cfg.goals) {
+    const solo = levelCounts[g.level] === 1;
+    const pct = solo ? 100 : Math.round(g.weight * 100);
+    // ef1 (1st goal) is a straight branch so its pill sits further right; wishbone
+    // pills sit a touch right of the spine on the curving arm
+    const x = g.id === 'ef1' ? 129 : 132;
+    pills.push({ id: `pct-${g.id}`, x, y: pctY[g.id], text: `${pct}%`, kind: 'pct' });
+  }
+  return pills;
+}
+
+export const sheetRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? sheetRowTopOptimizer : sheetRowTop;
+export const connectorsSheetFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsSheetOptimizer : connectorsSheet;
+
+/* ---------- "Sheet" branch-assembly reveal (Sheet style ONLY) ----------
+   The sheet map ASSEMBLES as the near-black branch grows: each pill/card pops in
+   the instant the growing branch tip first reaches its attach point. This maps
+   every sheet ELEMENT id (income/account/goal cards, the black $/% pills, the
+   two tinted panels, the surplus divider + "for goals" caption) to the simulated
+   MONTH it should reveal, derived from the connector growth windows
+   (sheetGrowWindows): a CARD reveals when its incoming arm finishes (tip touches
+   the card = the segment window end), and a PILL reveals partway along its
+   segment (the arc-length fraction where the pill sits). Both datasets read this;
+   ids a dataset never draws simply map to 0 and are never rendered. */
+
+// arc-length fraction where a pill sits along one orthogonal wishbone ARM built
+// by SH_ARM(jy, cy, endX). The pill sits on the FINAL horizontal run at x=px, so
+// its distance-along = stub + vertical + corner-arc + (px - corner end), over the
+// arm's full length. Mirrors SH_ARM's geometry so it tracks any arm tweak.
+function sheetArmFrac(jy: number, cy: number, endX: number, px: number): number {
+  const vy = cy < jy ? cy + SH_R : cy - SH_R;
+  const s1 = SH_BAR - 52.5; // stub from spine to the vertical bar
+  const s2 = Math.abs(vy - jy); // vertical bar run
+  const arc = (Math.PI / 2) * SH_R; // rounded corner
+  const cornerEndX = SH_BAR + SH_R; // where the final horizontal run begins (x=104)
+  const s3 = endX - cornerEndX; // final horizontal run into the card
+  const total = s1 + s2 + arc + s3;
+  const along = s1 + s2 + arc + (px - cornerEndX);
+  return Math.max(0, Math.min(1, along / total));
+}
+
+// per-element reveal month for the sheet assembly (see sheetGrowWindows)
+export function sheetRevealMonths(dataset: Dataset, mode: Mode): Record<string, number> {
+  const w = sheetGrowWindows(dataset, mode);
+  const end = (id: string) => w[id]?.end ?? 0;
+  const at = (id: string, f: number) => {
+    const s = w[id];
+    return s ? s.start + f * (s.end - s.start) : 0;
+  };
+  return {
+    // income card appears as the very first stub starts drawing from it
+    income: w['c-income-monthly']?.start ?? 0,
+    // account + goal cards pop when their incoming arm reaches the card
+    core: end('c-monthly-core'),
+    spend: end('c-monthly-spend'),
+    ef1: end('c-goals1-ef1'),
+    debt: end('c-goals2-debt'),
+    ef6: end('c-goals2-ef6'),
+    travel: end('c-goals3-travel'),
+    brokerage: end('c-goals3-brokerage'),
+    // black pills pop as the growing tip passes their on-line position
+    'amt-core': at('c-monthly-core', sheetArmFrac(289, 252, 228, 145)),
+    'amt-spend': at('c-monthly-spend', sheetArmFrac(289, 326, 228, 145)),
+    'pct-ef1': at('c-goals1-ef1', (129 - 52.5) / (164 - 52.5)),
+    'pct-debt': at('c-goals2-debt', sheetArmFrac(681.5, 639, 164, 132)),
+    'pct-ef6': at('c-goals2-ef6', sheetArmFrac(681.5, 724, 164, 132)),
+    'pct-travel': at('c-goals3-travel', sheetArmFrac(861.5, 819, 164, 132)),
+    'pct-brokerage': at('c-goals3-brokerage', sheetArmFrac(861.5, 904, 164, 132)),
+    // surplus divider + caption sit on the monthly→goals1 spine at y=421
+    surplus: at('c-monthly-goals1', (421 - 289) / (544 - 289)),
+    'for-goals': at('c-monthly-goals1', (421 - 289) / (544 - 289)),
+    // tinted panels fade in as the tip reaches their gate region
+    monthly: end('c-income-monthly'),
+    goals: end('c-monthly-goals1'),
+  };
+}
+
+// ~0.27s pop at the illustrative clock (1.35s/mo) — sheet is illustrative-only
+const SHEET_POP_MONTHS = 0.2;
+const SHEET_GHOST = 0.09; // faint gray imprint opacity before an element reveals
+const easeOutCubic01 = (x: number) => 1 - Math.pow(1 - x, 3);
+// gentle ease-out-back (small overshoot ~+1-2%) for the subtle scale pop
+const easeOutBackTiny = (x: number) => {
+  const c = 1.2;
+  return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2);
+};
+
+export interface SheetRevealStyle {
+  opacity: number;
+  scale: number;
+}
+// element pop state at `now` (sim months): a faint ghost imprint before its
+// reveal month, then a ~220-300ms fade (0→1) + scale (0.9→~1.02→1) pop, driven
+// entirely off the sim clock so pause/scrub/restart all stay in sync.
+export function sheetRevealStyle(now: number, revealMonth: number): SheetRevealStyle {
+  const p = (now - revealMonth) / SHEET_POP_MONTHS;
+  if (p <= 0) return { opacity: SHEET_GHOST, scale: 1 };
+  if (p >= 1) return { opacity: 1, scale: 1 };
+  return {
+    opacity: SHEET_GHOST + (1 - SHEET_GHOST) * easeOutCubic01(p),
+    scale: 0.9 + 0.1 * easeOutBackTiny(p),
+  };
+}
+
+/* ============================================================================
+   "Illustrated" (illo) — a progress-track spine + colorizing illustration
+   layout (Figma pre-flow 760:8522 / filled 763:8687). WHITE page. Income is a
+   small top-CENTER card (light #f5f5f5, radius 16, 216 wide) with a mini income
+   bar chart; a yellow branch curves from it down-left into a GREEN-BORDERED
+   Fruitful circle at the top of the spine. The left spine is a 4px ROUNDED
+   progress-track bar drawn in SEGMENTS between gates (income->monthly yellow on
+   an #fbedb8 track; goal segments gray #e2e2e2 -> pink when funded). Cards are
+   light #f5f5f5 / border #e4e4e4 / radius 8 / 234 wide in the right column; each
+   card's in-card 4px progress bar is a CONTINUOUS extension of the branch that
+   feeds it (the branch fills, then the bar continues left->right). Row TOPS are
+   taken directly from the Figma frame (402-wide board space). */
+export const ILLO_INCOME_LEFT = 93; // (402-216)/2 — centered 216-wide income card
+export const ILLO_INCOME_TOP = 83;
+export const ILLO_CARD_LEFT = 139; // calc(25% + 38.5px) in the 402 board
+export const ILLO_CARD_W = 234;
+// green-bordered Fruitful root circle at the top of the spine (Figma 760:8540)
+export const ILLO_CIRCLE_LEFT = 28;
+export const ILLO_CIRCLE_TOP = 256;
+
+// account/goal card row TOPS (node-wrapper top). Card height ~84 (accounts) /
+// ~86 (goals); the in-card progress bar sits at top + 46, which is where each
+// branch arm attaches so the branch + bar read as one continuous fill.
+// UNIFORM row pitch: every consecutive card is spaced by the Core↔Spend gap
+// (411-319 = 92) so the whole column reads evenly (goals no longer pack tighter
+// than the accounts). Bar centers = row top + 46; gate junctions sit at each
+// gate's child midpoint (monthly 411, goals1 549, goals2 687).
+const ILLO_ROW_PITCH = 92;
+export const illoRowTop: Record<string, number> = {
+  income: 83,
+  core: 319,
+  spend: 411, // 319 + 92
+  ef1: 503, // 411 + 92
+  debt: 595, // 503 + 92
+  ef6: 687, // 595 + 92
+};
+// Optimizer: shared rows verbatim, then travel/brokerage continue the SAME 92
+// pitch (goals3 junction at their midpoint 871).
+export const illoRowTopOptimizer: Record<string, number> = {
+  income: 83,
+  core: 319,
+  spend: 411,
+  ef1: 503,
+  debt: 595,
+  ef6: 687,
+  travel: 779, // 687 + 92
+  brokerage: 871, // 779 + 92
+};
+
+/* Illo connector geometry — a 4px spine at x=48 with curvy wishbone S-branches
+   into the LEFT edge of each card at the in-card progress-bar height (row top +
+   46): core 365 / spend 457 / ef1 562 / debt 662 / ef6 750. The income branch is
+   a yellow swoop from the income card down-left THROUGH the green circle
+   (rendered on top) into the monthly junction (48,411). Gate junctions sit at
+   each gate's child MIDPOINT so the wishbones mirror: monthly 411, goals2 706.
+   Uses the SAME connector ids the pulse/fill engine expects so causal ordering
+   (income -> core/spend -> goal layers) is preserved. */
+// Wishbone NECK: the two arms of a gate leave from a pinched neck offset to the
+// RIGHT of the spine (x=48), so they splay cleanly into the cards instead of
+// starting behind the gate label / on the spine (Figma 763:8687 pinched shape).
+// Each arm = a short shared stub spine->neck, then a smooth cubic to the card's
+// bar center (row top + 46). Bar centers: core 365 / spend 457 / ef1 549 /
+// debt 641 / ef6 733 / travel 825 / brokerage 917. Gate junctions sit at each
+// gate's child midpoint: monthly 411, goals1 549, goals2 687, goals3 871.
+// (Wishbone neck x = 76, i.e. 28px right of the x=48 spine.)
+export const connectorsIllo: Connector[] = [
+  // income card -> green circle -> monthly junction (yellow). The swoop leaves the
+  // income card, sweeps down-left, and ARRIVES VERTICALLY into the circle top
+  // (48,256) so it continues as one straight line down through the circle (drawn
+  // BEHIND it) to the monthly junction (48,411) — no kink at the circle.
+  { id: 'c-income-monthly', d: 'M201 190 C 201 240, 48 224, 48 256 L 48 411', arrow: false },
+  // pink spine hops between gates
+  { id: 'c-monthly-goals1', d: 'M48 411 L 48 549', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M48 549 L 48 687', arrow: false },
+  // monthly wishbone -> core(365) / spend(457): stub to the neck (76,411), splay
+  { id: 'c-monthly-core', d: 'M48 411 L 76 411 C 92 411, 114 365, 139 365', arrow: false },
+  { id: 'c-monthly-spend', d: 'M48 411 L 76 411 C 92 411, 114 457, 139 457', arrow: false },
+  // 1st goal — single straight branch at the ef1 bar center (gate y == bar y)
+  { id: 'c-goals1-ef1', d: 'M48 549 L 139 549', arrow: false },
+  // 2nd goal wishbone -> debt(641) / ef6(733)
+  { id: 'c-goals2-debt', d: 'M48 687 L 76 687 C 92 687, 114 641, 139 641', arrow: false },
+  { id: 'c-goals2-ef6', d: 'M48 687 L 76 687 C 92 687, 114 733, 139 733', arrow: false },
+];
+// Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
+// goals2 -> goals3 (junction at the travel/brokerage midpoint 871), then a
+// symmetric wishbone up to travel(825) / down to brokerage(917).
+export const connectorsIlloOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M201 190 C 201 240, 48 224, 48 256 L 48 411', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M48 411 L 48 549', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M48 549 L 48 687', arrow: false },
+  { id: 'c-monthly-core', d: 'M48 411 L 76 411 C 92 411, 114 365, 139 365', arrow: false },
+  { id: 'c-monthly-spend', d: 'M48 411 L 76 411 C 92 411, 114 457, 139 457', arrow: false },
+  { id: 'c-goals1-ef1', d: 'M48 549 L 139 549', arrow: false },
+  { id: 'c-goals2-debt', d: 'M48 687 L 76 687 C 92 687, 114 641, 139 641', arrow: false },
+  { id: 'c-goals2-ef6', d: 'M48 687 L 76 687 C 92 687, 114 733, 139 733', arrow: false },
+  { id: 'c-goals2-goals3', d: 'M48 687 L 48 871', arrow: false },
+  { id: 'c-goals3-travel', d: 'M48 871 L 76 871 C 92 871, 114 825, 139 825', arrow: false },
+  { id: 'c-goals3-brokerage', d: 'M48 871 L 76 871 C 92 871, 114 917, 139 917', arrow: false },
+];
+
+/* Branch -> bar CONTINUOUS fill: the branch arm and its card's in-card progress
+   bar behave as ONE track of length armLen + barLen. Given a card's fill
+   fraction p (progressAt), the fill first travels the ARM, then continues into
+   the BAR. `ILLO_CARD_ARM` maps a card slot to its incoming arm; both the
+   connector renderer and the card read `illoSplit` so the two stay in sync. */
+export const ILLO_CARD_ARM: Record<string, string> = {
+  core: 'c-monthly-core',
+  spend: 'c-monthly-spend',
+  ef1: 'c-goals1-ef1',
+  debt: 'c-goals2-debt',
+  ef6: 'c-goals2-ef6',
+  travel: 'c-goals3-travel',
+  brokerage: 'c-goals3-brokerage',
+};
+// nominal arm lengths (viewBox units) used ONLY for the arm/bar split ratio so
+// the renderer + card agree (the arm is drawn with its MEASURED length).
+// includes the spine->neck stub (~28px) + the splay cubic (~82px) ≈ 108 for the
+// wishbone arms; ef1 is a single straight 91px branch.
+export const ILLO_ARM_LEN: Record<string, number> = {
+  'c-monthly-core': 108,
+  'c-monthly-spend': 108,
+  'c-goals1-ef1': 91,
+  'c-goals2-debt': 108,
+  'c-goals2-ef6': 108,
+  'c-goals3-travel': 108,
+  'c-goals3-brokerage': 108,
+};
+export const ILLO_BAR_LEN = 154; // nominal in-card bar pixel length
+export function illoSplit(p: number, armId: string): { arm: number; bar: number } {
+  const armLen = ILLO_ARM_LEN[armId] ?? 100;
+  const portion = armLen / (armLen + ILLO_BAR_LEN);
+  const c = (x: number) => Math.max(0, Math.min(1, x));
+  return { arm: c(p / portion), bar: c((p - portion) / (1 - portion)) };
+}
+
+export const illoRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? illoRowTopOptimizer : illoRowTop;
+export const connectorsIlloFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsIlloOptimizer : connectorsIllo;
+
 /* ---------- dataset-aware selectors (Simple vs Optimizer) ---------- */
 export const connectorsFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsOptimizer : connectors;
@@ -767,6 +1268,10 @@ export const iconRowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? iconRowTopOptimizer : iconRowTop;
 export const connectorsIconFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsIconOptimizer : connectorsIcon;
+export const iconLabeledRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? iconLabeledRowTopOptimizer : iconLabeledRowTop;
+export const connectorsIconLabeledFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsIconLabeledOptimizer : connectorsIconLabeled;
 export const convoRowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? convoRowTopOptimizer : convoRowTop;
 export const connectorsConvoFor = (dataset: Dataset): Connector[] =>

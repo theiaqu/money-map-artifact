@@ -30,6 +30,10 @@ function modalCopy(node: CardNode): { heading: string; body: string } {
 // the same card growing (no duplicate "pop"). Dismiss reverses the morph. Below it
 // a white "About your {name}" sheet slides in with a "Got it" / scrim-tap dismiss.
 const MORPH_MS = 340;
+// one easing pair for the whole morph: decelerate on open (grow toward you),
+// accelerate on close (shrink away). Scrim + sheet share these in CSS.
+const EASE_OUT = 'cubic-bezier(0.22, 0.7, 0.16, 1)';
+const EASE_IN = 'cubic-bezier(0.55, 0, 0.85, 0.35)';
 
 export default function ConvoModal({
   node,
@@ -50,47 +54,52 @@ export default function ConvoModal({
 }) {
   const { heading, body } = modalCopy(node);
   const cardRef = useRef<HTMLDivElement>(null);
+  // the FLIP inverted transform (focus card mapped back onto the resting rect),
+  // computed once at open and reused verbatim on close so the two are symmetric.
+  const invertRef = useRef<string>('none');
   const [closing, setClosing] = useState(false);
 
-  // FLIP: map the focus card back onto the resting rect, then ease to identity.
-  const restTransform = useCallback((): string => {
-    const el = cardRef.current;
-    if (!el || !restRect) return 'none';
-    const focus = el.getBoundingClientRect();
-    if (!focus.width || !focus.height) return 'none';
-    const dx = restRect.left - focus.left;
-    const dy = restRect.top - focus.top;
-    const sx = restRect.width / focus.width;
-    const sy = restRect.height / focus.height;
-    return `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-  }, [restRect]);
-
+  // OPEN — proper FLIP: the focus card is rendered at its final (last) geometry.
+  // We clear any transform first so we always measure the NATURAL rect (this makes
+  // it robust to React StrictMode running the layout effect twice — otherwise the
+  // second run would measure the already-inverted element and snap), invert that
+  // onto the resting card's rect, force a reflow to commit the start, then ease
+  // the single container transform back to identity so it grows toward the user.
   useLayoutEffect(() => {
     const el = cardRef.current;
-    if (!el) return;
-    const start = restTransform();
+    if (!el || !restRect) return;
     el.style.transition = 'none';
-    el.style.transform = start;
-    // force reflow so the start transform is committed before we animate to identity
+    el.style.transform = 'none';
+    const last = el.getBoundingClientRect();
+    if (!last.width || !last.height) return;
+    const dx = restRect.left - last.left;
+    const dy = restRect.top - last.top;
+    const sx = restRect.width / last.width;
+    const sy = restRect.height / last.height;
+    const invert = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    invertRef.current = invert;
+    el.style.transform = invert;
+    // force reflow so the inverted start is committed before we animate to identity
     void el.getBoundingClientRect();
     requestAnimationFrame(() => {
-      el.style.transition = `transform ${MORPH_MS}ms cubic-bezier(0.22, 0.7, 0.16, 1)`;
+      el.style.transition = `transform ${MORPH_MS}ms ${EASE_OUT}`;
       el.style.transform = 'none';
     });
-  }, [restTransform]);
+  }, [restRect]);
 
-  // reverse the morph, then unmount once the card has shrunk back into place
+  // CLOSE — reverse the exact same morph back to the inverted transform, then
+  // unmount once the card has shrunk into place (transitionend, with a timeout
+  // fallback) so it never pops mid-shrink.
   const dismiss = useCallback(() => {
     if (closing) return;
     setClosing(true);
     const el = cardRef.current;
-    if (!el) {
+    if (!el || invertRef.current === 'none') {
       onDismiss();
       return;
     }
-    const back = restTransform();
-    el.style.transition = `transform ${MORPH_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-    el.style.transform = back;
+    el.style.transition = `transform ${MORPH_MS}ms ${EASE_IN}`;
+    el.style.transform = invertRef.current;
     let done = false;
     const finish = () => {
       if (done) return;
@@ -99,7 +108,7 @@ export default function ConvoModal({
     };
     el.addEventListener('transitionend', finish, { once: true });
     window.setTimeout(finish, MORPH_MS + 80); // fallback if transitionend is missed
-  }, [closing, restTransform, onDismiss]);
+  }, [closing, onDismiss]);
 
   return (
     <div className={`convo-modal${closing ? ' convo-modal--closing' : ''}`}>

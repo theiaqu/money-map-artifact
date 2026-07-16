@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, type BranchStyle, type Connector, type MapStyle } from '../data';
-import { branchFlow, isReached, progressAt, type Dataset, type Mode } from '../scenario';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, ILLO_CARD_ARM, illoSplit, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
 const MM_ROPE = (id: string): string =>
@@ -122,6 +122,8 @@ export default function Connectors({
   pillIncome = false,
   iconTree = false,
   convoTree = false,
+  sheetTree = false,
+  illoTree = false,
 }: {
   now: number;
   mode: Mode;
@@ -133,6 +135,8 @@ export default function Connectors({
   pillIncome?: boolean; // "Progress pill" style: use the SHORT lowered-income rope
   iconTree?: boolean; // "Minimalist icons" style: use the icon-row thin tree set
   convoTree?: boolean; // "Conversational" style: use the convo-card thin tree set
+  sheetTree?: boolean; // "Sheet" style: use the grouped-panel wishbone tree set
+  illoTree?: boolean; // "Illustrated" style: 4px progress-track spine + branch->bar fill
 }) {
   // Gate-style precedence (a gate choice can OVERRIDE the visual identity):
   //   compact     -> skinny-arrow connectors + % badges, REGARDLESS of identity
@@ -141,29 +145,43 @@ export default function Connectors({
   //   otherwise   -> map-based (money-map ropes vs. modern flow skeleton)
   const isCompact = branch === 'compact';
   const isSkinny = branch === 'skinny-line';
+  // "Labeled" icon gate (Figma 738:7107): a labeled left spine + straight thin
+  // brackets (same clean vocabulary as the "Bracket" icon gate) + a straight gray
+  // income drop. Rendered by the SAME thin-tree renderer as skinny/icons, with its
+  // own connector set (spine at x=49 + on-spine gate-label pills).
+  const isIconLabeled = branch === 'icon-labeled';
+  const thinTree = isSkinny || isIconLabeled;
   // colored money-map ropes: the "text only" gate always uses them, and the
   // money-map identity uses them UNLESS a gate style (compact/skinny) overrides.
-  const money = !isCompact && !isSkinny && (branch === 'text-only' || map === 'money-map');
+  // the "sheet" style is self-contained (its own wishbone tree), so it never
+  // uses the money ropes even though it keeps the default 'text-only' branch.
+  const money = !sheetTree && !isCompact && !thinTree && (branch === 'text-only' || map === 'money-map');
   // active connector set. compact takes precedence over money-map so "Lines with
   // %" always shows its skinny arrows; skinny-line uses its own thin tree.
   // dataset-aware geometry: each set has a Simple and an Optimizer variant (the
   // Optimizer adds a 3rd goal gate on a compact rhythm). Simple returns its exact
   // original arrays.
-  const baseConns: Connector[] = condensed
+  const baseConns: Connector[] = illoTree
+    ? connectorsIlloFor(dataset)
+    : sheetTree
+    ? connectorsSheetFor(dataset)
+    : condensed
     ? connectorsCondensedFor(dataset)
     : v1
       ? connectorsV1For(dataset)
-      : isSkinny
-        ? iconTree
-          ? connectorsIconFor(dataset)
-          : convoTree
-            ? connectorsConvoFor(dataset)
-            : connectorsSkinnyFor(dataset)
-        : money
-          ? connectorsMoneyMapFor(dataset)
-          : isCompact
-            ? connectorsCompactFor(dataset)
-            : connectorsFor(dataset);
+      : isIconLabeled
+        ? connectorsIconLabeledFor(dataset)
+        : isSkinny
+          ? iconTree
+            ? connectorsIconFor(dataset)
+            : convoTree
+              ? connectorsConvoFor(dataset)
+              : connectorsSkinnyFor(dataset)
+          : money
+            ? connectorsMoneyMapFor(dataset)
+            : isCompact
+              ? connectorsCompactFor(dataset)
+              : connectorsFor(dataset);
   // "Progress pill" style: swap in the SHORT lowered-income rope for
   // c-income-monthly (base rope, length-probe, AND sweep all read from `conns`,
   // so geometry + measurement + animation stay in sync). Dataset-aware endpoint
@@ -203,7 +221,7 @@ export default function Connectors({
     setMids(nextMids);
     // conns is derived purely from branch + map + v1 + condensed + dataset
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree]);
+  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree]);
 
   // check badges on decommissioned (fully funded) branch arms — shared by both
   // the money-map and flow/compact renderers. Rendered last so it sits on top of
@@ -237,6 +255,175 @@ export default function Connectors({
       stroke="none"
     />
   ));
+
+  // ---------- illustrated: 4px rounded progress-track spine + branch->bar fill ----------
+  // A gray (#e2e2e2) rounded track with a yellow (#fbedb8) income segment; the
+  // colored fill is a monotonic dash-reveal driven by progressAt so the color
+  // TRAVELS each branch (spine yellow->pink; arms core blue / spend green / goals
+  // pink) and continues straight into the card's in-card progress bar — the arm +
+  // bar behave as one continuous track (see illoSplit). Freezes fully colored.
+  if (illoTree) {
+    const ILLO_TRACK = '#e2e2e2';
+    const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+    const armToNode: Record<string, string> = Object.fromEntries(
+      Object.entries(ILLO_CARD_ARM).map(([node, arm]) => [arm, node]),
+    );
+    const armColor: Record<string, string> = {
+      'c-monthly-core': BLUE,
+      'c-monthly-spend': GREEN,
+      'c-goals1-ef1': PINK,
+      'c-goals2-debt': PINK,
+      'c-goals2-ef6': PINK,
+      'c-goals3-travel': PINK,
+      'c-goals3-brokerage': PINK,
+    };
+
+    /* ---- illo-local flow pacing (does NOT touch the scenario timing shared by
+       other styles) ----
+       The PRIMARY spine flow (income -> circle -> down through the gates) travels
+       FAST, as a time-based wavefront: it starts the moment the first income
+       actually flows (firstIncomeMonth) and descends ONE gate every ILLO_SEG
+       months. Each secondary wishbone ARM is then STRICTLY gated on the wavefront
+       REACHING its gate — an arm cannot begin filling until the spine has arrived
+       at that gate's junction. ILLO_SEG is deliberately small (fast) yet kept
+       <= the earliest arm-arrival (fillOffset) so the wavefront always reaches a
+       gate slightly BEFORE that gate's arm would otherwise start (no arm pops
+       early, no visible jump). The income->monthly segment renders on a GRAY
+       track until the first flow, so it reads gray (like the empty branches) and
+       only turns yellow once income starts moving. */
+    const T_INCOME = firstIncomeMonth(dataset, mode); // first income flows (~0.5mo)
+    const ILLO_SEG = 0.25; // months per spine hop — fast descent
+    /* WATERFALL gate: the main spine BELOW the monthly-expenses gate must not fire
+       until BOTH Core AND Spend are 100% funded — only then does surplus flow down
+       into the goals. We find that release month by a monotonic binary search on
+       cardDone(core) && cardDone(spend) (both progress curves are non-decreasing, so
+       the predicate flips once and stays true). The income->monthly hop and the
+       Core/Spend arms keep their original FAST timing off T_INCOME; only the goals
+       gates are re-based onto T_MONTHLY_DONE, so the hand-off is smooth (the spine
+       reveal starts from 0 at release — no jump). */
+    const releaseMonth = (): number => {
+      const bothDone = (t: number) =>
+        cardDone(dataset, mode, 'core', t) && cardDone(dataset, mode, 'spend', t);
+      let hi = animMonths(dataset, mode);
+      if (!bothDone(hi)) return Infinity; // never funds -> spine never releases
+      let lo = 0;
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        if (bothDone(mid)) hi = mid;
+        else lo = mid;
+      }
+      return hi;
+    };
+    const T_MONTHLY_DONE = releaseMonth();
+    const gateArrive: Record<string, number> = {
+      // monthly gate stays fast (feeds the Core/Spend arms) — unchanged
+      monthly: T_INCOME + ILLO_SEG,
+      // goals gates only after monthly is fully funded, then one hop each
+      goals1: T_MONTHLY_DONE + ILLO_SEG,
+      goals2: T_MONTHLY_DONE + 2 * ILLO_SEG,
+      goals3: T_MONTHLY_DONE + 3 * ILLO_SEG,
+    };
+    // when the wavefront STARTS revealing each spine segment (its source gate)
+    const segStart: Record<string, number> = {
+      'c-income-monthly': T_INCOME,
+      // below-monthly trunk waits for Core+Spend completion (waterfall release)
+      'c-monthly-goals1': T_MONTHLY_DONE,
+      'c-goals1-goals2': gateArrive.goals1,
+      'c-goals2-goals3': gateArrive.goals2,
+    };
+    // which gate each wishbone ARM departs from (gate its flow-start on it)
+    const armGate: Record<string, keyof typeof gateArrive> = {
+      'c-monthly-core': 'monthly',
+      'c-monthly-spend': 'monthly',
+      'c-goals1-ef1': 'goals1',
+      'c-goals2-debt': 'goals2',
+      'c-goals2-ef6': 'goals2',
+      'c-goals3-travel': 'goals3',
+      'c-goals3-brokerage': 'goals3',
+    };
+    const spineReveal = (id: string) => clamp01((now - (segStart[id] ?? 0)) / ILLO_SEG);
+    // per-segment fill fraction + colour + track colour
+    const seg = (id: string): { frac: number; color: string; track: string } => {
+      // income spine: gray track until the first income flows, then a FAST yellow
+      // reveal down into the monthly gate
+      if (id === 'c-income-monthly') return { frac: spineReveal(id), color: YELLOW, track: ILLO_TRACK };
+      // pink spine hops: fast time-based wavefront continuing down the trunk
+      if (id === 'c-monthly-goals1' || id === 'c-goals1-goals2' || id === 'c-goals2-goals3')
+        return { frac: spineReveal(id), color: PINK, track: ILLO_TRACK };
+      // wishbone arm: STRICTLY gated — 0 until the wavefront reaches its gate, then
+      // the arm+bar continuous fill follows the card balance (illoSplit.arm)
+      const nodeId = armToNode[id];
+      const gate = armGate[id];
+      const gated = gate ? now < gateArrive[gate] : false;
+      const p = !gated && nodeId ? progressAt(dataset, mode, nodeId, now) : 0;
+      return { frac: illoSplit(p, id).arm, color: armColor[id] ?? PINK, track: ILLO_TRACK };
+    };
+
+    /* ---- 3-phase branch coloring: gray -> colored (active fill) -> gray again ----
+       Each branch's COLORED overlay is drawn on top of a permanent gray track. Once
+       the branch's associated node(s) are FULLY FUNDED, we "decommission" the branch
+       by fading the colored overlay's opacity to 0 (revealing the gray track under
+       it). The fade is a CSS opacity transition, so the revert-to-gray is a smooth
+       ease rather than an instant snap — matching the fill easing. Only the BRANCHES
+       decommission: the card bars / illustrations / goal checks stay funded.
+
+       Keying (revert-to-gray fires off the associated node's completion, cardDone):
+         - wishbone ARM  -> its own card (Core/Spend/goal) hits 100%.
+         - income->circle -> the monthly section it delivers to (Core AND Spend) funded
+                             (transient yellow while income flows in, then gray).
+         - spine SEGMENT -> EVERY downstream goal it still feeds (that exists in this
+                            dataset) is funded; by the end the whole spine is gray. */
+    const presentCards = new Set(
+      conns.map((c) => armToNode[c.id]).filter((n): n is string => Boolean(n)),
+    );
+    // goal cards fed by each spine hop, top-down (filtered to those in this dataset)
+    const spineBelow: Record<string, string[]> = {
+      'c-monthly-goals1': ['ef1', 'debt', 'ef6', 'travel', 'brokerage'],
+      'c-goals1-goals2': ['debt', 'ef6', 'travel', 'brokerage'],
+      'c-goals2-goals3': ['travel', 'brokerage'],
+    };
+    const decommissioned = (id: string): boolean => {
+      const node = armToNode[id];
+      if (node) return cardDone(dataset, mode, node, now); // arm: its own card funded
+      if (id === 'c-income-monthly')
+        return cardDone(dataset, mode, 'core', now) && cardDone(dataset, mode, 'spend', now);
+      const below = (spineBelow[id] ?? []).filter((c) => presentCards.has(c));
+      return below.length > 0 && below.every((c) => cardDone(dataset, mode, c, now));
+    };
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {probes}
+        {/* rounded 4px tracks */}
+        {conns.map((c) => (
+          <path key={`trk-${c.id}`} d={c.d} stroke={seg(c.id).track} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {/* colored fill dash-revealed from the source end */}
+        {conns.map((c) => {
+          const len = lens[c.id];
+          if (!len || len <= 0) return null;
+          const { frac, color } = seg(c.id);
+          if (frac <= 0.001) return null;
+          // phase 3: once the branch's node(s) are funded, fade the colored overlay
+          // out (0.6s ease) so it decommissions smoothly to the gray track beneath.
+          const off = decommissioned(c.id) ? 0 : 1;
+          return (
+            <path
+              key={`fill-${c.id}`}
+              d={c.d}
+              stroke={color}
+              strokeWidth={4}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${len.toFixed(2)} ${len.toFixed(2)}`}
+              strokeDashoffset={(len * (1 - clamp01(frac))).toFixed(2)}
+              style={{ opacity: off, transition: 'opacity 0.6s ease' }}
+            />
+          );
+        })}
+      </svg>
+    );
+  }
 
   // ---------- stocks V1 / Condensed: thin gray spine + braces + pink accents + colored pulses ----------
   // A clean 1.5px gray tree (Figma 519:6283 / 522:6440) with the branch-flow events
@@ -280,23 +467,77 @@ export default function Connectors({
     );
   }
 
+  // ---------- sheet: near-black orthogonal tree that DRAWS IN progressively ----------
+  // The "Sheet" style (Figma 753:7971) ASSEMBLES as it plays: each near-black
+  // spine + elbow-arm segment draws on (SVG stroke reveal via dashoffset) over its
+  // causal growth window (sheetGrowWindows), so the branch grows from Income down
+  // the spine and out each elbow arm in causal order. The black $/% pills and the
+  // account/goal cards POP in as the growing tip reaches them (SheetChrome + Card,
+  // keyed to sheetRevealMonths). No travelling pulses — the draw-on + pop-in IS
+  // the animation, and the fully drawn tree matches the Figma resting look. Kept
+  // entirely separate from the other thin trees below so nothing else regresses.
+  if (sheetTree) {
+    const windows = sheetGrowWindows(dataset, mode);
+    const growOf = (id: string): number => {
+      const w = windows[id];
+      if (!w) return now > 0 ? 1 : 0; // segment a dataset never lights: draw once playing
+      const span = Math.max(1e-6, w.end - w.start);
+      return Math.max(0, Math.min(1, (now - w.start) / span));
+    };
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {probes}
+        {conns.map((c) => {
+          const len = lens[c.id];
+          const g = growOf(c.id);
+          if (!len || len <= 0 || g <= 0.0001) return null;
+          return (
+            <path
+              key={c.id}
+              d={c.d}
+              stroke="#1a1a1a"
+              strokeWidth={1.25}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${len.toFixed(2)} ${len.toFixed(2)}`}
+              strokeDashoffset={(len * (1 - g)).toFixed(2)}
+            />
+          );
+        })}
+      </svg>
+    );
+  }
+
   // ---------- skinny line: super-thin static tree + thin travelling pulse ----------
   // A ~1px gray spine + thin elbows to each slim row's name pill. No arrowheads,
   // no rope/glow, and NO check badges (a money-map/standard concept that reads as
   // stray marks on the thin slim tree — Figma 496-5864 shows a clean thin tree).
   // The branch-flow pulse still runs, as a thin (2px) colored dash so causal
   // order stays legible without the heavy comet glow.
-  if (isSkinny) {
+  if (thinTree) {
     const skById = (id: string) => conns.find((c) => c.id === id)?.d;
-    // convo, icons and slim all share the same clean thin tree stroke (1px tree /
-    // 2px pulse) so the bracket geometry reads identically across the styles.
-    const treeW = 1;
-    const pulseW = 2;
+    // icons, slim, AND the "Labeled" icon gate (738:7107) share the clean thin tree
+    // stroke (1px tree / 2px pulse) so Labeled's straight brackets read identically
+    // to the Bracket gate. The conversational tree (738:7662) keeps the bolder
+    // wishbone stroke (1.5px branches). Every branch is GRAY at rest; the causal
+    // color only appears as the normal pulse travelling during play.
+    const treeW = convoTree ? 1.5 : 1;
+    const pulseW = convoTree ? 2.5 : 2;
+    const treeStroke = 'var(--connector)';
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* thin static skeleton */}
+        {/* thin static skeleton (gray for most trees; near-black for the sheet) */}
         {conns.map((c) => (
-          <path key={c.id} d={c.d} stroke="var(--connector)" strokeWidth={treeW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            key={c.id}
+            d={c.d}
+            stroke={treeStroke}
+            strokeWidth={treeW}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         ))}
         {probes}
         {/* thin colored pulse per in-flight income event (no glow) */}

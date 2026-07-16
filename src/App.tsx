@@ -4,6 +4,9 @@ import Card from './components/Card';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
+import IlloModal from './components/IlloModal';
+import { SheetChrome } from './components/SheetCard';
+import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle } from './components/Card';
@@ -30,15 +33,19 @@ const DATASET_OPTS: { id: Dataset; label: string }[] = [
   { id: 'optimizer', label: 'Optimizer' },
 ];
 
-const STYLES: { id: ChartStyle; label: string }[] = [
+// `older: true` styles are hidden behind the "view older ideas" link at the
+// bottom of the account-style picker (kept around but not front-and-center).
+const STYLES: { id: ChartStyle; label: string; older?: boolean }[] = [
   { id: 'progress', label: 'Progress bar, inside' },
-  { id: 'progress-bg', label: 'Progress bar, background' },
-  { id: 'slim', label: 'Super slim' },
   { id: 'icons', label: 'Minimalist icons' },
-  { id: 'convo', label: 'Conversational' },
+  { id: 'illo', label: 'Illustrated' },
+  { id: 'sheet', label: 'Sheet' },
   { id: 'pie', label: 'Pie chart' },
   { id: 'stocks', label: 'Stocks / heart monitor' },
-  { id: 'progress-pill', label: 'Progress pill' },
+  { id: 'progress-bg', label: 'Progress bar, background', older: true },
+  { id: 'slim', label: 'Super slim', older: true },
+  { id: 'convo', label: 'Logic first description', older: true },
+  { id: 'progress-pill', label: 'Progress pill', older: true },
 ];
 
 // Small schematic mini-mock of each account-style chart, shown inside its
@@ -102,6 +109,41 @@ function StylePreview({ id }: { id: ChartStyle }) {
           </span>
         </div>
       );
+    case 'sheet':
+      return (
+        <div className="sp sp-sheet" aria-hidden>
+          <span className="sp-sheet-panel">
+            <span className="sp-sheet-row">
+              <span className="sp-sheet-pill" />
+              <span className="sp-sheet-card" />
+            </span>
+            <span className="sp-sheet-row">
+              <span className="sp-sheet-pill" />
+              <span className="sp-sheet-card" />
+            </span>
+          </span>
+        </div>
+      );
+    case 'illo':
+      return (
+        <div className="sp sp-illo" aria-hidden>
+          <span className="sp-illo-spine" />
+          <span className="sp-illo-card">
+            <span className="sp-illo-lines">
+              <span className="sp-illo-line" />
+              <span className="sp-illo-bar" />
+            </span>
+            <span className="sp-illo-figure" />
+          </span>
+          <span className="sp-illo-card">
+            <span className="sp-illo-lines">
+              <span className="sp-illo-line" />
+              <span className="sp-illo-bar sp-illo-bar-2" />
+            </span>
+            <span className="sp-illo-figure sp-illo-figure-2" />
+          </span>
+        </div>
+      );
     case 'pie':
       return (
         <div className="sp sp-pie" aria-hidden>
@@ -152,6 +194,14 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
 // designed around their compact rows, so it's the sole gate offered for them.
 const SLIM_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'skinny-line', label: 'Skinny line' },
+];
+
+// "Minimalist icons" offers TWO gate styles: the existing thin-bracket tree
+// ("Bracket", default) and the new labeled left-spine tree ("Labeled", Figma
+// 738:7107 — top-center income + gate-label pills + curvy branches).
+const ICON_BRANCHES: { id: BranchStyle; label: string }[] = [
+  { id: 'skinny-line', label: 'Bracket' },
+  { id: 'icon-labeled', label: 'Labeled' },
 ];
 
 const MAPS: { id: MapStyle; label: string }[] = [
@@ -210,6 +260,7 @@ export default function App() {
   const [map, setMap] = useState<MapStyle>('money-map');
   const [version, setVersion] = useState<Version>('v2');
   const [dateMode, setDateMode] = useState<DateMode>('date');
+  const [showOlder, setShowOlder] = useState(false); // reveal the "older ideas" account styles in the picker
   const [selectedConvo, setSelectedConvo] = useState<string | null>(null); // "convo" tapped-card detail modal
   const [selectedRect, setSelectedRect] = useState<DOMRect | null>(null); // resting rect of the tapped convo card (for the FLIP morph)
   const [speed, setSpeed] = useState(1); // global pace multiplier (layered on mode pacing)
@@ -333,10 +384,20 @@ export default function App() {
     setStyle(s);
     setSelectedConvo(null);
     setSelectedRect(null);
-    // gate pairing: the slim + icon cards use the skinny-line tree; every other
-    // style must fall back to a valid non-thin gate so skinny-line is never active
-    // off those layouts (its geometry only fits their compact rows).
-    setBranch((prev) => (s === 'slim' || s === 'icons' || s === 'convo' ? 'skinny-line' : prev === 'skinny-line' ? 'text-only' : prev));
+    // gate pairing: slim + convo cards use ONLY the skinny-line tree; icons offers
+    // BOTH the skinny-line ("Bracket", default) and the new labeled spine tree, so
+    // keep 'icon-labeled' when it's already picked and default to 'skinny-line'
+    // otherwise. Every non-thin style falls back to a valid gate so the thin/
+    // labeled trees are never active off the compact icon/slim layouts.
+    setBranch((prev) => {
+      if (s === 'slim' || s === 'convo') return 'skinny-line';
+      if (s === 'icons') return prev === 'icon-labeled' ? 'icon-labeled' : 'skinny-line';
+      // sheet + illustrated are self-contained (their own wishbone/spine tree):
+      // pin a stable, non-compact/non-thin gate so no % badges or foreign tree
+      // ever render.
+      if (s === 'sheet' || s === 'illo') return 'text-only';
+      return prev === 'skinny-line' || prev === 'icon-labeled' ? 'text-only' : prev;
+    });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
     setT(-1);
@@ -370,7 +431,7 @@ export default function App() {
   // gate options depend on the account style: "skinny line" is offered ONLY for
   // the slim card (and is the only gate there); all other styles keep text-only
   // + "Lines with %".
-  const gateOptions = style === 'slim' || style === 'icons' || style === 'convo' ? SLIM_BRANCHES : BRANCHES;
+  const gateOptions = style === 'icons' ? ICON_BRANCHES : style === 'slim' || style === 'convo' ? SLIM_BRANCHES : BRANCHES;
 
   // Shared config fields (data type → time model). Rendered in BOTH the desktop
   // left rail and the mobile config drawer so the markup is authored once.
@@ -378,7 +439,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 13, 2026 · 3:17 PM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 9:39 AM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -399,7 +460,7 @@ export default function App() {
         <div className="config-row">
           <span className="config-label">Account style</span>
           <div className="style-picker" role="radiogroup" aria-label="Account style">
-            {STYLES.map((s) => (
+            {STYLES.filter((s) => !s.older || showOlder).map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -415,6 +476,26 @@ export default function App() {
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            className="view-older-link"
+            aria-expanded={showOlder}
+            onClick={() => setShowOlder((v) => !v)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 0 0',
+              margin: 0,
+              color: '#7d7d7d',
+              font: 'inherit',
+              fontSize: 12,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              alignSelf: 'flex-start',
+            }}
+          >
+            {showOlder ? 'Hide older ideas' : 'View older ideas'}
+          </button>
         </div>
         {style === 'stocks' && (
           <div className="config-row">
@@ -450,7 +531,7 @@ export default function App() {
             ))}
           </div>
         </div>
-        {!stocksFixed && (
+        {!stocksFixed && style !== 'sheet' && style !== 'illo' && (
         <div className="config-row">
           <span className="config-label">Gate style</span>
             <div className="mode-toggle" role="tablist" aria-label="Gate style">
@@ -570,15 +651,22 @@ export default function App() {
     setSelectedRect(null);
   };
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}`} style={{ height: boardH }}>
-      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} />
+    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}`} style={{ height: boardH }}>
+      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} />
 
-      {sectionsFor(dataset).map((s) => (
-        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} />
+      {/* "sheet" renders its own grouped panels + on-connector pills instead of the
+          shared section-node gate labels */}
+      {style === 'sheet' && <SheetChrome dataset={dataset} now={now} mode={effMode} />}
+
+      {/* "illustrated" renders the green-bordered Fruitful root circle on the spine */}
+      {style === 'illo' && <IlloCircle />}
+
+      {style !== 'sheet' && sectionsFor(dataset).map((s) => (
+        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} />
       ))}
 
       {cards.map((c) => (
-        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} onConvoTap={style === 'convo' ? openConvo : undefined} modalCardId={style === 'convo' ? selectedConvo : null} />
+        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
       ))}
 
       {!stocksFixed && branch === 'compact' &&
@@ -588,6 +676,10 @@ export default function App() {
           </div>
         ))}
 
+      {/* Conversational keeps its bottom "About your {name}" sheet (ConvoModal);
+          Illustrated gets its OWN centered card + shared-element illustration
+          grow (IlloModal). selectedRect for illo is the tapped card's small
+          illustration rect (the FLIP source). */}
       {style === 'convo' && selectedNode && (
         <ConvoModal
           node={selectedNode}
@@ -598,6 +690,9 @@ export default function App() {
           restRect={selectedRect}
           onDismiss={closeConvo}
         />
+      )}
+      {style === 'illo' && selectedNode && (
+        <IlloModal node={selectedNode} restRect={selectedRect} onDismiss={closeConvo} />
       )}
     </div>
   );

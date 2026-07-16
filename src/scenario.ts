@@ -759,6 +759,46 @@ export function branchFlow(dataset: Dataset, mode: Mode, now: number, branchId: 
   return out;
 }
 
+/* ---------- "Sheet" style branch-assembly growth windows ----------
+   The Sheet account style ONLY: instead of showing the whole map at once, the
+   near-black spine + elbow arms DRAW IN progressively as the sim plays, and each
+   pill/card POPS in the instant the growing tip reaches it. This returns, per
+   connector id, the simulated-month window [start, end] over which that segment
+   grows from 0→1 — derived from the SAME causal timing the sheet pulses use:
+   a segment "starts" growing the first time an income event lights it, offset by
+   its gate depth (gateDepth * SPINE_TRAVEL, when its parent gate is reached), and
+   grows over one SPINE_TRAVEL (trunk) or one ARM travel (card arm). Because it's
+   the first-lighting event, deeper goal gates/arms reveal later — giving the
+   correct causal order (Core/Spend → L1 goal → L2 → L3). Additive: reads the
+   existing scenario data + pacing, changing no existing logic. */
+export interface SheetGrowWindow {
+  start: number;
+  end: number;
+}
+export function sheetGrowWindows(dataset: Dataset, mode: Mode): Record<string, SheetGrowWindow> {
+  const sc = getScenario(dataset, mode);
+  const spine = SPINE_TRAVEL_BY_MODE[mode];
+  const arm = BRANCH_PACING[mode].travel;
+  const out: Record<string, SheetGrowWindow> = {};
+  for (const id of Object.keys(BRANCH_TIMING)) {
+    // the first income event that lights this connector (undefined for gates a
+    // dataset never reaches, e.g. the 3rd gate in Simple)
+    let firstT: number | null = null;
+    for (const t of sc.income) {
+      if (sc.eventActive[t]?.has(id)) {
+        firstT = t;
+        break;
+      }
+    }
+    if (firstT == null) continue;
+    const meta = BRANCH_TIMING[id];
+    const dep = meta.gateDepth * spine; // tip reaches this segment's start when its gate is reached
+    const tr = meta.kind === 'spine' ? spine : arm; // trunk zips; arm is paced
+    out[id] = { start: firstT + dep, end: firstT + dep + tr };
+  }
+  return out;
+}
+
 export function isReached(dataset: Dataset, mode: Mode, id: string, now: number): boolean {
   const s = getScenario(dataset, mode).series[id];
   if (!s) return false;

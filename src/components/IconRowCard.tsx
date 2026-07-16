@@ -19,6 +19,10 @@ import { goalDateLabel, progressAt, type Dataset, type DateMode, type Mode } fro
 const RIGHT_EDGE = 386;
 const TILE_LEFT_INCOME = 11;
 const TILE_LEFT_ACCOUNT = 78.83;
+// "Labeled" gate (Figma 738:7107): account/goal tiles are INDENTED to the right
+// (tile left 116) and the Card wrapper is already placed there, so the row needs
+// no marginLeft — only a fixed right edge so goal date pills still align.
+const LABELED_TILE_LEFT = 116;
 
 // Per-row icon resolver (Figma 729:6187). income/core/spend map by node id; goals
 // map by TITLE KEYWORDS (not slot id) so BOTH datasets resolve correctly — the
@@ -61,12 +65,14 @@ export default function IconRowCard({
   mode,
   dataset,
   dateMode = 'date',
+  labeled = false,
 }: {
   node: CardNode;
   now: number;
   mode: Mode;
   dataset: Dataset;
   dateMode?: DateMode;
+  labeled?: boolean; // "Labeled" gate layout: income top-center + indented tiles
 }) {
   // illustrative color-in that keys off progressAt so the tile fills exactly when
   // the funding pulse reaches this row. Income is the source (full once flowing).
@@ -77,6 +83,45 @@ export default function IconRowCard({
   const isIncome = node.kind === 'income';
   const isGoal = node.kind === 'goal';
 
+  // the white icon tile with its left-anchored pastel fill (width driven purely
+  // by the already-eased `p`, no CSS width transition) — shared by both layouts.
+  const tile = (
+    <span className="icon-tile">
+      <span className={`icon-fill icon-${kind}`} style={{ width: `${p * 100}%` }} aria-hidden />
+      <Icon className="icon-glyph" size={24} strokeWidth={1.75} color="#191919" />
+    </span>
+  );
+
+  // "Labeled" gate layout (Figma 738:7107): income is a TOP-CENTER stack (text
+  // above the tile, center-aligned); accounts/goals keep the horizontal row but
+  // sit in the indented tile column (the Card wrapper is already at tile left 116,
+  // so no marginLeft — just a fixed right edge so goal date pills still align).
+  if (labeled) {
+    if (isIncome) {
+      return (
+        <div className="icon-row-income-top">
+          <span className="icon-income-text">
+            <span className="icon-name">{nameText(node)}</span>
+            <span className="icon-amount">{amountText(node)}</span>
+          </span>
+          {tile}
+        </div>
+      );
+    }
+    return (
+      <div className="icon-row" style={{ width: RIGHT_EDGE - LABELED_TILE_LEFT }}>
+        {tile}
+        <span className="icon-text">
+          <span className="icon-name">{nameText(node)}</span>
+          <span className="icon-amount">{amountText(node)}</span>
+        </span>
+        {isGoal && (
+          <span className={`icon-date${funded ? ' funded' : ''}`}>{goalDateLabel(dateMode, node.badge)}</span>
+        )}
+      </div>
+    );
+  }
+
   // anchor the tile in the fixed left column (income further left) and stretch the
   // row to the fixed right edge so goal pills align — the node wrapper still lives
   // at left:node.x, so we offset by the difference (mirrors Super slim).
@@ -86,12 +131,7 @@ export default function IconRowCard({
 
   return (
     <div className="icon-row" style={{ width, marginLeft }}>
-      <span className="icon-tile">
-        {/* left-anchored pastel fill behind the icon — width driven purely by the
-            already-eased `p` (no CSS width transition, avoids double-easing). */}
-        <span className={`icon-fill icon-${kind}`} style={{ width: `${p * 100}%` }} aria-hidden />
-        <Icon className="icon-glyph" size={24} strokeWidth={1.75} color="#191919" />
-      </span>
+      {tile}
       <span className="icon-text">
         <span className="icon-name">{nameText(node)}</span>
         <span className="icon-amount">{amountText(node)}</span>

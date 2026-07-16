@@ -121,21 +121,13 @@ function GoalDateBlock({ node, dateMode, reached, expanded }: { node: CardNode; 
   );
 }
 
-// the rounded "hero" income card at the top of the board (replaces the old
-// full-bleed yellow header): a soft lemon-tinted card carrying just the
-// conversational income sentence (no illustration). The left tree spine
-// originates from it.
-export function ConvoHero({ node }: { node: CardNode }) {
+// income as a plain top-left text block (Figma 738:7662): "Income" over "$X/mo".
+// No card — the gray left spine drops from just below this text.
+export function ConvoIncome({ node }: { node: CardNode }) {
   return (
-    <div className="convo-card convo-hero">
-      <div className="convo-text">
-        <div className="convo-title">Income</div>
-        <span className="convo-sentence">
-          <span className="convo-word">You bring in</span>
-          <Chip>{node.amount}</Chip>
-          <span className="convo-word">every month</span>
-        </span>
-      </div>
+    <div className="convo-income">
+      <div className="convo-income-label">Income</div>
+      <div className="convo-income-amt">{node.amount}/mo</div>
     </div>
   );
 }

@@ -656,6 +656,23 @@ body {
   align-items: center;
   gap: 12px;
 }
+/* "Labeled" gate (Figma 738:7107): income is a TOP-LEFT stack — the "Income /
+   $X/mo" text LEFT-aligned ABOVE the tile, hanging at the left column so the tree
+   reads as starting from a left-aligned income (its gray income→spine connector
+   drops from the tile). Sizes to content. */
+.icon-row-income-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: max-content;
+}
+.icon-income-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
 .icon-tile {
   position: relative;
   overflow: clip;
@@ -794,15 +811,25 @@ body {
 /* the convo page sits on a clean white background (scoped to the style) */
 .board-convo { background: #ffffff; }
 
-/* the rounded "hero" income card at the top (soft lemon accent, no illustration).
-   Keeps the same ~64px height as the other cards so the tree tick stays centered
-   on it, with the text padded in cleanly now that the illustration slot is gone. */
-.convo-hero {
-  background: #fdf6d3;
-  border-color: #efe1a3;
-  border-radius: 12px;
-  min-height: 64px;
-  padding: 0 16px;
+/* income as a plain top-left text block (Figma 738:7662): "Income" over "$X/mo".
+   The gray left spine drops from just below it. */
+.convo-income {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-family: var(--font-family);
+}
+.convo-income-label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+}
+.convo-income-amt {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: #000;
 }
 
 /* Spend illustration: a green wallet sleeve with a separable credit card that
@@ -876,7 +903,8 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  width: 312px;
+  width: 262px;
+  min-height: 74px;
   padding: 0 16px 0 8px;
   border: 1px solid #e4e4e4;
   border-radius: 8px;
@@ -971,16 +999,20 @@ body {
   white-space: nowrap;
 }
 
-/* centered gray caption dividers (replace the gate pills for the convo style) */
-.node.convo-caption-node { z-index: 5; width: 402px; }
-.convo-caption {
-  width: 100%;
-  text-align: center;
+/* plain gray uppercase gate labels beside the left spine (Figma 738:7662) —
+   ~10px semibold, letter-spacing 0.5, muted gray; sits above the connectors */
+.node.convo-gate-node { z-index: 5; }
+.convo-gate-label {
   font-family: var(--font-family);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   color: #979797;
+}
+.convo-gate-label.two-line {
+  white-space: normal;
 }
 
 /* inline name-chip Fruitful logo (tinted per graph color) */
@@ -1031,8 +1063,9 @@ body {
   backdrop-filter: blur(3px);
   cursor: pointer;
   opacity: 1;
-  animation: convo-fade 220ms ease-out;
-  transition: opacity 220ms ease;
+  /* scrim fades in with the morph (ease-out) and out with it (ease-in) */
+  animation: convo-fade 340ms cubic-bezier(0.22, 0.7, 0.16, 1);
+  transition: opacity 340ms cubic-bezier(0.55, 0, 0.85, 0.35);
 }
 /* the focus card morphs IN PLACE (transform driven by the FLIP effect in JS);
    transform-origin top-left so translate+scale maps cleanly onto the rest rect */
@@ -1060,8 +1093,10 @@ body {
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02), 0 4px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   z-index: 2;
-  animation: convo-sheet-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: opacity 200ms ease, transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* bottom sheet slides up in sync with the morph, and drops away in sync on close */
+  animation: convo-sheet-in 340ms cubic-bezier(0.22, 0.7, 0.16, 1) both;
+  transition: opacity 340ms cubic-bezier(0.55, 0, 0.85, 0.35),
+    transform 340ms cubic-bezier(0.55, 0, 0.85, 0.35);
 }
 /* dismiss: fade the scrim + drop the sheet away while the card morphs back */
 .convo-modal--closing .convo-scrim { opacity: 0; }
@@ -1931,3 +1966,550 @@ body {
   padding: 4px 2px 0;
 }
 .config-drawer .drawer-body .config-extras { margin-top: 8px; }
+
+/* ============================================================
+   "Sheet" account style (Figma node 753:7971)
+   A grouped-panel layout: income card + gray left spine, a soft-mint MONTHLY
+   EXPENSES panel (black amount pills → white name cards) and a soft-pink GOALS
+   panel (black weight-% pills → white goal cards with a dark FUNDING/FUNDED
+   footer). Additive — no other style's rules are touched.
+   ============================================================ */
+
+/* income: a small white card top-left, "Income" over "$X/mo", center-aligned */
+.sheet-income {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border-radius: 10.435px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.sheet-income-label {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+}
+.sheet-income-amt {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 450;
+  color: #000;
+}
+
+/* the two grouped panels (sit BEHIND the spine/cards) */
+.sheet-panel {
+  position: absolute;
+  border: 1px solid rgba(0, 0, 0, 0.13);
+  border-radius: 4px;
+  z-index: 0;
+}
+.sheet-panel--mint { background: rgba(56, 242, 214, 0.08); }
+.sheet-panel--pink { background: rgba(242, 56, 140, 0.08); }
+.sheet-panel-label {
+  position: absolute;
+  left: 14px;
+  top: 11px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.sheet-panel--mint .sheet-panel-label { color: #276248; }
+.sheet-panel--pink .sheet-panel-label { color: #a17187; }
+
+/* black pills sitting ON the connectors (amounts / surplus / weight-%) */
+.sheet-pill-wrap {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+}
+.sheet-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: #fff;
+  border-radius: 10.435px;
+  padding: 4px 8px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* the gray "for goals" caption trailing the surplus pill */
+.sheet-for-goals {
+  position: absolute;
+  transform: translateY(-50%);
+  z-index: 6;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 450;
+  color: #6f6f6f;
+  white-space: nowrap;
+}
+
+/* white name / goal cards */
+.sheet-card {
+  background: #fff;
+  border-radius: 10.435px;
+  overflow: hidden;
+}
+.sheet-account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+}
+.sheet-card-name {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+  white-space: nowrap;
+}
+.sheet-goal {
+  width: 100%;
+  height: 70px;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-goal-name {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #000;
+  text-align: center;
+}
+.sheet-goal-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 14px;
+  background: #624b52;
+  color: #fdf6f9;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* StylePreview mini-schematic: a tinted panel with two pill→card rows */
+.sp-sheet { height: 40px; display: flex; align-items: center; justify-content: center; }
+.sp-sheet-panel {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.13);
+  background: rgba(56, 242, 214, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 6px;
+}
+.sp-sheet-row { display: flex; align-items: center; gap: 5px; }
+.sp-sheet-pill { width: 20px; height: 9px; border-radius: 5px; background: #000; flex: 0 0 auto; }
+.sp-sheet-card { flex: 1 1 auto; height: 12px; border-radius: 3px; background: #fff; }
+
+/* ============================================================================
+   "Illustrated" (illo) account style — progress-track spine + colorizing
+   illustration cards (Figma 760:8522 / 763:8687). All additive + scoped. */
+.board-illo { background: #ffffff; }
+
+/* green-bordered Fruitful root circle at the top of the spine. Must sit ABOVE
+   the connectors SVG (.connectors is z-index 4) so the yellow income branch /
+   spine passes BEHIND the circle (Figma 760:8522), not over it. */
+.node.illo-circle-node { z-index: 6; }
+.illo-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  border: 1.5px solid #027a48;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* income: small top-center card with a mini income bar chart */
+.illo-income {
+  box-sizing: border-box;
+  width: 216px;
+  background: #f5f5f5;
+  border-radius: 16px;
+  padding: 6px 14px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family);
+}
+.illo-income-title { font-size: 16px; line-height: 24px; font-weight: 600; color: #000; }
+.illo-income-sub { font-size: 12px; line-height: 16px; font-weight: 500; color: #7d7d7d; }
+.illo-income-bars { width: 100%; margin-top: 4px; }
+.illo-income-bars svg { display: block; width: 100%; height: 37px; }
+
+/* account / goal card: left content column (title + 4px bar + subtitle) + a 64px
+   illustration/date slot. The card height is ~84 so the in-card bar centers at
+   top + 46, where its branch arm attaches (branch -> bar continuous fill). */
+.illo-card {
+  box-sizing: border-box;
+  width: 234px;
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  background: #f5f5f5;
+  border: 1px solid #e4e4e4;
+  border-radius: 8px;
+  font-family: var(--font-family);
+}
+.illo-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 12px 0 12px 16px;
+}
+.illo-title {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  color: #000;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.illo-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #e2e2e2;
+  overflow: hidden;
+}
+.illo-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  min-width: 0;
+}
+.illo-sub {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: #7d7d7d;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* right illustration slot (accounts) */
+.illo-slot {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.illo-figure { display: inline-flex; transform-origin: center; }
+.illo-img {
+  display: block;
+  width: 48px;
+  height: auto;
+  /* grayed out before the bar fills (matches Figma mix-blend-luminosity) */
+  filter: grayscale(1);
+  opacity: 0.5;
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
+/* Core's scalable icon-calendar (IlloCalendar) fills the illustration slot; it
+   inherits .illo-img's grayscale-at-rest / colorize behaviour. Sized a touch
+   larger than the flat assets so the expense icons read at 64px. */
+.illo-cal { width: 54px; }
+.illo-cal svg { display: block; width: 100%; height: auto; }
+/* Spend's layered wallet (IlloWallet) in the small card slot — same grayscale-at-
+   rest / colorize behaviour as the other illustrations. Its credit card sits
+   settled in the pocket here (the peek-out only plays in the modal). */
+.illo-wallet { width: 56px; }
+.illo-wallet svg { display: block; width: 100%; height: auto; }
+/* delightfully colorize + pop once the bar fills */
+.illo-figure--on .illo-img { filter: grayscale(0); opacity: 1; }
+.illo-figure--on { animation: illo-pop 560ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* goal date slot: a check above a stacked MON/YEAR (or relative months) */
+.illo-slot.illo-date {
+  position: relative;
+  flex-direction: column;
+  gap: 2px;
+  width: 46px;
+  height: 64px;
+}
+.illo-check { display: inline-flex; }
+.illo-check--pop { animation: illo-pop 560ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.illo-date-stack { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.illo-date-mon {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #000;
+  transition: color 0.4s ease;
+}
+.illo-date-mon.on { color: #ff2d8e; }
+.illo-date-year {
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: #adadad;
+}
+
+/* one-shot confetti burst at a funded goal (lightweight CSS particles) */
+.illo-confetti {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.illo-confetti span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 1.5px;
+  opacity: 0;
+  animation: illo-confetti-burst 780ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* white gate-label pill beside the spine (10px semibold uppercase) */
+.illo-gate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px;
+  border-radius: 4px;
+  background: #ffffff;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #111;
+  text-align: right;
+}
+.illo-gate.two-line { text-align: right; }
+
+/* tap-to-expand affordance (accounts) + hide the resting card during the morph */
+.illo-card--tappable { cursor: pointer; transition: transform 0.12s ease, box-shadow 0.18s ease; }
+.illo-card--tappable:hover { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }
+.illo-card--hidden { visibility: hidden; }
+
+@keyframes illo-pop {
+  0% { transform: scale(0.8); }
+  55% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+@keyframes illo-confetti-burst {
+  0% { opacity: 1; transform: translate(0, 0) scale(0.3); }
+  35% { opacity: 1; transform: translate(var(--cx), var(--cy)) scale(1); }
+  100% { opacity: 0; transform: translate(calc(var(--cx) * 1.35), calc(var(--cy) + 14px)) scale(0.9); }
+}
+
+/* ---------- Illustrated account modal (Figma 731:10520 / 734:6520) ---------- */
+/* The Illustrated style's OWN modal: a centered white card over a blurred scrim,
+   with the tapped card's small illustration SEAMLESSLY GROWING into a giant
+   centered illustration (shared-element FLIP driven by IlloModal.tsx). Additive
+   to .illo-* — does NOT touch the .convo-* modal rules. */
+.illo-modal { position: absolute; inset: 0; z-index: 15; }
+.illo-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.06);
+  -webkit-backdrop-filter: blur(6.95px);
+  backdrop-filter: blur(6.95px);
+  cursor: pointer;
+  opacity: 1;
+  /* scrim blurs in with the grow (ease-out) and clears with the shrink (ease-in) */
+  animation: illo-fade 340ms cubic-bezier(0.22, 0.7, 0.16, 1);
+  transition: opacity 340ms cubic-bezier(0.55, 0, 0.85, 0.35);
+}
+/* centered white card: bg white, radius 32, 359 wide, height 434, top 382 (matches
+   731:10520). Fades + gently scales in synced with the illustration grow. The
+   translateX(-50%) centering is baked into the animated transform. */
+.illo-modal-card {
+  position: absolute;
+  left: 50%;
+  top: 382px;
+  width: 359px;
+  height: 434px;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 32px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02), 0 8px 28px rgba(0, 0, 0, 0.10);
+  overflow: hidden;
+  z-index: 2;
+  animation: illo-card-in 340ms cubic-bezier(0.22, 0.7, 0.16, 1) both;
+  transition: opacity 340ms cubic-bezier(0.55, 0, 0.85, 0.35),
+    transform 340ms cubic-bezier(0.55, 0, 0.85, 0.35);
+}
+/* title + description block (Figma: centered, top 244 within the card) */
+.illo-modal-head {
+  position: absolute;
+  left: 50%;
+  top: 240px;
+  width: 263px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.illo-modal-title {
+  font-family: var(--font-family);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  color: #000;
+}
+.illo-modal-body {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 450;
+  color: #7d7d7d;
+}
+/* dark full-width "Got it" button (bg #1f1f1f, white 16px semibold, radius 16) */
+.illo-modal-btn {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 14px;
+  height: 52px;
+  border: none;
+  border-radius: 16px;
+  background: #1f1f1f;
+  color: #fff;
+  font-family: var(--font-family);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.illo-modal-btn:hover { background: #2c2c2c; }
+/* the hero illustration in its FINAL big/centered slot (Figma 207x189, centered
+   in the 359-wide card, top 410 = card top 382 + 28). transform-origin top-left
+   so the FLIP translate+scale maps cleanly onto the card's small illo rect. The
+   transform is driven imperatively by IlloModal's FLIP effect. */
+.illo-modal-illo {
+  position: absolute;
+  left: calc(50% - 103.5px);
+  top: 430px;
+  width: 207px;
+  z-index: 3;
+  transform-origin: top left;
+  will-change: transform;
+}
+.illo-modal-illo img { display: block; width: 100%; height: auto; }
+
+/* Core: the calendar chrome is scaled up NOTICEABLY larger than the card's small
+   calendar (grid/header/rings bigger), centered and raised a touch so it doesn't
+   crowd the title. The bill stickers are a separate fixed-size overlay (below),
+   so enlarging the chrome makes them read smaller relative to it. MODAL_CAL_W in
+   IlloModal.tsx must equal this width so the discs land on the right grid cells. */
+.illo-modal-illo--cal { width: 248px; left: calc(50% - 124px); top: 386px; }
+
+/* fixed-size bill stickers, popped in one-by-one AFTER the grow settles. The
+   overlay tracks the chrome box; each disc is a constant px size (does NOT scale
+   with the calendar) at a computed grid-cell position. */
+.illo-cal-stickers { position: absolute; inset: 0; pointer-events: none; }
+.illo-cal-sticker {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #5e8dba;
+  transform-origin: center;
+  transform: scale(0.6);
+  opacity: 0;
+}
+/* staggered pop-in (subtle scale 0.6 -> 1 + fade, tiny overshoot); the per-disc
+   animation-delay (set inline) makes them appear one-by-one. */
+.illo-cal-stickers.on .illo-cal-sticker {
+  animation: illo-sticker-pop 340ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes illo-sticker-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Spend: the whole wallet grows in as one, then ONLY the credit card rises up and
+   peeks out of the pocket (Figma 734:6520 tucked -> 778:11049 peeked). The card
+   starts tucked (translated DOWN, its lower half hidden behind the pocket front)
+   and eases up to its settled/native position with a gentle overshoot. Translate
+   units are svg user units (viewBox 60x49), so the rise scales with the wallet. */
+.illo-modal-illo--wallet .illo-wallet-card {
+  transform: translateY(7px);
+  transition: transform 640ms cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+/* START stays at the original natural tucked spot (+7); the RISEN peek rises a
+   moderate amount (-6) — high enough to clearly pop out of the pocket, but not so
+   high it gets cut off at the top. Same ease-out+settle. */
+.illo-modal-illo--wallet.risen .illo-wallet-card { transform: translateY(-6px); }
+/* dismiss: clear the scrim + drop the card away while the illustration shrinks */
+.illo-modal--closing .illo-scrim { opacity: 0; }
+.illo-modal--closing .illo-modal-card {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.96);
+  animation: none;
+}
+@keyframes illo-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes illo-card-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.96); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* style-picker mini-mock */
+.sp-illo { position: relative; height: 40px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 4px 4px 4px 12px; }
+.sp-illo-spine { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: linear-gradient(#f6dc72 0 30%, #e2e2e2 30% 100%); }
+.sp-illo-card { display: flex; align-items: center; gap: 4px; height: 14px; background: #f2f2f2; border: 1px solid #e4e4e4; border-radius: 3px; padding: 0 3px; }
+.sp-illo-lines { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.sp-illo-line { width: 60%; height: 2px; border-radius: 1px; background: #9a9a9a; }
+.sp-illo-bar { width: 85%; height: 2px; border-radius: 1px; background: #49c7ef; }
+.sp-illo-bar-2 { background: #37d67a; }
+.sp-illo-figure { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 2px; background: #49c7ef; }
+.sp-illo-figure-2 { background: #37d67a; }
