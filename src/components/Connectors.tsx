@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, ILLO_CARD_ARM, illoSplit, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -265,9 +265,6 @@ export default function Connectors({
   if (illoTree) {
     const ILLO_TRACK = '#e2e2e2';
     const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-    const armToNode: Record<string, string> = Object.fromEntries(
-      Object.entries(ILLO_CARD_ARM).map(([node, arm]) => [arm, node]),
-    );
     const armColor: Record<string, string> = {
       'c-monthly-core': BLUE,
       'c-monthly-spend': GREEN,
@@ -277,30 +274,13 @@ export default function Connectors({
       'c-goals3-travel': PINK,
       'c-goals3-brokerage': PINK,
     };
-
-    /* ---- illo-local flow pacing (does NOT touch the scenario timing shared by
-       other styles) ----
-       The PRIMARY spine flow (income -> circle -> down through the gates) travels
-       FAST, as a time-based wavefront: it starts the moment the first income
-       actually flows (firstIncomeMonth) and descends ONE gate every ILLO_SEG
-       months. Each secondary wishbone ARM is then STRICTLY gated on the wavefront
-       REACHING its gate — an arm cannot begin filling until the spine has arrived
-       at that gate's junction. ILLO_SEG is deliberately small (fast) yet kept
-       <= the earliest arm-arrival (fillOffset) so the wavefront always reaches a
-       gate slightly BEFORE that gate's arm would otherwise start (no arm pops
-       early, no visible jump). The income->monthly segment renders on a GRAY
-       track until the first flow, so it reads gray (like the empty branches) and
-       only turns yellow once income starts moving. */
     const T_INCOME = firstIncomeMonth(dataset, mode); // first income flows (~0.5mo)
-    const ILLO_SEG = 0.25; // months per spine hop — fast descent
-    /* WATERFALL gate: the main spine BELOW the monthly-expenses gate must not fire
-       until BOTH Core AND Spend are 100% funded — only then does surplus flow down
-       into the goals. We find that release month by a monotonic binary search on
-       cardDone(core) && cardDone(spend) (both progress curves are non-decreasing, so
-       the predicate flips once and stays true). The income->monthly hop and the
-       Core/Spend arms keep their original FAST timing off T_INCOME; only the goals
-       gates are re-based onto T_MONTHLY_DONE, so the hand-off is smooth (the spine
-       reveal starts from 0 at release — no jump). */
+    /* WATERFALL gate: the surplus wave (into the goals) must not pass the monthly
+       gate until BOTH Core AND Spend are 100% funded. We find that release month by
+       a monotonic binary search on cardDone(core) && cardDone(spend) (both progress
+       curves are non-decreasing, so the predicate flips once and stays true), and
+       back-solve wave 2's income entrance so its head lands on the monthly gate at
+       exactly that moment (seamless hand-off — see the wave block below). */
     const releaseMonth = (): number => {
       const bothDone = (t: number) =>
         cardDone(dataset, mode, 'core', t) && cardDone(dataset, mode, 'spend', t);
@@ -315,112 +295,116 @@ export default function Connectors({
       return hi;
     };
     const T_MONTHLY_DONE = releaseMonth();
-    const gateArrive: Record<string, number> = {
-      // monthly gate stays fast (feeds the Core/Spend arms) — unchanged
-      monthly: T_INCOME + ILLO_SEG,
-      // goals gates only after monthly is fully funded, then one hop each
-      goals1: T_MONTHLY_DONE + ILLO_SEG,
-      goals2: T_MONTHLY_DONE + 2 * ILLO_SEG,
-      goals3: T_MONTHLY_DONE + 3 * ILLO_SEG,
-    };
-    // when the wavefront STARTS revealing each spine segment (its source gate)
-    const segStart: Record<string, number> = {
-      'c-income-monthly': T_INCOME,
-      // below-monthly trunk waits for Core+Spend completion (waterfall release)
-      'c-monthly-goals1': T_MONTHLY_DONE,
-      'c-goals1-goals2': gateArrive.goals1,
-      'c-goals2-goals3': gateArrive.goals2,
-    };
-    // which gate each wishbone ARM departs from (gate its flow-start on it)
-    const armGate: Record<string, keyof typeof gateArrive> = {
-      'c-monthly-core': 'monthly',
-      'c-monthly-spend': 'monthly',
-      'c-goals1-ef1': 'goals1',
-      'c-goals2-debt': 'goals2',
-      'c-goals2-ef6': 'goals2',
-      'c-goals3-travel': 'goals3',
-      'c-goals3-brokerage': 'goals3',
-    };
-    const spineReveal = (id: string) => clamp01((now - (segStart[id] ?? 0)) / ILLO_SEG);
-    // per-segment fill fraction + colour + track colour
-    const seg = (id: string): { frac: number; color: string; track: string } => {
-      // income spine: gray track until the first income flows, then a FAST yellow
-      // reveal down into the monthly gate
-      if (id === 'c-income-monthly') return { frac: spineReveal(id), color: YELLOW, track: ILLO_TRACK };
-      // pink spine hops: fast time-based wavefront continuing down the trunk
-      if (id === 'c-monthly-goals1' || id === 'c-goals1-goals2' || id === 'c-goals2-goals3')
-        return { frac: spineReveal(id), color: PINK, track: ILLO_TRACK };
-      // wishbone arm: STRICTLY gated — 0 until the wavefront reaches its gate, then
-      // the arm+bar continuous fill follows the card balance (illoSplit.arm)
-      const nodeId = armToNode[id];
-      const gate = armGate[id];
-      const gated = gate ? now < gateArrive[gate] : false;
-      const p = !gated && nodeId ? progressAt(dataset, mode, nodeId, now) : 0;
-      return { frac: illoSplit(p, id).arm, color: armColor[id] ?? PINK, track: ILLO_TRACK };
-    };
+    // per-branch flow colour: income/top-spine YELLOW, trunk hops PINK, arms by card
+    const spineHops = new Set(['c-monthly-goals1', 'c-goals1-goals2', 'c-goals2-goals3']);
+    const colorOf = (id: string): string =>
+      id === 'c-income-monthly' ? YELLOW : spineHops.has(id) ? PINK : armColor[id] ?? PINK;
+    const dOf: Record<string, string> = Object.fromEntries(conns.map((c) => [c.id, c.d]));
 
-    /* ---- 3-phase branch coloring: gray -> colored (active fill) -> gray again ----
-       Each branch's COLORED overlay is drawn on top of a permanent gray track. Once
-       the branch's associated node(s) are FULLY FUNDED, we "decommission" the branch
-       by fading the colored overlay's opacity to 0 (revealing the gray track under
-       it). The fade is a CSS opacity transition, so the revert-to-gray is a smooth
-       ease rather than an instant snap — matching the fill easing. Only the BRANCHES
-       decommission: the card bars / illustrations / goal checks stay funded.
+    /* ---- TWO long travelling WAVES of income (illo-local; other styles untouched) --
+       The income arrives as TWO paycheque WAVES over the run. Each wave is a LONG
+       luminous band (per-node colour) that sweeps a pipe from entrance to exit with a
+       bright leading edge and a fading trailing tail; once the tail passes, the pipe
+       drains back to the gray track (nothing lingers). Because the band is only ever
+       a moving window, every pipe ends GRAY — the card bars / illustrations / checks
+       (owned by IlloCard) keep their funded colour, unchanged.
 
-       Keying (revert-to-gray fires off the associated node's completion, cardDone):
-         - wishbone ARM  -> its own card (Core/Spend/goal) hits 100%.
-         - income->circle -> the monthly section it delivers to (Core AND Spend) funded
-                             (transient yellow while income flows in, then gray).
-         - spine SEGMENT -> EVERY downstream goal it still feeds (that exists in this
-                            dataset) is funded; by the end the whole spine is gray. */
-    const presentCards = new Set(
-      conns.map((c) => armToNode[c.id]).filter((n): n is string => Boolean(n)),
+       Constant-speed, geometry-timed head: a head travels SPEED viewBox-px per month,
+       so a branch of measured length `len` is entered at `tIn` and fully drained by
+       tIn + (len + band)/SPEED. Entrance times CHAIN down the tree (a child branch is
+       entered exactly as the parent head reaches the shared gate) — that keeps the
+       motion smooth/continuous and preserves causal order:
+         wave 1  income -> monthly gate -> Core & Spend arms.
+         wave 2  income -> (reaches the monthly gate the instant Core+Spend are 100%
+                 funded) -> down the spine into the goal gates, in order, each goal
+                 arm firing only as the head reaches its gate.
+       Wave 2's income entrance is back-solved so its head lands on the monthly gate
+       exactly at T_MONTHLY_DONE, so the hand-off past the monthly gate into the goals
+       is seamless (no stall, no jump). */
+    const SPEED = 460; // wave-head speed (viewBox px / month) — long sustained sweep
+    const BAND_FRAC = 0.85; // band length as a big fraction of the pipe (a LONG wave)
+    const BAND_MIN = 52; // px floor so the short goal arms still read as a band
+    const TAIL_STEPS = 8; // sub-segments used to paint the fading trailing edge
+    const segLen = (id: string) => lens[id] ?? 0;
+    const bandOf = (len: number) => Math.max(BAND_MIN, len * BAND_FRAC);
+
+    // entrance time of every branch for a wave whose income leg enters at `t0`; the
+    // spine BELOW the monthly gate is clamped to the Core+Spend release (waterfall).
+    const chainTimes = (t0: number): Record<string, number> => {
+      const tIn: Record<string, number> = {};
+      tIn['c-income-monthly'] = t0;
+      const gMonthly = t0 + segLen('c-income-monthly') / SPEED;
+      tIn['c-monthly-core'] = gMonthly;
+      tIn['c-monthly-spend'] = gMonthly;
+      const s1 = Math.max(gMonthly, T_MONTHLY_DONE); // waterfall release into goals
+      tIn['c-monthly-goals1'] = s1;
+      const gGoals1 = s1 + segLen('c-monthly-goals1') / SPEED;
+      tIn['c-goals1-ef1'] = gGoals1;
+      tIn['c-goals1-goals2'] = gGoals1;
+      const gGoals2 = gGoals1 + segLen('c-goals1-goals2') / SPEED;
+      tIn['c-goals2-debt'] = gGoals2;
+      tIn['c-goals2-ef6'] = gGoals2;
+      tIn['c-goals2-goals3'] = gGoals2;
+      const gGoals3 = gGoals2 + segLen('c-goals2-goals3') / SPEED;
+      tIn['c-goals3-travel'] = gGoals3;
+      tIn['c-goals3-brokerage'] = gGoals3;
+      return tIn;
+    };
+    // wave 1 (1st paycheque): funds the monthly section (income + Core/Spend arms)
+    const WAVE1 = ['c-income-monthly', 'c-monthly-core', 'c-monthly-spend'];
+    // wave 2 (2nd paycheque): sweeps income again, then surplus down into the goals
+    const WAVE2 = [
+      'c-income-monthly',
+      'c-monthly-goals1', 'c-goals1-ef1',
+      'c-goals1-goals2', 'c-goals2-debt', 'c-goals2-ef6',
+      'c-goals2-goals3', 'c-goals3-travel', 'c-goals3-brokerage',
+    ];
+    const timesWave1 = chainTimes(T_INCOME);
+    const timesWave2 = chainTimes(
+      isFinite(T_MONTHLY_DONE) ? T_MONTHLY_DONE - segLen('c-income-monthly') / SPEED : Infinity,
     );
-    // goal cards fed by each spine hop, top-down (filtered to those in this dataset)
-    const spineBelow: Record<string, string[]> = {
-      'c-monthly-goals1': ['ef1', 'debt', 'ef6', 'travel', 'brokerage'],
-      'c-goals1-goals2': ['debt', 'ef6', 'travel', 'brokerage'],
-      'c-goals2-goals3': ['travel', 'brokerage'],
+
+    // one long fading band (bright head -> transparent tail) for `id`, head entered
+    // at `tIn`; null before it enters and after it fully drains back to gray.
+    const waveBand = (id: string, tIn: number, key: string) => {
+      const len = segLen(id);
+      const d = dOf[id];
+      if (!d || len <= 0 || !isFinite(tIn)) return null;
+      const B = bandOf(len);
+      const H = (now - tIn) * SPEED; // head position along the pipe (px)
+      if (H <= 0 || H - B >= len) return null; // not entered yet / already drained
+      const visA = Math.max(0, H - B);
+      const visB = Math.min(len, H);
+      if (visB - visA <= 0.5) return null;
+      const color = colorOf(id);
+      const parts: ReactElement[] = [];
+      for (let i = 0; i < TAIL_STEPS; i++) {
+        const a = visA + ((visB - visA) * i) / TAIL_STEPS;
+        const b = visA + ((visB - visA) * (i + 1)) / TAIL_STEPS;
+        const op = clamp01(1 - (H - (a + b) / 2) / B); // 1 at the head, ~0 at the tail
+        if (op <= 0.02) continue;
+        const da = `${(b - a).toFixed(2)} ${(len + B).toFixed(2)}`;
+        const off = (-a).toFixed(2);
+        parts.push(
+          <path key={`g-${i}`} d={d} stroke={color} strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={op * 0.16} strokeDasharray={da} strokeDashoffset={off} />,
+        );
+        parts.push(
+          <path key={`c-${i}`} d={d} stroke={color} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={op} strokeDasharray={da} strokeDashoffset={off} />,
+        );
+      }
+      return parts.length ? <g key={key}>{parts}</g> : null;
     };
-    const decommissioned = (id: string): boolean => {
-      const node = armToNode[id];
-      if (node) return cardDone(dataset, mode, node, now); // arm: its own card funded
-      if (id === 'c-income-monthly')
-        return cardDone(dataset, mode, 'core', now) && cardDone(dataset, mode, 'spend', now);
-      const below = (spineBelow[id] ?? []).filter((c) => presentCards.has(c));
-      return below.length > 0 && below.every((c) => cardDone(dataset, mode, c, now));
-    };
+
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
         {probes}
-        {/* rounded 4px tracks */}
+        {/* permanent gray tracks — every pipe rests gray; the waves light it transiently */}
         {conns.map((c) => (
-          <path key={`trk-${c.id}`} d={c.d} stroke={seg(c.id).track} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path key={`trk-${c.id}`} d={c.d} stroke={ILLO_TRACK} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         ))}
-        {/* colored fill dash-revealed from the source end */}
-        {conns.map((c) => {
-          const len = lens[c.id];
-          if (!len || len <= 0) return null;
-          const { frac, color } = seg(c.id);
-          if (frac <= 0.001) return null;
-          // phase 3: once the branch's node(s) are funded, fade the colored overlay
-          // out (0.6s ease) so it decommissions smoothly to the gray track beneath.
-          const off = decommissioned(c.id) ? 0 : 1;
-          return (
-            <path
-              key={`fill-${c.id}`}
-              d={c.d}
-              stroke={color}
-              strokeWidth={4}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={`${len.toFixed(2)} ${len.toFixed(2)}`}
-              strokeDashoffset={(len * (1 - clamp01(frac))).toFixed(2)}
-              style={{ opacity: off, transition: 'opacity 0.6s ease' }}
-            />
-          );
-        })}
+        {/* wave 1 then wave 2 — long fading bands that sweep each pipe and drain to gray */}
+        {WAVE1.map((id) => waveBand(id, timesWave1[id], `w1-${id}`))}
+        {WAVE2.map((id) => waveBand(id, timesWave2[id], `w2-${id}`))}
       </svg>
     );
   }

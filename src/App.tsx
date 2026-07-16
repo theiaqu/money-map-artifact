@@ -439,7 +439,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 9:39 AM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 10:24 AM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
