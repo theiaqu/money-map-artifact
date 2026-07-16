@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap');
 
 :root {
   /* palette */
@@ -23,6 +23,8 @@
 
   /* type tokens (from Figma) */
   --font-family: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* serif stack for the Minimalist-icons hero headline (Figma "Source Serif 4") */
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', 'Times', serif;
   --body-size-s: 14px;
   --body-line-s: 20px;
   --body-size-m: 16px;
@@ -673,56 +675,68 @@ body {
   align-items: flex-start;
   text-align: left;
 }
+/* white icon tile (Figma 48px, radius 16) with a LEFT-anchored two-tone pastel
+   fill whose right corners are nearly square (capsule look). */
 .icon-tile {
   position: relative;
-  overflow: clip;
+  overflow: hidden;
   flex: 0 0 auto;
-  width: 52px;
-  height: 52px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 /* left-anchored pastel fill: width set inline as p*100% so it grows left→right
-   behind the icon and is clipped to the tile's rounded corners. NO width
-   transition (progressAt is already frame-eased). */
+   behind the icon. Left corners match the tile (16), right corners nearly square
+   (2) — the asymmetric capsule from Figma. NO width transition (progressAt is
+   already frame-eased). */
 .icon-fill {
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
+  height: 100%;
   z-index: 0;
-  border-radius: inherit;
+  border-radius: 16px 2px 2px 16px;
 }
-.icon-fill.icon-income { background: #fbedb8; }
-.icon-fill.icon-blue { background: #d7ecff; }
-.icon-fill.icon-green { background: #b0ddba; }
-.icon-fill.icon-pink { background: #f7dfe9; }
+.icon-fill.icon-income { background: #f6dc72; }
+.icon-fill.icon-blue { background: #b0d9ff; }
+.icon-fill.icon-green { background: #61bc76; }
+.icon-fill.icon-pink { background: #eebed4; }
 /* glyph rides above the fill so it stays readable at every fill level */
 .icon-glyph {
   position: relative;
   z-index: 1;
 }
+/* details = the name/amount column + optional goal date pill (Figma nested flex,
+   gap 8) so the text gets the full remaining width before the pill (matches Figma
+   where the tile↔details gap is 12 but the text↔pill gap is a tighter 8). */
+.icon-details {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .icon-text {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
-  /* shrink (with ellipsis) before the far-right goal date pill so a long
-     "N mo. from now" label never collides with the name (mirrors Super slim). */
-  flex: 0 1 auto;
+  gap: 0;
+  /* grow to push the far-right goal date pill to the row edge, but shrink (with
+     ellipsis) before it so a long "N mo. from now" label never collides. */
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
 }
 .icon-name {
   font-family: var(--font-family);
   font-size: 14px;
-  line-height: 18px;
+  line-height: 20px;
   font-weight: 600;
-  color: #191919;
+  color: #111111;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -730,18 +744,18 @@ body {
 .icon-amount {
   font-family: var(--font-family);
   font-size: 14px;
-  line-height: 18px;
+  line-height: 20px;
   font-weight: 450;
-  color: #191919;
+  color: #111111;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* goal-only "fund by" date pill on the far right: gray track (unfunded) that
-   colors in to pink (funded), matching the Super slim goal target pill. */
+/* goal-only fund-by date pill on the far right: static pink pill (Figma
+   secondary/pink/petal), #111 text — matches the Figma resting appearance. */
 .icon-date {
-  margin-left: auto;
   flex: 0 0 auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   height: 24px;
@@ -752,15 +766,72 @@ body {
   line-height: var(--body-line-s);
   font-weight: 600;
   white-space: nowrap;
-  background: #f0f0f0;
-  border: 1px solid #b0b0b0;
-  color: #b0b0b0;
-  transition: background 0.45s ease, border-color 0.45s ease, color 0.45s ease;
+  background: #eebed4;
+  color: #111111;
 }
-.icon-date.funded {
-  background: #f7dfe9;
-  border-color: #624b52;
-  color: #624b52;
+
+/* ---------- Minimalist-icons hero header + footer (Figma 773:8879) ---------- */
+.board-icons { background: #f5f5f5; }
+.icon-hero-logo {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  z-index: 3;
+}
+.icon-hero-sub {
+  position: absolute;
+  top: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 338px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-family);
+  font-weight: 450;
+  font-size: 16px;
+  line-height: 24px;
+  color: #111111;
+  z-index: 3;
+}
+.icon-hero-headline {
+  position: absolute;
+  top: 204px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 348px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 52px;
+  line-height: 0.94;
+  letter-spacing: -1.6px;
+  color: #111111;
+  z-index: 3;
+}
+.icon-footer {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 9px 18px;
+  border-radius: 24px;
+  background: rgba(250, 250, 250, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #ffffff;
+  box-shadow: 0 2px 40px rgba(0, 0, 0, 0.1);
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.12px;
+  color: #000000;
+  z-index: 3;
 }
 
 /* ---------- "conversational" card style (Figma 731:9883) ---------- */
@@ -1271,6 +1342,195 @@ body {
   color: #000;
   white-space: nowrap;
 }
+
+/* ============================================================================
+   "Progress bar, inside" (pbi) — Figma node 792:8522. All classes are
+   .pbi-prefixed + scoped to this style so they never collide with the shared
+   .pbar / .pbg / .ppill naming used by the other progress styles.
+   ============================================================================ */
+.board-pbi { background: #f3f4f6; }
+
+/* ---- hero header (centered): sprout logo · gray subtitle · serif headline ---- */
+.pbi-hero-logo {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  z-index: 3;
+}
+.pbi-hero-sub {
+  position: absolute;
+  top: 138px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 344px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 450;
+  color: #6b7280;
+  z-index: 3;
+}
+.pbi-hero-title {
+  position: absolute;
+  top: 204px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 338px;
+  margin: 0;
+  text-align: center;
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-size: 44px;
+  line-height: 0.96;
+  font-weight: 500;
+  letter-spacing: -1.6px;
+  color: #111111;
+  z-index: 3;
+}
+
+/* ---- income pill row (INCOME yellow + white PAYCHECK pills) on the spine top ---- */
+.pbi-income-row {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 4;
+}
+.pbi-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111111;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pbi-pill-income {
+  background: #f6dc72;
+  min-width: 68px;
+}
+
+/* ---- gate-label pills, centered ON the thin spine (x=50) ---- */
+.pbi-gate {
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111111;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+}
+.pbi-gate.two-line { white-space: normal; }
+
+/* ---- white rounded card: icon tile + name over the filling bar ---- */
+.pbi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  width: 216px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(17, 17, 17, 0.06), 0 6px 16px rgba(17, 17, 17, 0.05);
+}
+.pbi-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pbi-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.pbi-card-name {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 450;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- in-card progress bar: gray track, colored fill, inline amount + date ---- */
+.pbi-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding-left: 12px;
+  padding-right: 8px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+.pbi-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 10px;
+  /* width + background set inline (eased progressAt + per-color pastel) */
+}
+.pbi-bar-amount {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #111111;
+  white-space: nowrap;
+}
+.pbi-bar-date {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111111;
+  font-family: var(--font-family);
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.pbi-bar-date.reached { background: #624b52; color: #f7dfe9; }
 
 /* ---------- "progress pill" chart style (Figma 462:6194 etc.) ---------- */
 .ppill-card {

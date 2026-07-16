@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -124,6 +124,7 @@ export default function Connectors({
   convoTree = false,
   sheetTree = false,
   illoTree = false,
+  pbiTree = false,
 }: {
   now: number;
   mode: Mode;
@@ -137,6 +138,7 @@ export default function Connectors({
   convoTree?: boolean; // "Conversational" style: use the convo-card thin tree set
   sheetTree?: boolean; // "Sheet" style: use the grouped-panel wishbone tree set
   illoTree?: boolean; // "Illustrated" style: 4px progress-track spine + branch->bar fill
+  pbiTree?: boolean; // "Progress bar, inside" style: thin gray spine + curvy arms
 }) {
   // Gate-style precedence (a gate choice can OVERRIDE the visual identity):
   //   compact     -> skinny-arrow connectors + % badges, REGARDLESS of identity
@@ -161,7 +163,9 @@ export default function Connectors({
   // dataset-aware geometry: each set has a Simple and an Optimizer variant (the
   // Optimizer adds a 3rd goal gate on a compact rhythm). Simple returns its exact
   // original arrays.
-  const baseConns: Connector[] = illoTree
+  const baseConns: Connector[] = pbiTree
+    ? connectorsProgressFor(dataset)
+    : illoTree
     ? connectorsIlloFor(dataset)
     : sheetTree
     ? connectorsSheetFor(dataset)
@@ -221,7 +225,7 @@ export default function Connectors({
     setMids(nextMids);
     // conns is derived purely from branch + map + v1 + condensed + dataset
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree]);
+  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree]);
 
   // check badges on decommissioned (fully funded) branch arms — shared by both
   // the money-map and flow/compact renderers. Rendered last so it sits on top of
@@ -255,6 +259,65 @@ export default function Connectors({
       stroke="none"
     />
   ));
+
+  // ---------- progress bar, inside: thin gray spine + soft curvy arms ----------
+  // A ~1.25px gray tree (Figma 792:8522): a left spine broken by gaps at each
+  // white gate-label pill, with soft cubic-S wishbone arms into each card. Money
+  // travels as thin colored pulses (income yellow / core blue / spend green /
+  // goals pink), and a light-gray check disc lands on an arm the moment its card
+  // finishes funding — mirroring the Figma "checkmark in a disc" badge.
+  if (pbiTree) {
+    const pbiById = (id: string) => conns.find((c) => c.id === id)?.d;
+    const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
+      const m = mids[armId];
+      if (!m) return null;
+      const done = cardDone(dataset, mode, cardId, now);
+      return (
+        <g
+          key={`pbi-chk-${armId}`}
+          transform={`translate(${m.x} ${m.y})`}
+          style={{ opacity: done ? 1 : 0, transition: 'opacity 0.45s ease' }}
+        >
+          <circle r={10} fill="#e6e7ea" />
+          <Check x={-6.5} y={-6.5} width={13} height={13} color="#111" strokeWidth={2.6} />
+        </g>
+      );
+    });
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* thin static gray tree */}
+        {conns.map((c) => (
+          <path key={c.id} d={c.d} stroke="var(--connector)" strokeWidth={1.25} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {probes}
+        {/* thin colored pulse per in-flight income event */}
+        {FLOW_META.map((m) => {
+          const d = pbiById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`pbi-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={2}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {pbiBadges}
+      </svg>
+    );
+  }
 
   // ---------- illustrated: 4px rounded progress-track spine + branch->bar fill ----------
   // A gray (#e2e2e2) rounded track with a yellow (#fbedb8) income segment; the
@@ -295,6 +358,37 @@ export default function Connectors({
       return hi;
     };
     const T_MONTHLY_DONE = releaseMonth();
+
+    /* STRICT causal gate on the goal spine hand-offs (illo-only): a goal-gate's
+       DESCENDING spine segment (and everything below it) must NOT begin flowing
+       until the PREVIOUS goal level is TOTALLY filled AND its completion check
+       has landed — the exact same cardDone/isReached source the on-arm check
+       badge uses (so the branch unlock and the check appear together). We
+       binary-search the month a gate's child cards are all done (each fill curve
+       is non-decreasing, so cardDone flips once and stays true), mirroring
+       releaseMonth. Per-gate (not one-off) so it generalizes to the Optimizer's
+       2nd->3rd hop. Cards a dataset lacks resolve to Infinity, which just holds
+       that (non-existent) segment gray — harmless. */
+    const GATE_CARDS: Record<string, string[]> = {
+      goals1: ['ef1'],
+      goals2: ['debt', 'ef6'],
+    };
+    const gateDoneMonth = (cardIds: string[]): number => {
+      const allDone = (t: number) => cardIds.every((c) => cardDone(dataset, mode, c, t));
+      const hiCap = animMonths(dataset, mode);
+      if (cardIds.length === 0 || !allDone(hiCap)) return Infinity;
+      let lo = 0;
+      let hi = hiCap;
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        if (allDone(mid)) hi = mid;
+        else lo = mid;
+      }
+      return hi;
+    };
+    const T_GOAL1_DONE = gateDoneMonth(GATE_CARDS.goals1); // 1st goal fully filled + checked
+    const T_GOAL2_DONE = gateDoneMonth(GATE_CARDS.goals2); // 2nd goal(s) fully filled + checked
+
     // per-branch flow colour: income/top-spine YELLOW, trunk hops PINK, arms by card
     const spineHops = new Set(['c-monthly-goals1', 'c-goals1-goals2', 'c-goals2-goals3']);
     const colorOf = (id: string): string =>
@@ -339,13 +433,19 @@ export default function Connectors({
       const s1 = Math.max(gMonthly, T_MONTHLY_DONE); // waterfall release into goals
       tIn['c-monthly-goals1'] = s1;
       const gGoals1 = s1 + segLen('c-monthly-goals1') / SPEED;
-      tIn['c-goals1-ef1'] = gGoals1;
-      tIn['c-goals1-goals2'] = gGoals1;
-      const gGoals2 = gGoals1 + segLen('c-goals1-goals2') / SPEED;
+      tIn['c-goals1-ef1'] = gGoals1; // 1st-goal arm still fires as the head reaches its gate
+      // STRICT gate: the goals1 -> goals2 spine hop (and everything below it) can
+      // only start once the 1st goal is TOTALLY filled + checked.
+      const s2 = Math.max(gGoals1, T_GOAL1_DONE);
+      tIn['c-goals1-goals2'] = s2;
+      const gGoals2 = s2 + segLen('c-goals1-goals2') / SPEED;
       tIn['c-goals2-debt'] = gGoals2;
       tIn['c-goals2-ef6'] = gGoals2;
-      tIn['c-goals2-goals3'] = gGoals2;
-      const gGoals3 = gGoals2 + segLen('c-goals2-goals3') / SPEED;
+      // STRICT gate: the goals2 -> goals3 spine hop (Optimizer only) waits for the
+      // 2nd goal level to be TOTALLY filled + checked.
+      const s3 = Math.max(gGoals2, T_GOAL2_DONE);
+      tIn['c-goals2-goals3'] = s3;
+      const gGoals3 = s3 + segLen('c-goals2-goals3') / SPEED;
       tIn['c-goals3-travel'] = gGoals3;
       tIn['c-goals3-brokerage'] = gGoals3;
       return tIn;
@@ -511,6 +611,16 @@ export default function Connectors({
     const treeStroke = 'var(--connector)';
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* "Minimalist icons" (773:8879): thin arrowheads point into each tile.
+            Only the branch ARMS (c.arrow) carry a head — the vertical spine hops
+            don't. Sized in user space so it stays a small consistent chevron. */}
+        {iconTree && (
+          <defs>
+            <marker id="icon-arrow" markerWidth="8" markerHeight="8" refX="1" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M1 1 L5 3.5 L1 6" fill="none" stroke={treeStroke} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+            </marker>
+          </defs>
+        )}
         {/* thin static skeleton (gray for most trees; near-black for the sheet) */}
         {conns.map((c) => (
           <path
@@ -521,6 +631,7 @@ export default function Connectors({
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
+            markerEnd={iconTree && c.arrow ? 'url(#icon-arrow)' : undefined}
           />
         ))}
         {probes}

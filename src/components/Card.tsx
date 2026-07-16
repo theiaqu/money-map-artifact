@@ -1,6 +1,7 @@
-import { Check } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, type Dataset, type Mode, type DateMode } from '../scenario';
+import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, type CardNode, type GraphColor, type MapStyle } from '../data';
+import { isReached, progressAt, goalDateLabel, heroHeadline, type Dataset, type Mode, type DateMode } from '../scenario';
+import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
 import ProgressBar from './ProgressBar';
@@ -46,6 +47,55 @@ const PILL_INCOME_POS: Record<Dataset, { x: number; y: number }> = {
 
 function Spacer({ h }: { h: number }) {
   return <div style={{ height: h, flexShrink: 0 }} />;
+}
+
+// "Progress bar, inside" (pbi) card icon tile: the line icon + its light tile /
+// darker glyph tint, picked from the card id (accounts) or its goal title.
+const PBI_TILE_BG: Record<GraphColor, string> = {
+  yellow: '#fbeeb5',
+  blue: '#cbe6ff',
+  green: '#c9ecd2',
+  pink: '#f6dbe7',
+};
+const PBI_GLYPH: Record<GraphColor, string> = {
+  yellow: '#9a7b16',
+  blue: '#2b6cb0',
+  green: '#2f8f57',
+  pink: '#c06090',
+};
+function pbiIconFor(node: CardNode): LucideIcon {
+  if (node.kind === 'account') return node.id === 'core' ? Receipt : CreditCard;
+  const t = node.title.toLowerCase();
+  if (/debt/.test(t)) return PiggyBank;
+  if (/house/.test(t)) return Home;
+  if (/travel|slush/.test(t)) return Plane;
+  if (/brokerage|invest/.test(t)) return TrendingUp;
+  return Umbrella; // emergency funds + default
+}
+
+// pbi hero + income-pill chrome: the sprout logo, gray subtitle, large serif
+// headline (derived from the dataset's milestone goal), and the INCOME + PAYCHECK
+// pill row that sits at the top of the left spine. Rendered inline in the income
+// render branch so it stays scoped to this style (own .pbi-* classes).
+function PbiChrome({ dataset, amount }: { dataset: Dataset; amount: string }) {
+  const hero = heroHeadline(dataset);
+  return (
+    <>
+      <div className="pbi-hero-logo">
+        <FruitfulLogo size={34} color="#2f8f4e" />
+      </div>
+      <p className="pbi-hero-sub">
+        Your Money Map is ready! Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+      </p>
+      <h1 className="pbi-hero-title">{`${hero.pre} ${hero.date}`}</h1>
+      <div className="pbi-income-row" title={amount} style={{ left: PBI_INCOME_LEFT, top: PBI_INCOME_TOP }}>
+        <span className="pbi-pill pbi-pill-income">Income</span>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className="pbi-pill">Paycheck</span>
+        ))}
+      </div>
+    </>
+  );
 }
 
 // bottom text row for the "Title tertiary" card style (goal cards only)
@@ -272,9 +322,12 @@ export default function Card({
         </div>
       );
     }
+    // default "Bracket" gate (Figma 773:8879): every row — income included —
+    // left-aligns in one column at ICON_LIST_LEFT (the left connector tree lives
+    // to its left), so ignore node.x here.
     const iconTop = iconRowTopFor(dataset)[node.id] ?? node.y;
     return (
-      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: node.x, top: iconTop }}>
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: ICON_LIST_LEFT, top: iconTop }}>
         <IconRowCard node={node} now={now} mode={mode} dataset={dataset} dateMode={dateMode} />
       </div>
     );
@@ -387,36 +440,49 @@ export default function Card({
     );
   }
 
-  // "Progress bar, inside" — the amount pill becomes a left→right filling bar
-  // inside the card; the title drops below it. Fill fraction reuses progressAt
-  // (accounts/goals) so it fills in step with the branch comet like the pie ring;
-  // income is binary-full once money is flowing. isReached flips the goal date
-  // pill to the mauve "reached" treatment (no check icon in this style).
+  // "Progress bar, inside" (Figma 792:8522) — a hero header + left spine + white
+  // cards whose in-card rounded bar fills with the dollar amount INSIDE it. The
+  // income node renders the hero + INCOME/PAYCHECK pill chrome (no card); each
+  // account/goal card is an icon tile + name over the filling bar (goal cards add
+  // an uppercase date pill). Fill fraction reuses progressAt so the bar fills in
+  // step with the branch pulse; isReached flips the goal date pill to "reached".
   if (isProgress) {
-    const p = node.kind === 'income' ? (now > 0 ? 1 : 0) : progressAt(dataset, mode, node.id, now);
+    if (node.kind === 'income') {
+      // full-board-width wrapper so the centered hero resolves 50% against the
+      // 402-wide board (not the shrink-to-fit node), and the income pill row +
+      // hero can be absolutely placed in board coordinates.
+      return (
+        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: 0, top: 0, width: 402, height: 0 }}>
+          <PbiChrome dataset={dataset} amount={node.amount} />
+        </div>
+      );
+    }
+    const p = progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
-    const amountLabel = node.kind === 'goal' ? node.amount : `${node.amount} ${node.suffix}`;
+    const top = pbiRowTopFor(dataset)[node.id] ?? node.y;
+    const Glyph = pbiIconFor(node);
     return (
-      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: node.x, top: node.y }}>
-        <div className="card card-progress">
-          <Spacer h={node.kind === 'income' ? 8 : 12} />
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>
+        <div className="pbi-card">
+          <div className="pbi-card-head">
+            <span className="pbi-tile" style={{ background: PBI_TILE_BG[node.graph] }}>
+              <Glyph size={15} strokeWidth={2} color={PBI_GLYPH[node.graph]} />
+            </span>
+            <span className="pbi-card-name">{node.title}</span>
+          </div>
           <ProgressBar
             color={node.graph}
             progress={p}
-            amount={amountLabel}
+            amount={node.amount}
             date={
               node.kind === 'goal'
                 ? dateMode === 'months'
                   ? goalDateLabel(dateMode, node.badge)
-                  : `By ${node.badge ?? ''}`
+                  : node.badge ?? ''
                 : undefined
             }
             reached={reached}
-            tall={node.kind === 'income'}
           />
-          <Spacer h={12} />
-          <div className="pbar-title">{node.title}</div>
-          <Spacer h={6} />
         </div>
       </div>
     );

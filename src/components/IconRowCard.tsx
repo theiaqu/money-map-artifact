@@ -12,16 +12,16 @@ import {
 import type { CardNode } from '../data';
 import { goalDateLabel, progressAt, type Dataset, type DateMode, type Mode } from '../scenario';
 
-// Fixed geometry copied from Figma 729:6187 (same 402px board width). The account
-// / goal icon tiles left-align in a column at x≈78.83; INCOME hangs further LEFT
-// at x=11 so it sits on the spine (exactly the slim income-vs-account offset). The
-// row is stretched to a fixed right edge (386) so goal date pills hug the right.
-const RIGHT_EDGE = 386;
-const TILE_LEFT_INCOME = 11;
-const TILE_LEFT_ACCOUNT = 78.83;
+// Default "Bracket" gate (Figma 773:8879): every tile — income included — left-
+// aligns in a single column at x=72; the row stretches to a fixed right edge (378)
+// so goal date pills hug the right. The left connector tree lives to the left of
+// the column. (The Card wrapper is placed at ICON_LIST_LEFT, so the row itself
+// needs no marginLeft — just a fixed width.)
+const ICON_ROW_W = 312; // list width (left 72 -> right edge; goal date pills hug the right)
 // "Labeled" gate (Figma 738:7107): account/goal tiles are INDENTED to the right
 // (tile left 116) and the Card wrapper is already placed there, so the row needs
 // no marginLeft — only a fixed right edge so goal date pills still align.
+const RIGHT_EDGE = 386;
 const LABELED_TILE_LEFT = 116;
 
 // Per-row icon resolver (Figma 729:6187). income/core/spend map by node id; goals
@@ -83,12 +83,14 @@ export default function IconRowCard({
   const isIncome = node.kind === 'income';
   const isGoal = node.kind === 'goal';
 
-  // the white icon tile with its left-anchored pastel fill (width driven purely
-  // by the already-eased `p`, no CSS width transition) — shared by both layouts.
+  // the white icon tile with its left-anchored two-tone pastel fill (width driven
+  // purely by the already-eased `p`, no CSS width transition) — shared by both
+  // layouts. Left corners round to 16, right corners nearly square (CSS) so the
+  // colored portion reads as the asymmetric capsule from Figma.
   const tile = (
     <span className="icon-tile">
       <span className={`icon-fill icon-${kind}`} style={{ width: `${p * 100}%` }} aria-hidden />
-      <Icon className="icon-glyph" size={24} strokeWidth={1.75} color="#191919" />
+      <Icon className="icon-glyph" size={18} strokeWidth={1.75} color="#111111" />
     </span>
   );
 
@@ -122,23 +124,20 @@ export default function IconRowCard({
     );
   }
 
-  // anchor the tile in the fixed left column (income further left) and stretch the
-  // row to the fixed right edge so goal pills align — the node wrapper still lives
-  // at left:node.x, so we offset by the difference (mirrors Super slim).
-  const tileLeft = isIncome ? TILE_LEFT_INCOME : TILE_LEFT_ACCOUNT;
-  const marginLeft = tileLeft - node.x;
-  const width = RIGHT_EDGE - tileLeft;
-
+  // Default "Bracket" gate (Figma 773:8879): every row is a single left-aligned
+  // column entry (tile · name/amount · optional goal date pill). The Card wrapper
+  // is already at the fixed list left (ICON_LIST_LEFT), so the row just needs a
+  // fixed width so goal date pills hug the right edge. Income is a normal row.
   return (
-    <div className="icon-row" style={{ width, marginLeft }}>
+    <div className="icon-row" style={{ width: ICON_ROW_W }}>
       {tile}
-      <span className="icon-text">
-        <span className="icon-name">{nameText(node)}</span>
-        <span className="icon-amount">{amountText(node)}</span>
-      </span>
-      {isGoal && (
-        <span className={`icon-date${funded ? ' funded' : ''}`}>{goalDateLabel(dateMode, node.badge)}</span>
-      )}
+      <div className="icon-details">
+        <span className="icon-text">
+          <span className="icon-name">{nameText(node)}</span>
+          <span className="icon-amount">{amountText(node)}</span>
+        </span>
+        {isGoal && node.badge && <span className="icon-date">{goalDateLabel(dateMode, node.badge)}</span>}
+      </div>
     </div>
   );
 }

@@ -946,3 +946,26 @@ export const endSecs = (dataset: Dataset, mode: Mode) => animMonths(dataset, mod
 // stocks/heart-monitor cards to gate their solid data line/fill/highlight so
 // nothing but the dotted baseline shows during the pre-first-income idle period.
 export const firstIncomeMonth = (dataset: Dataset, mode: Mode) => getScenario(dataset, mode).income[0];
+
+/* ---------- "Minimalist icons" hero headline (Figma 773:8879) ----------
+   The serif hero reads "you could be… {pre} {date}", where the date derives from
+   the scenario's milestone goal completion (NOT the sim clock — it's the goal's
+   cosmetic fund-by badge, spelled out with a full month name). Dataset-aware: a
+   dataset with a debt goal reads "Debt free by {debt payoff}"; otherwise it reads
+   "Set for life by {final goal}". Reuses each dataset's existing goal badges. */
+const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function fullMonthYear(badge: string | undefined): string {
+  const m = badge?.trim().toLowerCase().match(/^([a-z]{3})\s+(\d{4})$/);
+  if (!m) return badge ?? '';
+  const mi = MONTH_ABBR.indexOf(m[1]);
+  return mi < 0 ? (badge ?? '') : `${MONTH_FULL[mi]} ${m[2]}`;
+}
+export function heroHeadline(dataset: Dataset): { pre: string; date: string } {
+  const cfg = DATASETS[dataset];
+  const debtGoal = cfg.goals.find((g) => /debt/i.test(g.title));
+  const milestone = debtGoal ?? cfg.goals[cfg.goals.length - 1];
+  return {
+    pre: debtGoal ? 'Debt free by' : 'Set for life by',
+    date: fullMonthYear(milestone?.badge),
+  };
+}

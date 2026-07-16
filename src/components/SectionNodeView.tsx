@@ -1,5 +1,5 @@
 import { CalendarSync, Goal } from 'lucide-react';
-import type { BranchStyle, MapStyle, SectionNode } from '../data';
+import { pbiLabels, type BranchStyle, type MapStyle, type SectionNode } from '../data';
 import { type Dataset } from '../scenario';
 
 type LabelInfo = { label: string; left: number; top: number; twoLine?: boolean; width?: number };
@@ -131,6 +131,7 @@ export default function SectionNodeView({
   condensed = false,
   convo = false,
   illo = false,
+  pbi = false,
 }: {
   node: SectionNode;
   dimmed?: boolean;
@@ -141,7 +142,21 @@ export default function SectionNodeView({
   condensed?: boolean;
   convo?: boolean;
   illo?: boolean;
+  pbi?: boolean;
 }) {
+  // "Progress bar, inside" (Figma 792:8522): white gate-label pills centered ON
+  // the thin left spine (x=50). Two-line pills wrap within `width`.
+  if (pbi) {
+    const info = pbiLabels[dataset][node.id];
+    if (!info) return null;
+    return (
+      <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: 50, top: info.top }}>
+        <div className={`pbi-gate${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>
+          {info.label}
+        </div>
+      </div>
+    );
+  }
   // "Illustrated" style: white rounded gate-label pills beside the 4px spine.
   if (illo) {
     const info = ILLO_LABELS[dataset][node.id];

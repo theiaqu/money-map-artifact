@@ -314,43 +314,51 @@ export const connectorsSkinny: Connector[] = [
   { id: 'c-goals2-ef6', d: 'M32 305 L 48 305 L 48 321 Q 48 329 56 329 L 64 329', arrow: false },
 ];
 
-/* "Minimalist icons" (Figma 729:6187) — a variant of the super-slim style: each
-   row is a 52px white icon tile + name/amount text (+ goal date pill). Like slim,
-   it uses its OWN compact vertical rhythm (NOT the tall shared node.y). Values
-   below are the icon-tile TOP (= node-wrapper top); the tile is 52px tall so its
-   vertical CENTER is top+26. Tops match Figma's ~62.6px row pitch: income 243,
-   core 305.6, spend 373.4, ef1 436, debt 498.6, ef6 561.3 — all fit the 874px
-   screen. Only the icon style reads these (via Card.tsx). */
+/* "Minimalist icons" (Figma 773:8879) — a serif-hero + icon-row layout. A hero
+   header (sprout logo · subtitle · large serif headline) sits above a single
+   left-aligned column of rows; each row is a 48px white icon tile + name/amount
+   text (+ goal date pill). Uses its OWN compact vertical rhythm (NOT the tall
+   shared node.y): the whole column is left-aligned at ICON_LIST_LEFT and starts
+   BELOW the hero. Values below are the icon-tile TOP (= node-wrapper top); the tile
+   is 48px tall so its vertical CENTER is top+24. Rows sit on Figma's 64px pitch
+   (48 tile + 16 gap): income 351, core 415, spend 479, ef1 543, debt 607, ef6 671
+   — all fit the 874px screen (Simple has 6 rows). */
+export const ICON_LIST_LEFT = 72; // single left-aligned tile column (Figma list left)
 export const iconRowTop: Record<string, number> = {
-  income: 243,
-  core: 305.6,
-  spend: 373.4,
-  ef1: 436,
-  debt: 498.6,
-  ef6: 561.3,
+  income: 351,
+  core: 415,
+  spend: 479,
+  ef1: 543,
+  debt: 607,
+  ef6: 671,
 };
 
-/* "Minimalist icons" connector geometry — the SAME super-thin (~1px) tree as the
-   skinny renderer (spine + compact rounded brackets, no arrowheads/labels/badges),
-   retuned to the icon-tile row centers. The icon tiles sit at left≈78.83, so the
-   bracket arms end at x=74 (a small gap before the tile's left edge); the income
-   tile sits ON the spine (income tile 11..63, spine x=40). Bar x=56, corner r=8.
-   Attach centers (row top +26): core 331.6 / spend 399.4 / ef1 462 / debt 524.6 /
-   ef6 587.3. Nubs at each gate's child midpoint (monthly 365.5, goals2 555.95);
-   the 1st goal is a straight tick. Spine starts at the Income tile bottom (295). */
+/* "Minimalist icons" connector geometry (Figma 773:8879) — a thin (~1px) gray
+   left spine at x=24 with short rounded ELBOW/BRACKET branches, each ending in a
+   small ARROWHEAD pointing right into its tile (tile left 72, arms end at x=64).
+   Unlike the old bracket gate, EVERY tile (income included) is a branch off the
+   spine: income is a straight arm at the top, core/spend and the multi-goal gates
+   are rounded brackets, single goals are straight arms. Bar x=40, corner r=8.
+   Attach centers (row top +24): income 375 / core 439 / spend 503 / ef1 567 /
+   debt 631 / ef6 695. Gate junctions sit at each gate's child midpoint (monthly
+   471, goals2 663). `c-income-arm` is a static (un-pulsed) arm into the income
+   tile; the spine + arms carry the causal pulses unchanged. */
 export const connectorsIcon: Connector[] = [
-  // one continuous thin spine at x=40, from the Income tile down to the 2nd gate nub
-  { id: 'c-income-monthly', d: 'M40 295 L 40 365.5', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M40 365.5 L 40 462', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M40 462 L 40 555.95', arrow: false },
-  // monthly gate — compact rounded bracket up to core(331.6) / down to spend(399.4)
-  { id: 'c-monthly-core', d: 'M40 365.5 L 56 365.5 L 56 339.6 Q 56 331.6 64 331.6 L 74 331.6', arrow: false },
-  { id: 'c-monthly-spend', d: 'M40 365.5 L 56 365.5 L 56 391.4 Q 56 399.4 64 399.4 L 74 399.4', arrow: false },
-  // 1st goal — straight thin tick off the spine at the ef1 row center
-  { id: 'c-goals1-ef1', d: 'M40 462 L 74 462', arrow: false },
-  // 2nd goal gate — compact rounded bracket up to debt(524.6) / down to ef6(587.3)
-  { id: 'c-goals2-debt', d: 'M40 555.95 L 56 555.95 L 56 532.6 Q 56 524.6 64 524.6 L 74 524.6', arrow: false },
-  { id: 'c-goals2-ef6', d: 'M40 555.95 L 56 555.95 L 56 579.3 Q 56 587.3 64 587.3 L 74 587.3', arrow: false },
+  // static arm into the income tile (arrowhead) — income is the source, so it
+  // never pulses; it just anchors the tree's top at the income row.
+  { id: 'c-income-arm', d: 'M24 375 L 64 375', arrow: true },
+  // one continuous thin spine at x=24, income row down to the 2nd gate junction
+  { id: 'c-income-monthly', d: 'M24 375 L 24 471', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M24 471 L 24 567', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M24 567 L 24 663', arrow: false },
+  // monthly gate — rounded bracket up to core(439) / down to spend(503), arrowheads
+  { id: 'c-monthly-core', d: 'M24 471 L 40 471 L 40 447 Q 40 439 48 439 L 64 439', arrow: true },
+  { id: 'c-monthly-spend', d: 'M24 471 L 40 471 L 40 495 Q 40 503 48 503 L 64 503', arrow: true },
+  // 1st goal — straight thin arm off the spine at the ef1 row center
+  { id: 'c-goals1-ef1', d: 'M24 567 L 64 567', arrow: true },
+  // 2nd goal gate — rounded bracket up to debt(631) / down to ef6(695)
+  { id: 'c-goals2-debt', d: 'M24 663 L 40 663 L 40 639 Q 40 631 48 631 L 64 631', arrow: true },
+  { id: 'c-goals2-ef6', d: 'M24 663 L 40 663 L 40 687 Q 40 695 48 695 L 64 695', arrow: true },
 ];
 
 /* ============================================================================
@@ -727,39 +735,40 @@ export const connectorsSkinnyOptimizer: Connector[] = [
   { id: 'c-goals3-brokerage', d: 'M32 401 L 48 401 L 48 417 Q 48 425 56 425 L 64 425', arrow: false },
 ];
 
-/* Minimalist-icon rows: EQUAL Simple's iconRowTop for the shared rows (already a
-   ~62.6px pitch), then travel/brokerage appended at that SAME pitch. Tops: income
-   243 / core 305.6 / spend 373.4 / ef1 436 / debt 498.6 / ef6 561.3 / travel 623.9
-   / brokerage 686.5. brokerage tile bottom 738.5 still fits the 874px screen, so
-   this style stays COMPACT for Optimizer too (no tall-board rule). */
+/* Minimalist-icon rows (Optimizer): EQUAL Simple's iconRowTop for the shared rows
+   (64px pitch), then travel/brokerage appended at that SAME pitch. Tops: income
+   351 / core 415 / spend 479 / ef1 543 / debt 607 / ef6 671 / travel 735 /
+   brokerage 799. brokerage tile bottom 847 fits the 960px board, so this style
+   stays COMPACT for Optimizer too (no tall-board rule). */
 export const iconRowTopOptimizer: Record<string, number> = {
-  income: 243,
-  core: 305.6,
-  spend: 373.4,
-  ef1: 436,
-  debt: 498.6,
-  ef6: 561.3,
-  travel: 623.9,
-  brokerage: 686.5,
+  income: 351,
+  core: 415,
+  spend: 479,
+  ef1: 543,
+  debt: 607,
+  ef6: 671,
+  travel: 735,
+  brokerage: 799,
 };
 
-// Shared rows verbatim from `connectorsIcon` (monthly nub 365.5 / goals2 nub
-// 555.95). 3rd gate appended: spine hops goals2 -> goals3 (nub at the travel/
-// brokerage midpoint 681.2), then a symmetric brace up to travel(649.9) / down to
-// brokerage(712.5). Centers = row top +26.
+// Shared rows verbatim from `connectorsIcon` (monthly junction 471 / goals2
+// junction 663). 3rd gate appended: spine hops goals2 -> goals3 (junction at the
+// travel/brokerage midpoint 791), then a rounded bracket up to travel(759) / down
+// to brokerage(823). Centers = row top + 24.
 export const connectorsIconOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M40 295 L 40 365.5', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M40 365.5 L 40 462', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M40 462 L 40 555.95', arrow: false },
-  { id: 'c-monthly-core', d: 'M40 365.5 L 56 365.5 L 56 339.6 Q 56 331.6 64 331.6 L 74 331.6', arrow: false },
-  { id: 'c-monthly-spend', d: 'M40 365.5 L 56 365.5 L 56 391.4 Q 56 399.4 64 399.4 L 74 399.4', arrow: false },
-  { id: 'c-goals1-ef1', d: 'M40 462 L 74 462', arrow: false },
-  { id: 'c-goals2-debt', d: 'M40 555.95 L 56 555.95 L 56 532.6 Q 56 524.6 64 524.6 L 74 524.6', arrow: false },
-  { id: 'c-goals2-ef6', d: 'M40 555.95 L 56 555.95 L 56 579.3 Q 56 587.3 64 587.3 L 74 587.3', arrow: false },
-  // 3rd gate (appended): spine hop goals2 -> goals3, then the shifted brace
-  { id: 'c-goals2-goals3', d: 'M40 555.95 L 40 681.2', arrow: false },
-  { id: 'c-goals3-travel', d: 'M40 681.2 L 56 681.2 L 56 657.9 Q 56 649.9 64 649.9 L 74 649.9', arrow: false },
-  { id: 'c-goals3-brokerage', d: 'M40 681.2 L 56 681.2 L 56 704.5 Q 56 712.5 64 712.5 L 74 712.5', arrow: false },
+  { id: 'c-income-arm', d: 'M24 375 L 64 375', arrow: true },
+  { id: 'c-income-monthly', d: 'M24 375 L 24 471', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M24 471 L 24 567', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M24 567 L 24 663', arrow: false },
+  { id: 'c-monthly-core', d: 'M24 471 L 40 471 L 40 447 Q 40 439 48 439 L 64 439', arrow: true },
+  { id: 'c-monthly-spend', d: 'M24 471 L 40 471 L 40 495 Q 40 503 48 503 L 64 503', arrow: true },
+  { id: 'c-goals1-ef1', d: 'M24 567 L 64 567', arrow: true },
+  { id: 'c-goals2-debt', d: 'M24 663 L 40 663 L 40 639 Q 40 631 48 631 L 64 631', arrow: true },
+  { id: 'c-goals2-ef6', d: 'M24 663 L 40 663 L 40 687 Q 40 695 48 695 L 64 695', arrow: true },
+  // 3rd gate (appended): spine hop goals2 -> goals3, then the rounded bracket
+  { id: 'c-goals2-goals3', d: 'M24 663 L 24 791', arrow: false },
+  { id: 'c-goals3-travel', d: 'M24 791 L 40 791 L 40 767 Q 40 759 48 759 L 64 759', arrow: true },
+  { id: 'c-goals3-brokerage', d: 'M24 791 L 40 791 L 40 815 Q 40 823 48 823 L 64 823', arrow: true },
 ];
 
 /* Conversational rows (Figma 738:7662): EQUAL Simple's convoRowTop for the shared
@@ -1280,3 +1289,118 @@ export const v1RowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? v1RowTopOptimizer : v1RowTop;
 export const condensedRowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? condensedRowTopOptimizer : condensedRowTop;
+
+/* ============================================================================
+   "Progress bar, inside" (pbi) — Figma node 792:8522.
+
+   A hero header (sprout logo · gray subtitle · large serif headline) sits above
+   a thin gray left SPINE (x=50) with on-spine white gate-label pills, dark-check
+   discs where a funded card connects, and soft curvy branches into white rounded
+   cards on the right. Each card = a small colored icon tile + name, then a rounded
+   track with a colored fill and the dollar amount INSIDE it (goal cards add an
+   uppercase date pill at the right). This block is fully self-contained (its own
+   geometry + selectors) so it never collides with the other account styles.
+
+   Card layout: white card left = calc(25%+69.5px) = 170 on the 402 board, width
+   216. Card TOPS taken from the Figma frame (Core 378, Spend 470, Starter EF 574,
+   Pay off debt 666, Full EF 758). The in-card progress bar's vertical CENTER sits
+   at cardTop + 56 (8 pad + 24 header + 8 gap + 16 half-bar), which is where each
+   branch arm attaches. Optimizer appends travel/brokerage continuing the 92px
+   pitch (travel 850, brokerage 942). ============================================ */
+export const PBI_CARD_LEFT = 170;
+export const PBI_CARD_W = 216;
+export const PBI_BAR_CENTER_DY = 56; // cardTop -> in-card bar vertical center
+
+// income chrome (INCOME yellow pill + white PAYCHECK pills) row, board coords
+export const PBI_INCOME_LEFT = 16;
+export const PBI_INCOME_TOP = 335;
+export const PBI_PAYCHECK_LEFT = 92;
+
+export const pbiRowTop: Record<string, number> = {
+  income: PBI_INCOME_TOP, // income renders as the pill row (no card)
+  core: 378,
+  spend: 470,
+  ef1: 574,
+  debt: 666,
+  ef6: 758,
+};
+// Optimizer: shared rows verbatim, then travel/brokerage continue the 92px pitch
+export const pbiRowTopOptimizer: Record<string, number> = {
+  income: PBI_INCOME_TOP,
+  core: 378,
+  spend: 470,
+  ef1: 574,
+  debt: 666,
+  ef6: 758,
+  travel: 850, // 758 + 92
+  brokerage: 942, // 850 + 92
+};
+
+/* pbi connector geometry — a thin (~1px) gray SPINE at x=50 broken by ~32px gaps
+   centered on each gate label, with soft cubic-S wishbone arms into the LEFT edge
+   of each card (arms end at x=160, a 10px gap before the card left edge 170). Bar
+   centers = row top + 56: core 434 / spend 526 / ef1 630 / debt 722 / ef6 814.
+   Gate junctions sit at each gate's child MIDPOINT so the wishbones mirror:
+   monthly 480 (core 434 / spend 526); goals1 straight at ef1 630; goals2 768
+   (debt 722 / ef6 814). Uses the SAME connector ids the pulse engine expects so
+   causal pulses (income yellow / core blue / spend green / goals pink) travel it
+   unchanged. */
+const PBI_ARM = (jy: number, cy: number): string =>
+  `M84 ${jy} C 122 ${jy}, 122 ${cy}, 160 ${cy}`;
+export const connectorsProgress: Connector[] = [
+  // income pill -> monthly gate: straight spine drop (income sits at the top)
+  { id: 'c-income-monthly', d: 'M50 362 L 50 464', arrow: false },
+  // vertical spine hops, broken by a gap at each gate label
+  { id: 'c-monthly-goals1', d: 'M50 496 L 50 619', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M50 641 L 50 752', arrow: false },
+  { id: 'c-goals2-down', d: 'M50 784 L 50 946', arrow: false },
+  // monthly wishbone -> core(434) / spend(526)
+  { id: 'c-monthly-core', d: PBI_ARM(480, 434), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_ARM(480, 526), arrow: false },
+  // 1st goal — soft straight-ish branch at the ef1 bar center
+  { id: 'c-goals1-ef1', d: 'M72 630 C 110 630, 122 630, 160 630', arrow: false },
+  // financial-health wishbone -> debt(722) / ef6(814)
+  { id: 'c-goals2-debt', d: PBI_ARM(768, 722), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_ARM(768, 814), arrow: false },
+];
+// Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
+// goals2 -> goals3 (junction at the travel/brokerage midpoint 952), then a
+// symmetric wishbone up to travel(906) / down to brokerage(998).
+export const connectorsProgressOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M50 362 L 50 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M50 496 L 50 619', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M50 641 L 50 752', arrow: false },
+  { id: 'c-monthly-core', d: PBI_ARM(480, 434), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_ARM(480, 526), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M72 630 C 110 630, 122 630, 160 630', arrow: false },
+  { id: 'c-goals2-debt', d: PBI_ARM(768, 722), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_ARM(768, 814), arrow: false },
+  // 3rd gate (appended): spine hop goals2 -> goals3, then the shifted wishbone
+  { id: 'c-goals2-goals3', d: 'M50 784 L 50 936', arrow: false },
+  { id: 'c-goals3-travel', d: PBI_ARM(952, 906), arrow: false },
+  { id: 'c-goals3-brokerage', d: PBI_ARM(952, 998), arrow: false },
+  { id: 'c-goals3-down', d: 'M50 968 L 50 1186', arrow: false },
+];
+
+// pbi gate-label pills (white, on the spine). Simple has two goal gates (1st Goal
+// + Financial health); Optimizer inserts a 2nd Goal between them. `top` centers
+// each pill on its gate junction; two-line pills wrap within `width`.
+export interface PbiLabelInfo { label: string; top: number; twoLine?: boolean; width?: number }
+export const pbiLabels: Record<Dataset, Record<string, PbiLabelInfo>> = {
+  simple: {
+    monthly: { label: 'Monthly expenses', top: 464, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', top: 619 },
+    goals2: { label: 'Financial health', top: 752, twoLine: true, width: 56 },
+  },
+  optimizer: {
+    monthly: { label: 'Monthly expenses', top: 464, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', top: 619 },
+    goals2: { label: '2nd Goal', top: 752 },
+    goals3: { label: 'Financial health', top: 936, twoLine: true, width: 56 },
+  },
+};
+
+export const pbiRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
+export const connectorsProgressFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsProgressOptimizer : connectorsProgress;

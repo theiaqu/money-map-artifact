@@ -8,9 +8,10 @@ import IlloModal from './components/IlloModal';
 import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
+import FruitfulLogo from './components/FruitfulLogo';
 import { cardsFor, sectionsFor, badgesFor, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle } from './components/Card';
-import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
+import { animMonths, endSecs, monthSecs, dimmedNodes, heroHeadline, type Dataset, type Mode, type DateMode } from './scenario';
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'illustrative', label: 'Illustrative' },
@@ -439,7 +440,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 10:24 AM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 11:35 AM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -650,9 +651,32 @@ export default function App() {
     setSelectedConvo(null);
     setSelectedRect(null);
   };
+  // "Minimalist icons" hero (Figma 773:8879): sprout logo · subtitle · large serif
+  // headline whose date derives from the dataset's milestone goal. The footer pill
+  // sits near the screen bottom for Simple, and drops below the taller Optimizer
+  // row stack so it never overlaps the last row.
+  const iconHero = heroHeadline(dataset);
+  const iconFooterTop = dataset === 'optimizer' ? 877 : 828;
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}`} style={{ height: boardH }}>
-      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} />
+    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}`} style={{ height: boardH }}>
+      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} />
+
+      {style === 'icons' && branch === 'skinny-line' && (
+        <>
+          <div className="icon-hero-logo">
+            <FruitfulLogo size={40} color="#2f8b52" />
+          </div>
+          <p className="icon-hero-sub">
+            Your Money Map is ready! Based on everything you&rsquo;ve told us, we estimate you could be...
+          </p>
+          <h2 className="icon-hero-headline">
+            {iconHero.pre} {iconHero.date}
+          </h2>
+          <div className="icon-footer" style={{ top: iconFooterTop }}>
+            fruitful.com
+          </div>
+        </>
+      )}
 
       {/* "sheet" renders its own grouped panels + on-connector pills instead of the
           shared section-node gate labels */}
@@ -662,7 +686,7 @@ export default function App() {
       {style === 'illo' && <IlloCircle />}
 
       {style !== 'sheet' && sectionsFor(dataset).map((s) => (
-        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} />
+        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} />
       ))}
 
       {cards.map((c) => (
