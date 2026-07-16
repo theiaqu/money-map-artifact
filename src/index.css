@@ -1442,7 +1442,7 @@ body {
 }
 .pbi-gate.two-line { white-space: normal; }
 
-/* ---- white rounded card: icon tile + name over the filling bar ---- */
+/* ---- white rounded card: standalone icon glyph + name over the filling bar ---- */
 .pbi-card {
   display: flex;
   flex-direction: column;
@@ -1453,18 +1453,13 @@ body {
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(17, 17, 17, 0.06), 0 6px 16px rgba(17, 17, 17, 0.05);
 }
+/* Figma 804:8789: bare icon glyph immediately left of the title (6px gap), no tile */
 .pbi-card-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
-.pbi-tile {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
+.pbi-icon {
   flex-shrink: 0;
 }
 .pbi-card-name {
@@ -1531,6 +1526,44 @@ body {
   transition: background 0.4s ease, color 0.4s ease;
 }
 .pbi-bar-date.reached { background: #624b52; color: #f7dfe9; }
+
+/* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to
+   the LEFT of the bold white spine (right-aligned, ending just left of x=84), and
+   a soft vertical gold→green→pink page gradient behind the tree ---- */
+.pbi-locked-gate {
+  transform: translateX(-100%); /* right edge anchored at the node's left (x=76) */
+  text-align: right;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  /* color set inline (per-section Figma token) */
+}
+.pbi-locked-gate.two-line { white-space: normal; }
+
+/* full-width vertical gradient behind the tree (below the hero). Scoped to the
+   Locked path gate — rendered only for that gate so it never tints other gates or
+   account styles. Px-anchored stops (from the Figma 594px gradient box at top 280:
+   0/7.98/26.62/56.887%) keep the gold→teal→pink transition fixed to the tree
+   regardless of board height; pink holds to the bottom. Sits BEHIND cards/branches. */
+.pbi-locked-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 280px;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.39;
+  background: linear-gradient(
+    to bottom,
+    rgba(246, 220, 114, 0) 0px,
+    rgb(246, 220, 114) 47px,
+    rgb(88, 200, 180) 158px,
+    rgb(235, 197, 214) 338px
+  );
+}
 
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336. Each account/goal card is a colored POT

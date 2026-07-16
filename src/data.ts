@@ -15,7 +15,12 @@ export type CardKind = 'income' | 'account' | 'goal';
 // 'pbi-condensed' is a THIRD gate offered ONLY for the "Progress bar, inside"
 // (progress/pbi) style: the same spine + labels, but the card column is pulled
 // left with shorter, bolder branches so the page's weight isn't so far right.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-condensed';
+// 'pbi-locked' is a FOURTH gate offered ONLY for the "Progress bar, inside" style
+// (Figma 802:10378): a bold WHITE rounded spine + heavy organic white curvy
+// branches, plain title-case gray gate labels (no pill), gray padlock discs ON
+// the spine at each level boundary that UNLOCK as the flow completes that level,
+// and a soft vertical gold→green→pink page gradient behind the tree.
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-condensed' | 'pbi-locked';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -347,9 +352,11 @@ export const iconRowTop: Record<string, number> = {
    471, goals2 663). `c-income-arm` is a static (un-pulsed) arm into the income
    tile; the spine + arms carry the causal pulses unchanged. */
 export const connectorsIcon: Connector[] = [
-  // static arm into the income tile (arrowhead) — income is the source, so it
-  // never pulses; it just anchors the tree's top at the income row.
-  { id: 'c-income-arm', d: 'M24 375 L 64 375', arrow: true },
+  // static arm at the income row (arrowhead) — income is the SOURCE, so the arm
+  // is drawn tile -> spine (M64 -> M24) and its head points OUT of the income tile
+  // toward the spine (the direction money flows on to Monthly Expenses), matching
+  // the other icon arms which point into their destination tiles.
+  { id: 'c-income-arm', d: 'M64 375 L 24 375', arrow: true },
   // one continuous thin spine at x=24, income row down to the 2nd gate junction
   { id: 'c-income-monthly', d: 'M24 375 L 24 471', arrow: false },
   { id: 'c-monthly-goals1', d: 'M24 471 L 24 567', arrow: false },
@@ -759,7 +766,8 @@ export const iconRowTopOptimizer: Record<string, number> = {
 // travel/brokerage midpoint 791), then a rounded bracket up to travel(759) / down
 // to brokerage(823). Centers = row top + 24.
 export const connectorsIconOptimizer: Connector[] = [
-  { id: 'c-income-arm', d: 'M24 375 L 64 375', arrow: true },
+  // income is the SOURCE: arm drawn tile -> spine so its head points OUT of income
+  { id: 'c-income-arm', d: 'M64 375 L 24 375', arrow: true },
   { id: 'c-income-monthly', d: 'M24 375 L 24 471', arrow: false },
   { id: 'c-monthly-goals1', d: 'M24 471 L 24 567', arrow: false },
   { id: 'c-goals1-goals2', d: 'M24 567 L 24 663', arrow: false },
@@ -1455,6 +1463,100 @@ export const pbiRowTopFor = (dataset: Dataset): Record<string, number> =>
 export const connectorsProgressFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsProgressOptimizer : connectorsProgress;
 
+/* ---- "Locked path" gate (pbi-scoped, BranchStyle 'pbi-locked') — Figma 802:10378 ----
+   A DISTINCT pbi tree that reuses the pbi cards / row rhythm / hero / income pill
+   but replaces the thin gray spine with a BOLD WHITE rounded track and heavy
+   organic WHITE curvy branches, adds plain title-case gray gate labels (no pill)
+   to the LEFT of the spine, and drops gray PADLOCK discs onto the spine at each
+   level boundary (they unlock as the flow completes each level). To give room for
+   the left labels the spine moves RIGHT to x=84 (matching the Figma vector left)
+   — which is ALSO where the pbi branch arms already start (PBI_ARM begins at x=84),
+   so the arms now connect flush to the spine. Card column, arm endpoints (x=160
+   into card left 170), row centers and gate junctions are otherwise the pbi ones,
+   so no card moves vs. the other pbi gates. The spine is drawn CONTINUOUS (the
+   opaque lock discs visually break it, matching the Figma). */
+export const PBI_LOCK_SPINE_X = 84;
+// bold-white organic wishbone arm — identical control handles to PBI_ARM (which
+// already departs x=84), so it leaves the spine flush and lands into the card.
+export const connectorsProgressLocked: Connector[] = [
+  // continuous spine (x=84): income drop → monthly → goals1 → goals2 → off bottom
+  { id: 'c-income-monthly', d: 'M84 360 L 84 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M84 464 L 84 602', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M84 602 L 84 740', arrow: false },
+  { id: 'c-goals2-down', d: 'M84 740 L 84 946', arrow: false },
+  // monthly wishbone -> core(418) / spend(510), junction at their midpoint 464
+  { id: 'c-monthly-core', d: PBI_ARM(464, 418), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_ARM(464, 510), arrow: false },
+  // 1st goal — straight organic branch at the ef1 card center
+  { id: 'c-goals1-ef1', d: 'M84 602 L 160 602', arrow: false },
+  // financial-health wishbone -> debt(694) / ef6(786), junction 740
+  { id: 'c-goals2-debt', d: PBI_ARM(740, 694), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_ARM(740, 786), arrow: false },
+];
+// Optimizer: shared rows verbatim, then the 3rd gate appended — continuous spine
+// hop goals2 -> goals3 (junction 924), then the symmetric wishbone.
+export const connectorsProgressLockedOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M84 360 L 84 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M84 464 L 84 602', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M84 602 L 84 740', arrow: false },
+  { id: 'c-monthly-core', d: PBI_ARM(464, 418), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_ARM(464, 510), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M84 602 L 160 602', arrow: false },
+  { id: 'c-goals2-debt', d: PBI_ARM(740, 694), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_ARM(740, 786), arrow: false },
+  // 3rd gate (appended)
+  { id: 'c-goals2-goals3', d: 'M84 740 L 84 924', arrow: false },
+  { id: 'c-goals3-travel', d: PBI_ARM(924, 878), arrow: false },
+  { id: 'c-goals3-brokerage', d: PBI_ARM(924, 970), arrow: false },
+  { id: 'c-goals3-down', d: 'M84 924 L 84 1186', arrow: false },
+];
+export const connectorsProgressLockedFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsProgressLockedOptimizer : connectorsProgressLocked;
+
+/* Locked-path gate labels — plain title-case text (NO pill) sitting to the LEFT of
+   the spine (right-aligned, ending just left of x=84), color-tinted per section to
+   match the Figma tokens (monthly = blue-water-darkest #232b33; goal gates =
+   pink-petal-darkest #624b52). `top` is the label block's top; two-line labels
+   wrap within `width`. Simple: Monthly Expenses / Goal 1 / Financial Health.
+   Optimizer numbers the intermediate goal gates and keeps the terminal gate as
+   Financial Health: Monthly Expenses / Goal 1 / Goal 2 / Financial Health. */
+export interface PbiLockLabelInfo { label: string; top: number; color: string; twoLine?: boolean; width?: number }
+const LOCK_MONTHLY_COLOR = '#232b33'; // secondary/blue/water-darkest
+const LOCK_GOAL_COLOR = '#624b52'; // secondary/pink/petal-darkest
+export const pbiLockedLabels: Record<Dataset, Record<string, PbiLockLabelInfo>> = {
+  simple: {
+    monthly: { label: 'Monthly Expenses', top: 448, color: LOCK_MONTHLY_COLOR, twoLine: true, width: 68 },
+    goals1: { label: 'Goal 1', top: 594, color: LOCK_GOAL_COLOR },
+    goals2: { label: 'Financial Health', top: 724, color: LOCK_GOAL_COLOR, twoLine: true, width: 68 },
+  },
+  optimizer: {
+    monthly: { label: 'Monthly Expenses', top: 448, color: LOCK_MONTHLY_COLOR, twoLine: true, width: 68 },
+    goals1: { label: 'Goal 1', top: 594, color: LOCK_GOAL_COLOR },
+    goals2: { label: 'Goal 2', top: 732, color: LOCK_GOAL_COLOR },
+    goals3: { label: 'Financial Health', top: 908, color: LOCK_GOAL_COLOR, twoLine: true, width: 68 },
+  },
+};
+
+/* Padlock discs on the spine (x=84) at each LEVEL boundary. Each disc UNLOCKS the
+   instant every card in the level ABOVE it has finished funding — using the SAME
+   `cardDone` source the pbi check discs use (core/spend >= 100% ; goals reached),
+   so a lock opens exactly when its downstream level unlocks. `y` centers the disc
+   in the gap between the two card clusters (on the spine). */
+export interface PbiLockDisc { id: string; y: number; cards: string[] }
+export const pbiLockDiscs: Record<Dataset, PbiLockDisc[]> = {
+  simple: [
+    { id: 'lock-monthly', y: 556, cards: ['core', 'spend'] }, // monthly done -> Goal 1 unlocks
+    { id: 'lock-goals1', y: 648, cards: ['ef1'] }, // Goal 1 done -> Financial Health unlocks
+  ],
+  optimizer: [
+    { id: 'lock-monthly', y: 556, cards: ['core', 'spend'] },
+    { id: 'lock-goals1', y: 648, cards: ['ef1'] },
+    { id: 'lock-goals2', y: 832, cards: ['debt', 'ef6'] }, // Goal 2 done -> Financial Health unlocks
+  ],
+};
+export const pbiLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
+  dataset === 'optimizer' ? pbiLockDiscs.optimizer : pbiLockDiscs.simple;
+
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336.
 
@@ -1474,10 +1576,12 @@ export const connectorsProgressFor = (dataset: Dataset): Connector[] =>
    Card layout (from the Figma frame): a 223-wide rim band at left=164 (calc(25%+
    63.5)) with a 205-wide body centered under it (body left=173). The node WRAPPER
    is placed at the plant-band top; the pot body starts 54px below it (the plant
-   band + rim overhang sit above the body). Body TOPS in Figma: Core 383, Spend
-   488, Starter EF 602, Pay off debt 692, Full EF 782 → wrapper top = bodyTop − 54.
-   The wishbone arms attach at each pot BODY's vertical center = wrapper top + 84:
-   core 413 / spend 518 / ef1 632 / debt 722 / ef6 812. ========================= */
+   band + rim overhang sit above the body). The monthly accounts sit CLOSE (Core→
+   Spend on a tight 90px pitch); the goals get MORE room (a wider 106px pitch), so
+   wrapper tops are Core 329, Spend 419, Starter EF 539, Pay off debt 645, Full EF
+   751 (body top = wrapper top + 54). The wishbone arms attach at each pot BODY's
+   vertical center = wrapper top + 84: core 413 / spend 503 / ef1 623 / debt 729 /
+   ef6 835. ==================================================================== */
 export const POT_CARD_LEFT = 164; // rim / container left (calc(25%+63.5) on 402)
 export const POT_CONTAINER_W = 223; // rim (widest) width; body 205 is centered under it
 export const POT_BODY_W = 205;
@@ -1485,81 +1589,87 @@ export const POT_BODY_W = 205;
    body top; its lowest ~10px are hidden BEHIND the rim/lip, so ~14px of foliage
    shows above the lip). This is the MAX height any plant reaches. It is capped to
    the TIGHTEST vertical gap between consecutive pot bodies so a plant can never
-   cross into the pot above: the closest rows sit on a 90px pitch (e.g. debt→ef6
-   and every Optimizer goal), and each pot body is 60px tall + starts 54px below
+   cross into the pot above: the closest rows are the monthly accounts, which sit
+   on a 90px pitch (Core→Spend), and each pot body is 60px tall + starts 54px below
    its row top, so the gap between one body's bottom and the next body's top is
    90 − 60 = 30px. A 24px band leaves ~6px of clear breathing room in that gap
-   (and stays clear even through the pop-in overshoot). */
+   (and stays clear even through the pop-in overshoot). The goal rows sit on a
+   wider 106px pitch (46px gap), so goal foliage has extra clearance; fullness is
+   achieved by DENSITY/WIDTH within this height rather than by taller plants. */
 export const POT_PLANT_BAND_H = 24;
 export const POT_WRAPPER_TO_BODY = 54; // wrapper top -> pot body top
 
 // income renders the hero + INCOME pill (no pot); its row-top is the pill row.
 export const POT_INCOME_TOP = 340;
 
+// Monthly accounts (Core/Spend) sit CLOSE together on a tight 90px pitch; the
+// goal pots then get MORE breathing room on a wider 106px pitch. Net: the two
+// monthly pots read as a pair, and the goals are no longer cramped.
 export const potRowTop: Record<string, number> = {
   income: POT_INCOME_TOP,
   core: 329, // body top 383 − 54
-  spend: 434, // 488 − 54
-  ef1: 548, // 602 − 54
-  debt: 638, // 692 − 54
-  ef6: 728, // 782 − 54
+  spend: 419, // core + 90 (tightened toward Core)
+  ef1: 539, // spend + 120 (1st-goal gate gap)
+  debt: 645, // ef1 + 106 (roomier goal pitch)
+  ef6: 751, // debt + 106
 };
-// Optimizer: shared rows verbatim, then travel/brokerage continue the 90px pitch
+// Optimizer: shared rows verbatim, then travel/brokerage continue the 106px goal
+// pitch (so every goal pot gets the same roomier spacing).
 export const potRowTopOptimizer: Record<string, number> = {
   income: POT_INCOME_TOP,
   core: 329,
-  spend: 434,
-  ef1: 548,
-  debt: 638,
-  ef6: 728,
-  travel: 818, // 728 + 90
-  brokerage: 908, // 818 + 90
+  spend: 419,
+  ef1: 539,
+  debt: 645,
+  ef6: 751,
+  travel: 857, // 751 + 106
+  brokerage: 963, // 857 + 106
 };
 
 /* pot connector geometry — a thin (~1.25px) gray SPINE at x=50 broken by ~32px
    gaps centered on each gate label, with soft cubic-S wishbone arms into the LEFT
    edge of each pot (arms end at x=160, ~13px before the body left edge 173). Body
-   centers = wrapper top + 84: core 413 / spend 518 / ef1 632 / debt 722 / ef6 812.
+   centers = wrapper top + 84: core 413 / spend 503 / ef1 623 / debt 729 / ef6 835.
    Gate junctions sit at each gate's child MIDPOINT so the wishbones mirror:
-   monthly 465.5 (core 413 / spend 518); goals1 straight at ef1 632; goals2 767
-   (debt 722 / ef6 812). Reuses the SAME connector ids the pulse engine expects so
+   monthly 458 (core 413 / spend 503); goals1 straight at ef1 623; goals2 782
+   (debt 729 / ef6 835). Reuses the SAME connector ids the pulse engine expects so
    causal pulses (income yellow / core blue / spend green / goals pink) travel it
    unchanged. */
 const POT_ARM = (jy: number, cy: number): string =>
   `M84 ${jy} C 122 ${jy}, 122 ${cy}, 160 ${cy}`;
 export const connectorsPots: Connector[] = [
   // income pill -> monthly gate: straight spine drop (income sits at the top)
-  { id: 'c-income-monthly', d: 'M50 366 L 50 449', arrow: false },
+  { id: 'c-income-monthly', d: 'M50 366 L 50 442', arrow: false },
   // vertical spine hops, broken by a gap at each gate label
-  { id: 'c-monthly-goals1', d: 'M50 481 L 50 620', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M50 644 L 50 752', arrow: false },
-  { id: 'c-goals2-down', d: 'M50 784 L 50 946', arrow: false },
-  // monthly wishbone -> core(413) / spend(518)
-  { id: 'c-monthly-core', d: POT_ARM(465.5, 413), arrow: false },
-  { id: 'c-monthly-spend', d: POT_ARM(465.5, 518), arrow: false },
+  { id: 'c-monthly-goals1', d: 'M50 474 L 50 607', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M50 639 L 50 766', arrow: false },
+  { id: 'c-goals2-down', d: 'M50 798 L 50 946', arrow: false },
+  // monthly wishbone -> core(413) / spend(503)
+  { id: 'c-monthly-core', d: POT_ARM(458, 413), arrow: false },
+  { id: 'c-monthly-spend', d: POT_ARM(458, 503), arrow: false },
   // 1st goal — soft straight-ish branch at the ef1 body center
-  { id: 'c-goals1-ef1', d: 'M72 632 C 110 632, 122 632, 160 632', arrow: false },
-  // financial-health wishbone -> debt(722) / ef6(812)
-  { id: 'c-goals2-debt', d: POT_ARM(767, 722), arrow: false },
-  { id: 'c-goals2-ef6', d: POT_ARM(767, 812), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M72 623 C 110 623, 122 623, 160 623', arrow: false },
+  // financial-health wishbone -> debt(729) / ef6(835)
+  { id: 'c-goals2-debt', d: POT_ARM(782, 729), arrow: false },
+  { id: 'c-goals2-ef6', d: POT_ARM(782, 835), arrow: false },
 ];
 // Optimizer: shared rows verbatim, then the 3rd gate appended — spine hop
-// goals2 -> goals3 (junction at the travel/brokerage midpoint 947), then a
-// symmetric wishbone up to travel(902) / down to brokerage(992).
+// goals2 -> goals3 (junction at the travel/brokerage midpoint 994), then a
+// symmetric wishbone up to travel(941) / down to brokerage(1047).
 export const connectorsPotsOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M50 366 L 50 449', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M50 481 L 50 620', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M50 644 L 50 752', arrow: false },
-  { id: 'c-monthly-core', d: POT_ARM(465.5, 413), arrow: false },
-  { id: 'c-monthly-spend', d: POT_ARM(465.5, 518), arrow: false },
-  { id: 'c-goals1-ef1', d: 'M72 632 C 110 632, 122 632, 160 632', arrow: false },
-  { id: 'c-goals2-debt', d: POT_ARM(767, 722), arrow: false },
-  { id: 'c-goals2-ef6', d: POT_ARM(767, 812), arrow: false },
+  { id: 'c-income-monthly', d: 'M50 366 L 50 442', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M50 474 L 50 607', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M50 639 L 50 766', arrow: false },
+  { id: 'c-monthly-core', d: POT_ARM(458, 413), arrow: false },
+  { id: 'c-monthly-spend', d: POT_ARM(458, 503), arrow: false },
+  { id: 'c-goals1-ef1', d: 'M72 623 C 110 623, 122 623, 160 623', arrow: false },
+  { id: 'c-goals2-debt', d: POT_ARM(782, 729), arrow: false },
+  { id: 'c-goals2-ef6', d: POT_ARM(782, 835), arrow: false },
   // 3rd gate (appended): spine hop goals2 -> goals3, then the shifted wishbone
-  { id: 'c-goals2-goals3', d: 'M50 784 L 50 932', arrow: false },
-  { id: 'c-goals3-travel', d: POT_ARM(947, 902), arrow: false },
-  { id: 'c-goals3-brokerage', d: POT_ARM(947, 992), arrow: false },
-  { id: 'c-goals3-down', d: 'M50 964 L 50 1186', arrow: false },
+  { id: 'c-goals2-goals3', d: 'M50 798 L 50 978', arrow: false },
+  { id: 'c-goals3-travel', d: POT_ARM(994, 941), arrow: false },
+  { id: 'c-goals3-brokerage', d: POT_ARM(994, 1047), arrow: false },
+  { id: 'c-goals3-down', d: 'M50 1010 L 50 1186', arrow: false },
 ];
 
 // pot gate-label pills (white, on the spine). Simple has two goal gates (1st Goal
@@ -1567,15 +1677,15 @@ export const connectorsPotsOptimizer: Connector[] = [
 // each pill on its gate junction (reuses the pbi label shape).
 export const potLabels: Record<Dataset, Record<string, PbiLabelInfo>> = {
   simple: {
-    monthly: { label: 'Monthly expenses', top: 465, twoLine: true, width: 56 },
-    goals1: { label: '1st Goal', top: 632 },
-    goals2: { label: 'Financial health', top: 767, twoLine: true, width: 56 },
+    monthly: { label: 'Monthly expenses', top: 458, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', top: 623 },
+    goals2: { label: 'Financial health', top: 782, twoLine: true, width: 56 },
   },
   optimizer: {
-    monthly: { label: 'Monthly expenses', top: 465, twoLine: true, width: 56 },
-    goals1: { label: '1st Goal', top: 632 },
-    goals2: { label: '2nd Goal', top: 767 },
-    goals3: { label: 'Financial health', top: 947, twoLine: true, width: 56 },
+    monthly: { label: 'Monthly expenses', top: 458, twoLine: true, width: 56 },
+    goals1: { label: '1st Goal', top: 623 },
+    goals2: { label: '2nd Goal', top: 782 },
+    goals3: { label: 'Financial health', top: 994, twoLine: true, width: 56 },
   },
 };
 

@@ -71,9 +71,11 @@ const SHADES: [string, string, string][] = [
   [LEAF_DARK, LEAF_LIGHT, LEAF_MID],
 ];
 
-// Core — a LOW rounded HEDGE: one bumpy bush per cluster (a dominant rounded
-// mound + a couple of smaller bumps) so the row reads as a compact, bushy hedge
-// sitting low on the rim (Figma: a row of soft overlapping dark-green mounds).
+// Core — a DENSE rounded HEDGE: a full-width mound of many overlapping bushes
+// (a solid base row + a bumpy layered crown) so each cluster reads as a lush,
+// thick hedge that fills the band edge-to-edge rather than a lone sprig (Figma:
+// a continuous row of soft overlapping dark-green mounds spanning the pot). Mass
+// is packed into the upper band (y≈4–20) since the rim hides the lower ~10px.
 function ShrubSprite({ index }: { index: number }) {
   const v = index % 3;
   const [a, b, c] = SHADES[index % 3];
@@ -82,30 +84,48 @@ function ShrubSprite({ index }: { index: number }) {
   const inner =
     v === 0 ? (
       <>
-        <circle cx="8" cy="24" r="7" fill={a} />
-        <circle cx="37" cy="24" r="7" fill={b} />
-        <circle cx="15" cy="19" r="10.5" fill={a} />
-        <circle cx="30" cy="20" r="10" fill={a} />
-        <circle cx="23" cy="14" r="8.5" fill={b} />
-        <circle cx="19" cy="12" r="5" fill={c} />
+        <circle cx="1" cy="26" r="9" fill={a} />
+        <circle cx="12" cy="24" r="11" fill={a} />
+        <circle cx="24" cy="25" r="11.5" fill={a} />
+        <circle cx="35" cy="24" r="11" fill={a} />
+        <circle cx="44" cy="26" r="9" fill={a} />
+        <circle cx="8" cy="16" r="9.5" fill={a} />
+        <circle cx="19" cy="14" r="10.5" fill={b} />
+        <circle cx="31" cy="15" r="10" fill={a} />
+        <circle cx="41" cy="16" r="8" fill={b} />
+        <circle cx="14" cy="9" r="6.5" fill={b} />
+        <circle cx="27" cy="8" r="7" fill={b} />
+        <circle cx="21" cy="6" r="5" fill={c} />
+        <circle cx="34" cy="10" r="4.5" fill={c} />
       </>
     ) : v === 1 ? (
       <>
-        <circle cx="7" cy="23" r="6.5" fill={b} />
-        <circle cx="38" cy="23" r="7.5" fill={a} />
-        <circle cx="14" cy="20" r="10" fill={a} />
-        <circle cx="29" cy="18" r="11" fill={a} />
-        <circle cx="21" cy="13" r="7.5" fill={b} />
-        <circle cx="33" cy="12" r="5" fill={c} />
+        <circle cx="2" cy="25" r="9.5" fill={a} />
+        <circle cx="14" cy="25" r="11.5" fill={a} />
+        <circle cx="26" cy="24" r="11.5" fill={a} />
+        <circle cx="38" cy="25" r="10.5" fill={a} />
+        <circle cx="10" cy="15" r="10" fill={a} />
+        <circle cx="22" cy="16" r="11" fill={a} />
+        <circle cx="34" cy="15" r="9.5" fill={b} />
+        <circle cx="43" cy="18" r="7" fill={a} />
+        <circle cx="16" cy="8" r="7" fill={b} />
+        <circle cx="29" cy="9" r="6.5" fill={b} />
+        <circle cx="23" cy="5" r="5" fill={c} />
+        <circle cx="9" cy="9" r="4.5" fill={c} />
       </>
     ) : (
       <>
-        <circle cx="9" cy="23" r="7.5" fill={a} />
-        <circle cx="36" cy="24" r="6.5" fill={a} />
-        <circle cx="17" cy="18" r="11" fill={a} />
-        <circle cx="31" cy="20" r="9.5" fill={b} />
-        <circle cx="24" cy="13" r="7" fill={c} />
-        <circle cx="12" cy="13" r="4.5" fill={b} />
+        <circle cx="3" cy="25" r="10" fill={a} />
+        <circle cx="15" cy="24" r="11.5" fill={a} />
+        <circle cx="27" cy="25" r="11" fill={a} />
+        <circle cx="38" cy="25" r="10" fill={a} />
+        <circle cx="9" cy="15" r="9.5" fill={b} />
+        <circle cx="21" cy="15" r="11" fill={a} />
+        <circle cx="33" cy="16" r="9.5" fill={a} />
+        <circle cx="16" cy="8" r="6.5" fill={b} />
+        <circle cx="29" cy="8" r="7" fill={c} />
+        <circle cx="24" cy="5" r="4.5" fill={c} />
+        <circle cx="40" cy="10" r="4.5" fill={b} />
       </>
     );
   return (
@@ -115,42 +135,53 @@ function ShrubSprite({ index }: { index: number }) {
   );
 }
 
-// Spend — short-to-medium spiky GRASS: a fan of narrow, slightly-curved pointed
-// blades of VARIED height rising from the soil (Figma: clusters of sharp grass
-// spikes, modest height — never towering).
-const blade = (bx: number, tx: number, ty: number, hw = 2.5) =>
+// Spend — a THICK tuft of spiky GRASS: a dense fan of slightly-curved pointed
+// blades packed across the FULL width at varied heights (Figma: a full fringe of
+// sharp grass spikes, lush but never towering). More, wider blades than a thin
+// sprig so the cluster reads as a solid grassy band. `hw` = blade base half-width.
+const blade = (bx: number, tx: number, ty: number, hw = 3) =>
   `M${bx - hw} 30 Q ${bx - hw * 0.4} ${(30 + ty) / 2} ${tx} ${ty} Q ${bx + hw * 0.4} ${(30 + ty) / 2} ${bx + hw} 30 Z`;
 function GrassSprite({ index }: { index: number }) {
   const v = index % 3;
   const [a, b, c] = SHADES[index % 3];
   const flip = index % 2 === 1;
-  // [baseX, tipX, tipY] per blade — tipY smaller = taller blade
+  // [baseX, tipX, tipY] per blade — tipY smaller = taller blade. ~9 blades packed
+  // across the full 0–44 width so the tuft is dense/full rather than a few spikes.
   const blades: [number, number, number, string][] =
     v === 0
       ? [
-          [6, 4, 8, a],
-          [13, 14, 2, b],
-          [21, 20, 11, a],
-          [28, 30, 4, c],
-          [35, 34, 13, b],
-          [41, 42, 7, a],
+          [2, 1, 9, a],
+          [7, 8, 3, b],
+          [12, 11, 12, a],
+          [17, 18, 5, c],
+          [22, 21, 1, a],
+          [27, 28, 8, b],
+          [32, 31, 3, a],
+          [37, 38, 11, c],
+          [42, 41, 6, a],
         ]
       : v === 1
         ? [
-            [5, 6, 12, b],
-            [12, 11, 4, a],
-            [19, 20, 14, c],
-            [26, 27, 3, a],
-            [33, 32, 9, b],
-            [40, 41, 6, a],
+            [2, 3, 6, a],
+            [7, 6, 13, b],
+            [12, 13, 2, a],
+            [18, 19, 9, a],
+            [23, 22, 4, c],
+            [28, 29, 12, b],
+            [33, 32, 6, a],
+            [38, 39, 2, a],
+            [43, 42, 10, b],
           ]
         : [
-            [6, 7, 5, a],
-            [13, 12, 13, c],
-            [20, 21, 2, a],
-            [27, 26, 9, b],
-            [34, 35, 6, a],
-            [41, 42, 12, b],
+            [2, 3, 4, a],
+            [7, 6, 11, c],
+            [12, 13, 7, a],
+            [17, 16, 2, b],
+            [22, 23, 10, a],
+            [27, 26, 5, a],
+            [32, 33, 13, b],
+            [37, 36, 3, c],
+            [42, 43, 8, a],
           ];
   return (
     <svg viewBox={VB} width="100%" height="100%" preserveAspectRatio="xMidYMax meet" style={{ overflow: 'visible' }}>
@@ -163,9 +194,11 @@ function GrassSprite({ index }: { index: number }) {
   );
 }
 
-// goals — delicate curling sprout VINES: a thin stem that curls up with a hooked
-// tip plus small ROUND leaves, and a little side tendril curl (Figma: low, wispy
-// curling vines with round leaves).
+// goals — leafy curling sprout VINES: TWO curling stems that fan across the width
+// with a generous scatter of small ROUND leaves (Figma: low, wispy curling vines
+// with round leaves). Fuller/leafier than a lone stem — more leaves + a second
+// stem fill the band while staying delicate. Leaves cluster in the visible upper
+// band (y≈2–19); stem roots below the rim.
 function VineSprite({ index }: { index: number }) {
   const v = index % 3;
   const [a, b, c] = SHADES[index % 3];
@@ -173,29 +206,39 @@ function VineSprite({ index }: { index: number }) {
   const inner =
     v === 0 ? (
       <>
-        <path d="M18 30 C 18 22 11 21 13 14 C 14.6 8 23 9 22 3.5" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
-        <path d="M31 30 C 32 24 39 25 37 20 C 35.5 16.5 31.5 18 33.5 21" fill="none" stroke={b} strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx="11" cy="18" r="3.1" fill={a} />
-        <circle cx="24" cy="10" r="2.9" fill={c} />
-        <circle cx="22" cy="3.5" r="2.5" fill={b} />
-        <circle cx="36" cy="18" r="2.5" fill={a} />
+        <path d="M15 30 C 15 22 8 21 11 13 C 13 6.5 23 8 21 2.5" fill="none" stroke={b} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M31 30 C 32 24 40 24 37 18 C 35 14 30.5 16 33.5 19.5" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
+        <circle cx="9" cy="17" r="3.6" fill={a} />
+        <circle cx="13" cy="11" r="3" fill={c} />
+        <circle cx="22" cy="8" r="3.4" fill={a} />
+        <circle cx="21" cy="2.5" r="2.6" fill={b} />
+        <circle cx="37" cy="16" r="3.2" fill={a} />
+        <circle cx="33" cy="21" r="2.6" fill={c} />
+        <circle cx="28" cy="13" r="2.5" fill={b} />
       </>
     ) : v === 1 ? (
       <>
-        <path d="M20 30 C 20 23 27 21 25 14 C 23.4 8 15 10 16 3.5" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
-        <path d="M9 30 C 8 25 3 25 5 20 C 6.5 16.8 10 18 8 21" fill="none" stroke={b} strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx="27" cy="18" r="3.1" fill={a} />
-        <circle cx="14" cy="10" r="2.9" fill={c} />
-        <circle cx="16" cy="3.5" r="2.5" fill={b} />
-        <circle cx="6" cy="18" r="2.5" fill={a} />
+        <path d="M22 30 C 22 22 29 21 26 13 C 24 6.5 14 8 16 2.5" fill="none" stroke={b} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M8 30 C 7 24 -1 24 2 18 C 4 14 8.5 16 5.5 19.5" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
+        <circle cx="28" cy="17" r="3.6" fill={a} />
+        <circle cx="24" cy="11" r="3" fill={c} />
+        <circle cx="15" cy="8" r="3.4" fill={a} />
+        <circle cx="16" cy="2.5" r="2.6" fill={b} />
+        <circle cx="1" cy="16" r="3.2" fill={a} />
+        <circle cx="5" cy="21" r="2.6" fill={c} />
+        <circle cx="10" cy="13" r="2.5" fill={b} />
       </>
     ) : (
       <>
-        <path d="M22 30 C 22 24 15 22 17 15 C 18.4 9.5 26 11 25 5 C 24.4 2.5 23 2 23 1" fill="none" stroke={b} strokeWidth="2" strokeLinecap="round" />
-        <circle cx="14" cy="19" r="3.1" fill={a} />
-        <circle cx="27" cy="11" r="2.9" fill={c} />
-        <circle cx="12" cy="12" r="2.4" fill={b} />
-        <circle cx="23" cy="2.5" r="2.4" fill={a} />
+        <path d="M20 30 C 20 23 12 22 15 14 C 17 8 26 10 24 4 C 23 1.5 22 1.5 22 0.5" fill="none" stroke={b} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M34 30 C 35 24 42 25 39 19 C 37.5 15.5 33 17 36 20" fill="none" stroke={b} strokeWidth="1.9" strokeLinecap="round" />
+        <circle cx="12" cy="18" r="3.6" fill={a} />
+        <circle cx="16" cy="12" r="2.9" fill={c} />
+        <circle cx="25" cy="9" r="3.2" fill={a} />
+        <circle cx="23" cy="3.5" r="2.6" fill={b} />
+        <circle cx="38" cy="18" r="3" fill={a} />
+        <circle cx="9" cy="13" r="2.4" fill={b} />
+        <circle cx="33" cy="22" r="2.4" fill={c} />
       </>
     );
   return (

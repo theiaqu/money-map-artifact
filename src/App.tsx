@@ -212,6 +212,7 @@ const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'text-only', label: 'Text only' },
   { id: 'compact', label: 'Lines with %' },
   { id: 'pbi-condensed', label: 'Condensed' },
+  { id: 'pbi-locked', label: 'Locked path' },
 ];
 
 // "Skinny line" is the thin-tree pairing for the minimalist styles (Super slim,
@@ -421,10 +422,10 @@ export default function App() {
       // pin a stable, non-compact/non-thin gate so no % badges or foreign tree
       // ever render.
       if (s === 'sheet' || s === 'illo') return 'text-only';
-      // 'pbi-condensed' is pbi-only: falling back to any other style (or even
-      // re-entering progress from elsewhere) resets it to a valid shared gate so
-      // no non-pbi style ever renders the condensed geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-condensed' ? 'text-only' : prev;
+      // 'pbi-condensed' / 'pbi-locked' are pbi-only: falling back to any other
+      // style (or even re-entering progress from elsewhere) resets to a valid
+      // shared gate so no non-pbi style ever renders the pbi-scoped geometry.
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-condensed' || prev === 'pbi-locked' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -474,7 +475,7 @@ export default function App() {
     <>
       <div className="config-head">
         <h1 className="config-title">Artifact configs</h1>
-        <p className="config-updated">Last updated Jul 16, 2026 · 1:26 PM</p>
+        <p className="config-updated">Last updated Jul 16, 2026 · 2:04 PM</p>
       </div>
       <div className="config-row">
         <span className="config-label">Data type</span>
@@ -693,6 +694,9 @@ export default function App() {
   const iconFooterTop = dataset === 'optimizer' ? 877 : 828;
   const boardEl = (
     <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}`} style={{ height: boardH }}>
+      {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
+          tree; scoped to this gate so no other gate/style is tinted. */}
+      {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
       <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} />
 
       {style === 'icons' && branch === 'skinny-line' && (

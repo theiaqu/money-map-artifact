@@ -1,5 +1,5 @@
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_LEFT_CONDENSED, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type GraphColor, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, PBI_CARD_LEFT, PBI_CARD_LEFT_CONDENSED, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, heroHeadline, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
@@ -50,20 +50,9 @@ function Spacer({ h }: { h: number }) {
   return <div style={{ height: h, flexShrink: 0 }} />;
 }
 
-// "Progress bar, inside" (pbi) card icon tile: the line icon + its light tile /
-// darker glyph tint, picked from the card id (accounts) or its goal title.
-const PBI_TILE_BG: Record<GraphColor, string> = {
-  yellow: '#fbeeb5',
-  blue: '#cbe6ff',
-  green: '#c9ecd2',
-  pink: '#f6dbe7',
-};
-const PBI_GLYPH: Record<GraphColor, string> = {
-  yellow: '#9a7b16',
-  blue: '#2b6cb0',
-  green: '#2f8f57',
-  pink: '#c06090',
-};
+// "Progress bar, inside" (pbi) card icon: a bare line-icon glyph sitting next to
+// the title (Figma 804:8789 — no colored tile/box behind it), picked from the
+// card id (accounts) or its goal title.
 function pbiIconFor(node: CardNode): LucideIcon {
   if (node.kind === 'account') return node.id === 'core' ? Receipt : CreditCard;
   const t = node.title.toLowerCase();
@@ -519,9 +508,7 @@ export default function Card({
       <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: cardLeft, top, width: PBI_CARD_W }}>
         <div className="pbi-card">
           <div className="pbi-card-head">
-            <span className="pbi-tile" style={{ background: PBI_TILE_BG[node.graph] }}>
-              <Glyph size={15} strokeWidth={2} color={PBI_GLYPH[node.graph]} />
-            </span>
+            <Glyph className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
             <span className="pbi-card-name">{node.title}</span>
           </div>
           <ProgressBar

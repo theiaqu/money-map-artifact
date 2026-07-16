@@ -1,5 +1,5 @@
 import { CalendarSync, Goal } from 'lucide-react';
-import { pbiLabels, potLabels, type BranchStyle, type MapStyle, type SectionNode } from '../data';
+import { pbiLabels, pbiLockedLabels, potLabels, type BranchStyle, type MapStyle, type SectionNode } from '../data';
 import { type Dataset } from '../scenario';
 
 type LabelInfo = { label: string; left: number; top: number; twoLine?: boolean; width?: number };
@@ -154,6 +154,23 @@ export default function SectionNodeView({
     return (
       <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: 50, top: info.top }}>
         <div className={`pot-gate${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>
+          {info.label}
+        </div>
+      </div>
+    );
+  }
+  // "Locked path" pbi gate (Figma 802:10378): plain title-case GRAY text labels
+  // (no pill) sitting to the LEFT of the bold white spine, right-aligned and
+  // color-tinted per section. Takes precedence over the standard pbi pills.
+  if (pbi && branch === 'pbi-locked') {
+    const info = pbiLockedLabels[dataset][node.id];
+    if (!info) return null;
+    return (
+      <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: 76, top: info.top }}>
+        <div
+          className={`pbi-locked-gate${info.twoLine ? ' two-line' : ''}`}
+          style={{ color: info.color, ...(info.twoLine ? { width: info.width } : null) }}
+        >
           {info.label}
         </div>
       </div>

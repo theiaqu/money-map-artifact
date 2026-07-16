@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
-import { Check } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressCondensedFor, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { Check, Lock, LockOpen } from 'lucide-react';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressCondensedFor, connectorsProgressLockedFor, pbiLockDiscsFor, PBI_LOCK_SPINE_X, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -168,10 +168,13 @@ export default function Connectors({
   // "Progress bar, inside" offers a THIRD gate ('pbi-condensed'): the same spine +
   // labels but a left-pulled card column with shorter, bolder branches.
   const isPbiCondensed = pbiTree && branch === 'pbi-condensed';
+  // "Locked path": bold white spine + heavy white curvy branches + animated
+  // padlock discs (Figma 802:10378). pbi-scoped, so it's offered only for pbi.
+  const isPbiLocked = pbiTree && branch === 'pbi-locked';
   const baseConns: Connector[] = potsTree
     ? connectorsPotsFor(dataset)
     : pbiTree
-    ? (isPbiCondensed ? connectorsProgressCondensedFor(dataset) : connectorsProgressFor(dataset))
+    ? (isPbiCondensed ? connectorsProgressCondensedFor(dataset) : isPbiLocked ? connectorsProgressLockedFor(dataset) : connectorsProgressFor(dataset))
     : illoTree
     ? connectorsIlloFor(dataset)
     : sheetTree
@@ -355,6 +358,75 @@ export default function Connectors({
           });
         })}
         {potBadges}
+      </svg>
+    );
+  }
+
+  // ---------- pbi "Locked path": bold WHITE spine + heavy white curvy branches + animated padlock discs ----------
+  // (Figma 802:10378) A thick rounded WHITE track spine with heavy organic white
+  // wishbone branches into the cards, plain gray gate labels to the left (rendered
+  // by SectionNodeView), and gray PADLOCK discs sitting ON the spine at each level
+  // boundary. A lock UNLOCKS (closed Lock -> open LockOpen, cross-faded) the moment
+  // every card of the level above it finishes funding — using the SAME cardDone
+  // source the check discs use, so a lock opens exactly when its level unlocks.
+  // Money still travels as thin colored pulses over the white track.
+  if (isPbiLocked) {
+    const lockById = (id: string) => conns.find((c) => c.id === id)?.d;
+    const lockDiscs = pbiLockDiscsFor(dataset).map((d) => {
+      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now));
+      return (
+        <g key={d.id} transform={`translate(${PBI_LOCK_SPINE_X} ${d.y})`}>
+          <circle r={12} fill="#e6e7ea" stroke="#ffffff" strokeWidth={2} />
+          <g style={{ opacity: unlocked ? 0 : 1, transition: 'opacity 0.45s ease' }}>
+            <Lock x={-7} y={-7} width={14} height={14} color="#6b7280" strokeWidth={2.2} />
+          </g>
+          <g style={{ opacity: unlocked ? 1 : 0, transition: 'opacity 0.45s ease' }}>
+            <LockOpen x={-7} y={-7} width={14} height={14} color="#2f8f57" strokeWidth={2.2} />
+          </g>
+        </g>
+      );
+    });
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* bold rounded WHITE spine + branches (Figma 4px vectors, drawn a touch
+            heavier so they read as a bold track); a soft shadow lifts them off the
+            gradient */}
+        <defs>
+          <filter id="lock-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
+            <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#111" floodOpacity="0.14" />
+          </filter>
+        </defs>
+        <g filter="url(#lock-branch-shadow)">
+          {conns.map((c) => (
+            <path key={c.id} d={c.d} stroke="#ffffff" strokeWidth={5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+        </g>
+        {probes}
+        {/* colored pulse per in-flight income event (over the white track) */}
+        {FLOW_META.map((m) => {
+          const d = lockById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`lock-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={3.5}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {lockDiscs}
       </svg>
     );
   }
