@@ -1583,6 +1583,18 @@ body.is-scrubbing-noselect * {
   border-radius: 10px;
   /* width + background set inline (eased progressAt + per-color pastel) */
 }
+/* "Core/Spend refill visual" overlay: faint sheen over the real fill with a
+   slightly darker leading edge (width + gradient set inline). Sits above the
+   fill but below the amount label. */
+.pbi-bar-refill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  z-index: 1;
+  border-radius: 10px;
+  pointer-events: none;
+}
 .pbi-bar-amount {
   position: relative;
   z-index: 2;

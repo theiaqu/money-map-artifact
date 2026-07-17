@@ -9,27 +9,25 @@ const FILL: Record<GraphColor, string> = {
   pink: '#eebed4',
 };
 
-// "Refill visual" (Figma 907:13009): the track becomes the LIGHT capacity color
-// (always full width) and the moving fill is a DARKER shade, so each account
-// reads as a balance that refills within its capacity rather than a plain bar.
-const REFILL_TRACK: Record<GraphColor, string> = {
-  yellow: '#fae6a6',
-  blue: '#cfe8ff',
-  green: '#a6dcb4',
-  pink: '#f4d8e5',
-};
-const REFILL_FILL: Record<GraphColor, string> = {
-  yellow: '#f0cf4e',
-  blue: '#5aa9f0',
-  green: '#3fae5f',
-  pink: '#e29bc0',
+// "Core/Spend refill visual" (Figma 907:13009): the base bar stays EXACTLY the
+// same; we just lay a very light, subtle overlay on top whose right edge is a
+// slightly darker shade of the bar color. This reads as the account "refilling"
+// up to the fill front without noisily draining + redrawing the real progress.
+// Edge color is a slightly darker version of each FILL, used only as a soft
+// leading band inside the overlay.
+const REFILL_EDGE: Record<GraphColor, string> = {
+  yellow: 'rgba(214, 176, 40, 0.45)',
+  blue: 'rgba(96, 170, 240, 0.55)',
+  green: 'rgba(60, 158, 90, 0.5)',
+  pink: 'rgba(214, 140, 178, 0.5)',
 };
 
 // "Progress bar, inside" (pbi) inner bar — a rounded gray track with a colored
 // fill; the dollar amount label sits INSIDE the track at the left, and goal cards
 // add an uppercase date pill pinned to the right. Fill width is driven by the
-// per-frame eased progress value so it fills as money flows. With `refill` the
-// track carries the light capacity color and the fill is a darker balance segment.
+// per-frame eased progress value so it fills as money flows. With `refill` a
+// subtle same-width overlay (faint white + slightly darker leading edge) is laid
+// over the fill to hint at the monthly refill.
 export default function ProgressBar({
   color,
   progress,
@@ -47,11 +45,17 @@ export default function ProgressBar({
 }) {
   const p = Math.max(0, Math.min(1, progress));
   return (
-    <div className="pbi-bar" style={refill ? { background: REFILL_TRACK[color] } : undefined}>
+    <div className="pbi-bar">
       {p > 0.001 && (
+        <div className="pbi-bar-fill" style={{ width: `${p * 100}%`, background: FILL[color] }} />
+      )}
+      {refill && p > 0.001 && (
         <div
-          className="pbi-bar-fill"
-          style={{ width: `${p * 100}%`, background: refill ? REFILL_FILL[color] : FILL[color] }}
+          className="pbi-bar-refill"
+          style={{
+            width: `${p * 100}%`,
+            background: `linear-gradient(to right, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.14) 84%, ${REFILL_EDGE[color]} 100%)`,
+          }}
         />
       )}
       <span className="pbi-bar-amount">{amount}</span>

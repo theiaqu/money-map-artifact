@@ -735,7 +735,7 @@ export default function Card({
                 : undefined
             }
             reached={reached}
-            refill={refillVisual}
+            refill={refillVisual && node.kind === 'account'}
           />
         </div>
       </div>
