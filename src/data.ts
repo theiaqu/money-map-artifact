@@ -1907,12 +1907,12 @@ export const connectorsPotsFor = (dataset: Dataset): Connector[] =>
 // paper. The signature move is a STEPPED spine — an UPPER spine carries the Monthly
 // bracket (Core+Spend) and the 1st goal, then the tree STEPS RIGHT to a LOWER spine
 // that drops and feeds the goal pairs — so each line only travels as far as it needs.
-export const GRID_SPINE_X = 80; // upper spine (Core/Spend bracket + 1st goal) — 2 cells
-export const GRID_PILL_X = 96; // value-pill left edge + Core/Spend bracket riser
-export const GRID_LOWER_SPINE_X = 200; // stepped-right spine carrying the goal pairs — 5 cells
-export const GRID_LOWER_RISER_X = 216; // goal-pair wishbone riser
-export const GRID_CARD_LEFT = 240; // gray placeholder card left — 6 cells
-export const GRID_CARD_W = 150; // uniform card width
+export const GRID_SPINE_X = 40; // upper spine (Core/Spend bracket + 1st goal) — 1 cell
+export const GRID_PILL_X = 56; // value-pill left edge + Core/Spend bracket riser
+export const GRID_LOWER_SPINE_X = 160; // stepped-right spine carrying the goal pairs — 4 cells
+export const GRID_LOWER_RISER_X = 176; // goal-pair wishbone riser
+export const GRID_CARD_LEFT = 200; // gray placeholder card left — 5 cells (scooted 1 cell left)
+export const GRID_CARD_W = 188; // uniform card width (longer now that the tree scooted left)
 export const GRID_CARD_H = 66; // uniform card height (Figma 66; fits a 2-line name + value)
 // Header reserve: the grid tree starts BELOW a pbi-style hero (sprout logo · gray
 // subtitle · large serif headline), so every grid Y is shifted DOWN by GRID_TOP.
