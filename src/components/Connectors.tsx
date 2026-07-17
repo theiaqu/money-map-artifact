@@ -694,10 +694,10 @@ export default function Connectors({
 
   if (pbiTree) {
     const pbiById = (id: string) => conns.find((c) => c.id === id)?.d;
-    // Figma 804:8385: the branches are WHITE and slightly bolder (raised off the
-    // light-gray board with a soft drop shadow), not thin gray.
-    const pbiTreeW = 2;
-    const pbiPulseW = 2.5;
+    // Figma 804:8385: the branches are WHITE and 4px (raised off the light-gray
+    // board with a soft drop shadow), not thin gray.
+    const pbiTreeW = 4;
+    const pbiPulseW = 4;
     const pbiTreeStroke = '#ffffff';
     const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
       const m = mids[armId];
