@@ -159,10 +159,10 @@ export default function SectionNodeView({
       </div>
     );
   }
-  // "Grouped" pbi gate (Figma 802:10601): the section labels live INSIDE the
-  // colored panels (rendered by PbiGroupedPanels), so the on-spine gate nodes
-  // render nothing here.
-  if (pbi && branch === 'pbi-grouped') {
+  // "Grouped" / "Grouped 2" pbi gates (Figma 802:10601 / 802:10838): the section
+  // labels live INSIDE the panels (rendered by PbiGroupedPanels / PbiGrouped2Panels),
+  // so the on-spine gate nodes render nothing here.
+  if (pbi && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')) {
     return null;
   }
   // "Locked path" pbi gate (Figma 802:10378): plain title-case GRAY text labels

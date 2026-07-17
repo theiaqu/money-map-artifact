@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import Card, { PbiGroupedPanels } from './components/Card';
+import Card, { PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
@@ -38,12 +38,13 @@ const DATASET_OPTS: { id: Dataset; label: string }[] = [
 // bottom of the account-style picker (kept around but not front-and-center).
 const STYLES: { id: ChartStyle; label: string; older?: boolean }[] = [
   { id: 'progress', label: 'Progress bar, inside' },
-  { id: 'pots', label: 'Pots' },
   { id: 'icons', label: 'Minimalist icons' },
   { id: 'illo', label: 'Illustrated' },
   { id: 'sheet', label: 'Sheet' },
   { id: 'pie', label: 'Pie chart' },
   { id: 'stocks', label: 'Stocks / heart monitor' },
+  { id: 'pots', label: 'Pots' },
+  { id: 'grid', label: 'Grid' },
   { id: 'progress-bg', label: 'Progress bar, background', older: true },
   { id: 'slim', label: 'Super slim', older: true },
   { id: 'convo', label: 'Logic first description', older: true },
@@ -194,6 +195,14 @@ function StylePreview({ id }: { id: ChartStyle }) {
           <span className="sp-pots-body" />
         </div>
       );
+    case 'grid':
+      return (
+        <div className="sp sp-grid" aria-hidden>
+          <span className="sp-grid-spine" />
+          <span className="sp-grid-arm" />
+          <span className="sp-grid-card" />
+        </div>
+      );
     default:
       return null;
   }
@@ -211,8 +220,9 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
 // "Condensed" are intentionally NOT offered here.
 const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'text-only', label: 'Text only' },
-  { id: 'pbi-locked', label: 'Locked path' },
+  { id: 'pbi-locked', label: 'Gradient background' },
   { id: 'pbi-grouped', label: 'Grouped' },
+  { id: 'pbi-grouped2', label: 'Grouped 2' },
 ];
 
 // "Skinny line" is the thin-tree pairing for the minimalist styles (Super slim,
@@ -418,17 +428,17 @@ export default function App() {
     setBranch((prev) => {
       if (s === 'slim' || s === 'convo') return 'skinny-line';
       if (s === 'icons') return prev === 'icon-labeled' ? 'icon-labeled' : 'skinny-line';
-      // sheet + illustrated are self-contained (their own wishbone/spine tree):
-      // pin a stable, non-compact/non-thin gate so no % badges or foreign tree
-      // ever render.
-      if (s === 'sheet' || s === 'illo') return 'text-only';
+      // sheet + illustrated + grid are self-contained (their own tree): pin a
+      // stable, non-compact/non-thin gate so no % badges or foreign tree ever
+      // render.
+      if (s === 'sheet' || s === 'illo' || s === 'grid') return 'text-only';
       // "Progress bar, inside" offers only text-only / pbi-locked / pbi-grouped, so
       // entering it from any other gate (e.g. 'compact' carried over from stocks)
       // falls back to a valid pbi gate (default "Text only").
-      if (s === 'progress') return prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'text-only' ? prev : 'text-only';
-      // 'pbi-locked' / 'pbi-grouped' are pbi-only: leaving pbi for any other style
-      // resets to a valid shared gate so no non-pbi style renders pbi-scoped geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' ? 'text-only' : prev;
+      if (s === 'progress') return prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'text-only';
+      // 'pbi-locked' / 'pbi-grouped' / 'pbi-grouped2' are pbi-only: leaving pbi for any
+      // other style resets to a valid shared gate so no non-pbi style renders pbi-scoped geometry.
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -570,7 +580,7 @@ export default function App() {
             ))}
           </div>
         </div>
-        {!stocksFixed && style !== 'sheet' && style !== 'illo' && (
+        {!stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && (
         <div className="config-row">
           <span className="config-label">Gate style</span>
             <div className="mode-toggle" role="tablist" aria-label="Gate style">
@@ -696,13 +706,17 @@ export default function App() {
   const iconHero = heroHeadline(dataset);
   const iconFooterTop = dataset === 'optimizer' ? 877 : 828;
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}`} style={{ height: boardH }}>
+    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: boardH }}>
       {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
           tree; scoped to this gate so no other gate/style is tinted. */}
       {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
       {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
       {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
-      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} />
+      {/* Grouped 2 (pbi-only) GRAY section panels behind the cards/branches. */}
+      {style === 'progress' && branch === 'pbi-grouped2' && <PbiGrouped2Panels dataset={dataset} />}
+      {/* "grid" faint graph-paper background behind the tree + cards (grid-scoped). */}
+      {style === 'grid' && <div className="grid-paper" />}
+      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} />
 
       {style === 'icons' && branch === 'skinny-line' && (
         <>
@@ -728,12 +742,12 @@ export default function App() {
       {/* "illustrated" renders the green-bordered Fruitful root circle on the spine */}
       {style === 'illo' && <IlloCircle />}
 
-      {style !== 'sheet' && sectionsFor(dataset).map((s) => (
+      {style !== 'sheet' && style !== 'grid' && sectionsFor(dataset).map((s) => (
         <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} pots={style === 'pots'} />
       ))}
 
       {cards.map((c) => (
-        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && branch === 'pbi-grouped'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
+        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
       ))}
 
       {!stocksFixed && branch === 'compact' && style !== 'pots' &&

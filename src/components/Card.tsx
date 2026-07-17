@@ -1,5 +1,5 @@
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, type CardNode, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_LOCK_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, heroHeadline, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
@@ -15,11 +15,12 @@ import { SheetIncome, SheetAccountCard, SheetGoalCard } from './SheetCard';
 import StocksV1Card from './StocksV1Card';
 import StocksCondensedCard from './StocksCondensedCard';
 import PotCard from './PotCard';
+import GridCard from './GridCard';
 
 // 'progress' = "progress bar, inside"; 'progress-pill' = amount-chip-as-bar;
 // 'progress-bg' = the card itself is the bar (goal bars can run off-page);
 // 'slim' = "super slim" — a name pill · dotted line · colored target pill row.
-export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo' | 'pots';
+export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo' | 'pots' | 'grid';
 
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
@@ -67,8 +68,12 @@ function pbiIconFor(node: CardNode): LucideIcon {
 // headline (derived from the dataset's milestone goal), and the INCOME + PAYCHECK
 // pill row that sits at the top of the left spine. Rendered inline in the income
 // render branch so it stays scoped to this style (own .pbi-* classes).
-function PbiChrome({ dataset, amount }: { dataset: Dataset; amount: string }) {
+function PbiChrome({ dataset, amount, pbiLocked = false }: { dataset: Dataset; amount: string; pbiLocked?: boolean }) {
   const hero = heroHeadline(dataset);
+  // "Gradient background" gate (pbi-locked): spine sits at x=84, so the income
+  // pill row shifts right to keep the Income pill centered on the spine. Other
+  // pbi gates keep the default left.
+  const incomeLeft = pbiLocked ? PBI_LOCK_INCOME_LEFT : PBI_INCOME_LEFT;
   return (
     <>
       <div className="pbi-hero-logo">
@@ -79,7 +84,7 @@ function PbiChrome({ dataset, amount }: { dataset: Dataset; amount: string }) {
         Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
       </p>
       <h1 className="pbi-hero-title">{`${hero.pre} ${hero.date}`}</h1>
-      <div className="pbi-income-row" title={amount} style={{ left: PBI_INCOME_LEFT, top: PBI_INCOME_TOP }}>
+      <div className="pbi-income-row" title={amount} style={{ left: incomeLeft, top: PBI_INCOME_TOP }}>
         <span className="pbi-pill pbi-pill-income">Income</span>
         {[0, 1, 2, 3, 4].map((i) => (
           <span key={i} className="pbi-pill">Paycheck</span>
@@ -105,6 +110,27 @@ export function PbiGroupedPanels({ dataset }: { dataset: Dataset }) {
           style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
         >
           <span className="pbi-grouped-label">{p.label}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+// "Grouped 2" pbi gate (Figma 802:10838): SAME section panels as Grouped but tinted
+// GRAY (both Monthly Expenses + Goals), with gray section labels. Board-level chrome
+// rendered once behind the connectors + cards when the Grouped 2 gate is active. Own
+// .pbi-grouped2-* classes so it never touches the Grouped (teal/pink) styling.
+export function PbiGrouped2Panels({ dataset }: { dataset: Dataset }) {
+  const panels = pbiGrouped2PanelsFor(dataset);
+  return (
+    <>
+      {panels.map((p) => (
+        <div
+          key={p.id}
+          className="pbi-grouped2-panel"
+          style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
+        >
+          <span className="pbi-grouped2-label">{p.label}</span>
         </div>
       ))}
     </>
@@ -172,6 +198,7 @@ export default function Card({
   dateMode = 'date',
   iconLabeled = false,
   pbiGrouped = false,
+  pbiLocked = false,
   onConvoTap,
   modalCardId = null,
 }: {
@@ -189,6 +216,7 @@ export default function Card({
   dateMode?: DateMode; // "Goal date" display: absolute badge vs "{N} mo. from now"
   iconLabeled?: boolean; // icons "Labeled" gate: income top-center + indented tiles
   pbiGrouped?: boolean; // pbi "Grouped" gate: goals section pushed down for the pink panel
+  pbiLocked?: boolean; // pbi "Gradient background" gate: income pill shifts to the right-moved spine (x=84)
   onConvoTap?: (id: string, rect: DOMRect) => void; // "convo": tap a card to open its detail modal (passes rect for the FLIP morph)
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
 }) {
@@ -265,8 +293,34 @@ export default function Card({
   // renders the hero + INCOME pill chrome (no pot). Illustrative-only.
   const isPots =
     style === 'pots' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
+  // "grid" — a schematic black-line-on-graph-paper tree. Each account/goal card
+  // is a plain GRAY placeholder rectangle (a stand-in, no inner content); the
+  // income row is a small BLACK square root marker capping the top of the spine.
+  // Static/graphic (the tree + value pills are drawn by Connectors' gridTree).
+  const isGrid =
+    style === 'grid' && (node.kind === 'income' || node.kind === 'account' || node.kind === 'goal');
   // reached-check colour derives from the active visual identity's pink
   const checkColor = map === 'money-map' ? PINK_MM : PINK_FLOW;
+
+  if (isGrid) {
+    if (node.kind === 'income') {
+      // small black root marker centered on the top of the spine
+      return (
+        <div
+          className={`node${dimmed ? ' dimmed' : ''}`}
+          style={{ left: GRID_SPINE_X - GRID_MARKER / 2, top: GRID_INCOME_CY - GRID_MARKER / 2, zIndex: 5 }}
+        >
+          <GridCard node={node} />
+        </div>
+      );
+    }
+    const top = gridRowTopFor(dataset)[node.id] ?? node.y;
+    return (
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: GRID_CARD_LEFT, top, zIndex: 2 }}>
+        <GridCard node={node} />
+      </div>
+    );
+  }
 
   if (isPots) {
     if (node.kind === 'income') {
@@ -517,7 +571,7 @@ export default function Card({
       // hero can be absolutely placed in board coordinates.
       return (
         <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: 0, top: 0, width: 402, height: 0 }}>
-          <PbiChrome dataset={dataset} amount={node.amount} />
+          <PbiChrome dataset={dataset} amount={node.amount} pbiLocked={pbiLocked} />
         </div>
       );
     }

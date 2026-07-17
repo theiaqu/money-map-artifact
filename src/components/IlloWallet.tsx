@@ -50,7 +50,12 @@ export default function IlloWallet({ className }: { className?: string }) {
         <path d="M22.0845 20.457H6.43359V40.783H53.2306V20.457H37.6576L29.871 21.9815L22.0845 20.457Z" fill="#E8F5EB" />
       </g>
       <defs>
-        <filter id="illo-wallet-shadow" x="-0.000371933" y="-0.000371933" width="59.9783" height="48.4773" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+        {/* filter region extended well ABOVE the art (negative y + extra height) so
+            the credit card, when it rises above the viewBox top on peek, stays inside
+            the filter region and is NOT clipped by it. The drop-shadow filter would
+            otherwise crop anything outside its region even though the svg root is
+            overflow:visible. */}
+        <filter id="illo-wallet-shadow" x="-4" y="-16" width="68" height="68" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
           <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
           <feOffset />

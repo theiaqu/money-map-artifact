@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, pbiLockDiscsFor, pbiGroupedLockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, connectorsPotsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -126,6 +126,7 @@ export default function Connectors({
   illoTree = false,
   pbiTree = false,
   potsTree = false,
+  gridTree = false,
 }: {
   now: number;
   mode: Mode;
@@ -141,6 +142,7 @@ export default function Connectors({
   illoTree?: boolean; // "Illustrated" style: 4px progress-track spine + branch->bar fill
   pbiTree?: boolean; // "Progress bar, inside" style: thin gray spine + curvy arms
   potsTree?: boolean; // "Pots" style: thin gray spine + curvy arms + check discs (mirrors pbi)
+  gridTree?: boolean; // "Grid" style: black spine + black square-corner branches + black value pills
 }) {
   // Gate-style precedence (a gate choice can OVERRIDE the visual identity):
   //   compact     -> skinny-arrow connectors + % badges, REGARDLESS of identity
@@ -171,10 +173,14 @@ export default function Connectors({
   // "Grouped": thin light spine + white curvy branches + padlock discs + colored
   // section panels behind the cards (Figma 802:10601). pbi-scoped.
   const isPbiGrouped = pbiTree && branch === 'pbi-grouped';
-  const baseConns: Connector[] = potsTree
+  // "Grouped 2": gray section panels + offset-riser branch routing (Figma 802:10838).
+  const isPbiGrouped2 = pbiTree && branch === 'pbi-grouped2';
+  const baseConns: Connector[] = gridTree
+    ? connectorsGridFor(dataset)
+    : potsTree
     ? connectorsPotsFor(dataset)
     : pbiTree
-    ? (isPbiLocked ? connectorsProgressLockedFor(dataset) : isPbiGrouped ? connectorsProgressGroupedFor(dataset) : connectorsProgressFor(dataset))
+    ? (isPbiLocked ? connectorsProgressLockedFor(dataset) : isPbiGrouped ? connectorsProgressGroupedFor(dataset) : isPbiGrouped2 ? connectorsProgressGrouped2For(dataset) : connectorsProgressFor(dataset))
     : illoTree
     ? connectorsIlloFor(dataset)
     : sheetTree
@@ -235,7 +241,7 @@ export default function Connectors({
     setMids(nextMids);
     // conns is derived purely from branch + map + v1 + condensed + dataset
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree, potsTree]);
+  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree, potsTree, gridTree]);
 
   // check badges on decommissioned (fully funded) branch arms — shared by both
   // the money-map and flow/compact renderers. Rendered last so it sits on top of
@@ -269,6 +275,30 @@ export default function Connectors({
       stroke="none"
     />
   ));
+
+  // ---------- grid: black spine + black square-corner branches + black value pills ----------
+  // A schematic black-line tree on the faint graph-paper board (the grid
+  // background is board-level chrome — see App). One thin BLACK vertical spine, a
+  // plain horizontal stub into each individually-branched card (Core / Spend / 1st
+  // goal), and a square-cornered WISHBONE per grouped goal pair. BLACK rounded-pill
+  // labels with WHITE value text sit at the individual junctions. STATIC (no
+  // travelling pulses) — cards are stand-ins. Gated strictly to the grid style so
+  // nothing else can render this tree. Square corners: butt caps + miter joins.
+  if (gridTree) {
+    const pills = gridValuePillsFor(dataset);
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {conns.map((c) => (
+          <path key={c.id} d={c.d} stroke="#111" strokeWidth={1.5} fill="none" strokeLinecap="butt" strokeLinejoin="miter" />
+        ))}
+        {pills.map((p) => (
+          <foreignObject key={`grid-pill-${p.id}`} x={p.x} y={p.y - 12} width={160} height={24} style={{ overflow: 'visible' }}>
+            <span className="grid-pill">{p.text}</span>
+          </foreignObject>
+        ))}
+      </svg>
+    );
+  }
 
   // ---------- progress bar, inside: thin gray spine + soft curvy arms ----------
   // A ~1.25px gray tree (Figma 792:8522): a left spine broken by gaps at each
@@ -431,13 +461,15 @@ export default function Connectors({
     );
   }
 
-  // ---------- pbi "Grouped": thin LIGHT spine + white curvy branches + padlock discs ----------
-  // (Figma 802:10601) Closely related to Locked path, but with a thin light spine
-  // (instead of the bold white track) and colored section panels behind the cards
-  // (the panels are board-level chrome — see PbiGroupedPanels in App). Padlock discs
-  // sit ON the spine at each level boundary and UNLOCK the moment every card of the
-  // level above finishes funding (same cardDone source the check discs use). Money
-  // still travels as thin colored pulses over the white branches.
+  // ---------- pbi "Grouped": uniform white tree (spine + arms) + padlock discs ----------
+  // (Figma 802:10601) Closely related to Locked path, but LIGHTER: the spine, the
+  // section stems, and the wishbone arms are ONE uniform white 4px stroke (no gray
+  // trunk vs white arms), plus colored section panels behind the cards (the panels
+  // are board-level chrome — see PbiGroupedPanels in App). Each section's arm(s) fork
+  // off the spine at a single junction and curve smoothly into the card(s). Padlock
+  // discs sit ON the spine at each section's branch junction and UNLOCK the moment
+  // every card in that section finishes funding (same cardDone source the check discs
+  // use). Money still travels as thin colored pulses over the white branches.
   if (isPbiGrouped) {
     const grpById = (id: string) => conns.find((c) => c.id === id)?.d;
     const lockDiscs = pbiGroupedLockDiscsFor(dataset).map((d) => {
@@ -454,25 +486,22 @@ export default function Connectors({
         </g>
       );
     });
-    // spine = the vertical hops (everything NOT a wishbone arm); arms = the white
-    // curvy branches into each card (the ARM_CARD ids).
-    const isArm = (id: string) => id in ARM_CARD;
+    // Figma 802:10601: the spine (Vector 808), the section stems, and every wishbone
+    // arm (path - bills) are ONE uniform stroke — white, 4px. Draw the entire tree
+    // (spine hops + arms) with a single identical stroke so the trunk and the arms
+    // are indistinguishable in color/weight (no gray spine vs white arms).
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* thin LIGHT vertical spine (Figma Vector 808) */}
-        {conns.filter((c) => !isArm(c.id)).map((c) => (
-          <path key={`spine-${c.id}`} d={c.d} stroke="#c9ccd1" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        ))}
-        {/* white curvy branches over the light spine + colored panels (soft shadow so
-            they read on the tinted panels) */}
+        {/* uniform white tree — spine + stems + wishbone arms, one color + weight
+            (soft shadow so it reads on the tinted section panels) */}
         <defs>
           <filter id="grp-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
             <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.1" />
           </filter>
         </defs>
         <g filter="url(#grp-branch-shadow)">
-          {conns.filter((c) => isArm(c.id)).map((c) => (
-            <path key={`br-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {conns.map((c) => (
+            <path key={`grp-tree-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           ))}
         </g>
         {probes}
@@ -487,6 +516,70 @@ export default function Connectors({
             return (
               <path
                 key={`grp-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={2.5}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {lockDiscs}
+      </svg>
+    );
+  }
+
+  // ---------- pbi "Grouped 2": gray panels + offset-riser routing + padlock discs ----------
+  // (Figma 802:10838) A variant of "Grouped": same uniform white tree (spine + arms),
+  // same white pulses, but the MAIN spine (x=40) carries only the Monthly wishbone
+  // (no lock), then BENDS into the goals panel to an OFFSET riser (x=97). The padlock
+  // discs sit at that offset riser at each goal junction and fork the goal arms off
+  // it (not the spine); they unlock the moment every card in their section funds.
+  if (isPbiGrouped2) {
+    const grp2ById = (id: string) => conns.find((c) => c.id === id)?.d;
+    const lockDiscs = pbiGrouped2LockDiscsFor(dataset).map((d) => {
+      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now));
+      return (
+        <g key={d.id} transform={`translate(${PBI_GROUPED2_RISER_X} ${d.y})`}>
+          <circle r={12} fill="#ffffff" stroke="#e6e7ea" strokeWidth={1} />
+          <g style={{ opacity: unlocked ? 0 : 1, transition: 'opacity 0.45s ease' }}>
+            <Lock x={-7} y={-7} width={14} height={14} color="#6b7280" strokeWidth={2.2} />
+          </g>
+          <g style={{ opacity: unlocked ? 1 : 0, transition: 'opacity 0.45s ease' }}>
+            <LockOpen x={-7} y={-7} width={14} height={14} color="#2f8f57" strokeWidth={2.2} />
+          </g>
+        </g>
+      );
+    });
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="grp2-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.12" />
+          </filter>
+        </defs>
+        <g filter="url(#grp2-branch-shadow)">
+          {conns.map((c) => (
+            <path key={`grp2-tree-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+        </g>
+        {probes}
+        {/* colored pulse per in-flight income event (over the white branches) */}
+        {FLOW_META.map((m) => {
+          const d = grp2ById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`grp2-${m.id}-${j}`}
                 d={d}
                 stroke={m.color}
                 strokeWidth={2.5}

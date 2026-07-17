@@ -23,7 +23,12 @@ export type CardKind = 'income' | 'account' | 'goal';
 // branches into the pbi cards — but the cards of each SECTION are wrapped in a
 // rounded COLORED SECTION PANEL sitting behind them (teal "Monthly Expenses"
 // group, pink "Goals" group) with a small section label in the panel's top-left.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped';
+// 'pbi-grouped2' ("Grouped 2", Figma 802:10838) is a variant of 'pbi-grouped' —
+// SAME grouped-section-panels concept but with GRAY panels and a DIFFERENT branch
+// routing: the arms leave the main spine via a short bend to an OFFSET secondary
+// riser (x=97) and the padlock discs sit at those offset branch junctions rather
+// than directly on the main spine.
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-grouped2';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -1439,6 +1444,13 @@ export const connectorsProgressFor = (dataset: Dataset): Connector[] =>
    so no card moves vs. the other pbi gates. The spine is drawn CONTINUOUS (the
    opaque lock discs visually break it, matching the Figma). */
 export const PBI_LOCK_SPINE_X = 84;
+// INCOME/PAYCHECK pill row left for this gate ONLY. The spine moved right to x=84,
+// so the income pill row shifts with it: the yellow "Income" pill (68px wide,
+// border-box) sits first in the row, so its center is left+34 — anchoring that
+// center on the spine (x=84) puts the income directly above the spine and the
+// straight income→monthly drop (M84 …) runs cleanly down its middle. Other pbi
+// gates keep the default PBI_INCOME_LEFT (spine x=50).
+export const PBI_LOCK_INCOME_LEFT = PBI_LOCK_SPINE_X - 34; // 50
 // bold-white organic wishbone arm — identical control handles to PBI_ARM (which
 // already departs x=84), so it leaves the spine flush and lands into the card.
 export const connectorsProgressLocked: Connector[] = [
@@ -1562,11 +1574,17 @@ export const pbiGroupedRowTopOptimizer: Record<string, number> = {
   brokerage: 949, // 857 + 92
 };
 
-// soft white wishbone arm from the light spine (x=40) into a card (x=160), leaving
-// and arriving horizontally — a longer sweep than the locked/standard pbi arm so it
-// crosses from the spine (left of the panel) into the card.
+// soft white wishbone arm (Figma 802:10601 "path - bills"): a single horizontal
+// STEM leaves the spine (x=40) at the section junction (jy) out to a common FORK
+// (x=104), then a smooth cubic S curves up/down into the card (arriving at x=160,
+// a 10px gap before the card left 170). Because BOTH arms of a 2-card section share
+// the identical stem and fork, the wishbone reads as one clean junction (no splay
+// at the spine); the first control sits at the fork level (horizontal tangent out
+// of the stem → no kink) and the last control at the card level (horizontal into
+// the card). Single-card sections use a straight horizontal arm (no fork).
+const PBI_GRP_FORK_X = 104; // stem end / wishbone fork (matches Figma path-bills left)
 const PBI_GRP_ARM = (jy: number, cy: number): string =>
-  `M40 ${jy} C 112 ${jy}, 112 ${cy}, 160 ${cy}`;
+  `M40 ${jy} L ${PBI_GRP_FORK_X} ${jy} C 132 ${jy}, 132 ${cy}, 160 ${cy}`;
 export const connectorsProgressGrouped: Connector[] = [
   // continuous light spine (x=40): income drop → monthly → goals1 → goals2 → bottom
   { id: 'c-income-monthly', d: 'M40 360 L 40 464', arrow: false },
@@ -1605,19 +1623,24 @@ export const connectorsProgressGroupedFor = (dataset: Dataset): Connector[] =>
 export const pbiGroupedRowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? pbiGroupedRowTopOptimizer : pbiGroupedRowTop;
 
-/* Grouped padlock discs — same `cardDone` unlock semantics as pbi-locked, retuned
-   to the grouped rows (a level unlocks the instant every card in the level ABOVE it
-   finishes funding). `y` centers each disc on the light spine (x=40) at the level
-   boundary. */
+/* Grouped padlock discs (Figma 802:10601) — one disc per SECTION, centered on the
+   spine (x=40) at that section's BRANCH JUNCTION y (where its arm(s) fork off the
+   spine): Monthly at the Core/Spend fork midpoint (464), 1st Goal at the Starter-EF
+   branch level (621), 2nd Goal at the Debt/Full-EF fork midpoint (759), and (Optimizer
+   only) the 3rd Goal at the Travel/Brokerage fork midpoint (943). Each disc unlocks
+   the instant every card in ITS section finishes funding — the SAME `cardDone` source
+   the pbi check discs use (core/spend >= 100%; goals reached). */
 export const pbiGroupedLockDiscs: Record<Dataset, PbiLockDisc[]> = {
   simple: [
-    { id: 'lock-monthly', y: 566, cards: ['core', 'spend'] }, // sits in the panel gap
-    { id: 'lock-goals1', y: 667, cards: ['ef1'] },
+    { id: 'lock-monthly', y: 464, cards: ['core', 'spend'] }, // on the Core/Spend fork
+    { id: 'lock-goals1', y: 621, cards: ['ef1'] }, // on the Starter-EF branch
+    { id: 'lock-goals2', y: 759, cards: ['debt', 'ef6'] }, // on the Debt/Full-EF fork
   ],
   optimizer: [
-    { id: 'lock-monthly', y: 566, cards: ['core', 'spend'] },
-    { id: 'lock-goals1', y: 667, cards: ['ef1'] },
-    { id: 'lock-goals2', y: 851, cards: ['debt', 'ef6'] },
+    { id: 'lock-monthly', y: 464, cards: ['core', 'spend'] },
+    { id: 'lock-goals1', y: 621, cards: ['ef1'] },
+    { id: 'lock-goals2', y: 759, cards: ['debt', 'ef6'] },
+    { id: 'lock-goals3', y: 943, cards: ['travel', 'brokerage'] }, // Travel/Brokerage fork
   ],
 };
 export const pbiGroupedLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
@@ -1627,15 +1650,104 @@ export const pbiGroupedLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
    Monthly Expenses (teal) wraps Core + Spend; Goals (pink) wraps every goal card
    (it grows for the Optimizer's 5 goals). Rects are the pbi card bounds + soft
    padding; fills/labels/radius are the Figma tokens. */
-export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink'; label: string }
+export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink' | 'gray'; label: string }
 export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   // pink Goals panel grows to enclose the last goal card (ef6 for Simple,
   // brokerage for Optimizer): bottom = last card top + card height (80) + pad (14).
   const goalsBottom = (dataset === 'optimizer' ? 949 : 765) + 80 + 14;
   return [
-    { id: 'monthly', x: 61, y: 367, w: 329, h: 194, tint: 'mint', label: 'Monthly Expenses' },
-    { id: 'goals', x: 61, y: 567, w: 329, h: goalsBottom - 567, tint: 'pink', label: 'Goals' },
+    { id: 'monthly', x: 61, y: 367, w: 335, h: 194, tint: 'mint', label: 'Monthly Expenses' },
+    { id: 'goals', x: 61, y: 567, w: 335, h: goalsBottom - 567, tint: 'pink', label: 'Goals' },
   ];
+}
+
+/* ---- "Grouped 2" gate (pbi-scoped, BranchStyle 'pbi-grouped2') — Figma 802:10838 ----
+   A VARIANT of "Grouped" (802:10601): SAME grouped-section-panels concept, the same
+   pbi hero + INCOME/PAYCHECK pills, the same white pbi cards on the SAME rows
+   (pbiGroupedRowTopFor is reused, so no card moves vs. Grouped), and padlocks that
+   unlock on the SAME cardDone timing. TWO deliberate differences:
+
+   1. GRAY section panels (Figma fill rgba(0,0,0,0.05) on both the Monthly Expenses
+      and Goals panels) with gray section labels (rgba(0,0,0,0.5)) — replacing the
+      teal/pink tints of Grouped.
+   2. DIFFERENT branch routing. In Grouped the wishbones fork directly off the main
+      spine (x=40) with the padlock discs sitting ON that spine. In Grouped 2 the
+      main spine (x=40) carries only the Monthly section (its wishbone forks off the
+      spine, WITHOUT a lock), then BENDS to the right into the Goals panel to an
+      OFFSET secondary RISER (x=97). The Goals padlock discs sit at that offset riser
+      at each branch junction, and the goal arms fork off the RISER (not the spine).
+      Figma spec: spine Vector 808 ≈ x40, offset lock discs centered x≈97.5 at
+      y≈618 (Goal 1) and y≈750 (Goal 2); Monthly has no lock disc. */
+export const PBI_GROUPED2_SPINE_X = 40; // main spine (carries income → monthly)
+export const PBI_GROUPED2_RISER_X = 97; // offset secondary riser (carries the goals + their locks)
+
+// Goal wishbone off the OFFSET riser (x=97): the padlock disc sits right at the
+// riser junction (jy), so the arm is a pure smooth cubic from the riser into the
+// card (arriving at x=160, a 10px gap before the card left 170) with a horizontal
+// tangent at both ends. Two arms sharing (97, jy) read as one clean fork.
+const PBI_GRP2_ARM = (jy: number, cy: number): string =>
+  `M${PBI_GROUPED2_RISER_X} ${jy} C 132 ${jy}, 132 ${cy}, 160 ${cy}`;
+export const connectorsProgressGrouped2: Connector[] = [
+  // main spine (x=40): income drop → monthly junction (464)
+  { id: 'c-income-monthly', d: 'M40 360 L 40 464', arrow: false },
+  // monthly wishbone forks off the spine (x=40) at 464 — NO lock here
+  { id: 'c-monthly-core', d: PBI_GRP_ARM(464, 418), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_GRP_ARM(464, 510), arrow: false },
+  // spine bends from the monthly junction (40,464) down and RIGHT into the goals
+  // panel, arriving at the offset riser / Goal-1 lock (97,621)
+  { id: 'c-monthly-goals1', d: 'M40 464 L 40 588 C 40 610, 62 621, 97 621', arrow: false },
+  // Goal 1 — straight branch off the riser into the ef1 card (lock sits at 97,621)
+  { id: 'c-goals1-ef1', d: 'M97 621 L 160 621', arrow: false },
+  // riser drops from the Goal-1 junction (97,621) to the Goal-2 junction (97,759)
+  { id: 'c-goals1-goals2', d: 'M97 621 L 97 759', arrow: false },
+  // financial-health wishbone forks off the riser (97) at 759 -> debt(713)/ef6(805)
+  { id: 'c-goals2-debt', d: PBI_GRP2_ARM(759, 713), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_GRP2_ARM(759, 805), arrow: false },
+  // riser tail continuing below the last fork (off the panel bottom)
+  { id: 'c-goals2-down', d: 'M97 759 L 97 880', arrow: false },
+];
+// Optimizer: shared rows verbatim, then the 3rd gate appended — riser hop
+// goals2 -> goals3 (junction 943), then a symmetric wishbone off the riser.
+export const connectorsProgressGrouped2Optimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M40 360 L 40 464', arrow: false },
+  { id: 'c-monthly-core', d: PBI_GRP_ARM(464, 418), arrow: false },
+  { id: 'c-monthly-spend', d: PBI_GRP_ARM(464, 510), arrow: false },
+  { id: 'c-monthly-goals1', d: 'M40 464 L 40 588 C 40 610, 62 621, 97 621', arrow: false },
+  { id: 'c-goals1-ef1', d: 'M97 621 L 160 621', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M97 621 L 97 759', arrow: false },
+  { id: 'c-goals2-debt', d: PBI_GRP2_ARM(759, 713), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_GRP2_ARM(759, 805), arrow: false },
+  { id: 'c-goals2-goals3', d: 'M97 759 L 97 943', arrow: false },
+  { id: 'c-goals3-travel', d: PBI_GRP2_ARM(943, 897), arrow: false },
+  { id: 'c-goals3-brokerage', d: PBI_GRP2_ARM(943, 989), arrow: false },
+  { id: 'c-goals3-down', d: 'M97 943 L 97 1120', arrow: false },
+];
+export const connectorsProgressGrouped2For = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsProgressGrouped2Optimizer : connectorsProgressGrouped2;
+
+/* Grouped 2 padlock discs (Figma 802:10838) — one disc per GOAL section, sitting on
+   the OFFSET riser (x=97) at that section's branch junction y. UNLIKE Grouped there
+   is NO monthly lock: only the goal gates carry a padlock. Each disc unlocks the
+   instant every card in ITS section finishes funding (same `cardDone` source). */
+export const pbiGrouped2LockDiscs: Record<Dataset, PbiLockDisc[]> = {
+  simple: [
+    { id: 'lock-goals1', y: 621, cards: ['ef1'] }, // riser junction to Starter EF
+    { id: 'lock-goals2', y: 759, cards: ['debt', 'ef6'] }, // riser fork to Debt/Full-EF
+  ],
+  optimizer: [
+    { id: 'lock-goals1', y: 621, cards: ['ef1'] },
+    { id: 'lock-goals2', y: 759, cards: ['debt', 'ef6'] },
+    { id: 'lock-goals3', y: 943, cards: ['travel', 'brokerage'] }, // Travel/Brokerage fork
+  ],
+};
+export const pbiGrouped2LockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
+  dataset === 'optimizer' ? pbiGrouped2LockDiscs.optimizer : pbiGrouped2LockDiscs.simple;
+
+/* Grouped 2 section panels — SAME rects as Grouped (cards reuse pbiGroupedRowTopFor,
+   so the panels wrap the identical card clusters) but both tinted GRAY (Figma
+   rgba(0,0,0,0.05)) with gray section labels. */
+export function pbiGrouped2PanelsFor(dataset: Dataset): PbiGroupedPanel[] {
+  return pbiGroupedPanelsFor(dataset).map((p) => ({ ...p, tint: 'gray' as const }));
 }
 
 /* ============================================================================
@@ -1774,3 +1886,101 @@ export const potRowTopFor = (dataset: Dataset): Record<string, number> =>
   dataset === 'optimizer' ? potRowTopOptimizer : potRowTop;
 export const connectorsPotsFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsPotsOptimizer : connectorsPots;
+
+/* ============================================================================
+   "Grid" (grid) — a schematic, black-line-on-graph-paper tree with GRAY card
+   stand-ins. A faint light-gray graph-paper grid fills the board; a thin BLACK
+   vertical main spine runs down the left; thin BLACK ORTHOGONAL connectors
+   (square corners, NOT curves) branch off it — a plain horizontal stub into each
+   individually-branched card (Core / Spend / 1st goal), and a square-cornered
+   WISHBONE (spine → horizontal stub → vertical riser → horizontals into each
+   card) for each grouped goal pair. BLACK rounded-pill labels with WHITE value
+   text sit at the individual junctions. Cards are uniform gray placeholder
+   rectangles aligned in a column on the right (intentional stand-ins, no inner
+   content). Fully self-contained + grid-scoped; a static graphic layout (no
+   per-card fill animation). Mirrors the *For(dataset) structure of every other
+   style so the Simple (3 goals) and Optimizer (5 goals) datasets both resolve.
+   ============================================================================ */
+export const GRID_SPINE_X = 40; // thin black vertical main spine
+export const GRID_CARD_LEFT = 232; // gray placeholder card left
+export const GRID_CARD_W = 150; // uniform card width
+export const GRID_CARD_H = 60; // uniform card height
+export const GRID_RISER_X = 196; // wishbone vertical riser (sits close to the cards)
+export const GRID_INCOME_CY = 70; // income root-marker center (top of the spine)
+export const GRID_MARKER = 16; // income root-marker square size
+
+// account/goal card row TOPS (node-wrapper top); card vertical CENTER = top +
+// GRID_CARD_H/2. Uniform column rhythm (GRID_PITCH between consecutive cards) so
+// the whole stack reads evenly, matching the reference proportions/spacing.
+const GRID_PITCH = 92;
+export const gridRowTop: Record<string, number> = {
+  income: GRID_INCOME_CY - GRID_CARD_H / 2, // wrapper top (marker centers on the spine)
+  core: 120, // center 150
+  spend: 120 + GRID_PITCH, // 212 -> center 242
+  ef1: 120 + GRID_PITCH * 2, // 304 -> center 334
+  debt: 120 + GRID_PITCH * 3, // 396 -> center 426
+  ef6: 120 + GRID_PITCH * 4, // 488 -> center 518
+};
+// Optimizer: shared rows verbatim, then travel/brokerage continue the same pitch.
+export const gridRowTopOptimizer: Record<string, number> = {
+  ...gridRowTop,
+  travel: 120 + GRID_PITCH * 5, // 580 -> center 610
+  brokerage: 120 + GRID_PITCH * 6, // 672 -> center 702
+};
+
+export const gridRowTopFor = (dataset: Dataset): Record<string, number> =>
+  dataset === 'optimizer' ? gridRowTopOptimizer : gridRowTop;
+
+const gridCardCY = (dataset: Dataset, id: string): number =>
+  (gridRowTopFor(dataset)[id] ?? 0) + GRID_CARD_H / 2;
+
+// square-corner geometry helpers (all straight L segments -> crisp right angles)
+const GRID_ARM = (cy: number): string => `M${GRID_SPINE_X} ${cy} L${GRID_CARD_LEFT} ${cy}`;
+// wishbone: spine -> short horizontal stub -> vertical riser between the two card
+// centers -> a short horizontal into each card. `jy` is the pair's spine tap
+// (the two cards' vertical midpoint).
+const GRID_WISHBONE = (jy: number, cy1: number, cy2: number): string =>
+  `M${GRID_SPINE_X} ${jy} L${GRID_RISER_X} ${jy}` +
+  ` M${GRID_RISER_X} ${cy1} L${GRID_RISER_X} ${cy2}` +
+  ` M${GRID_RISER_X} ${cy1} L${GRID_CARD_LEFT} ${cy1}` +
+  ` M${GRID_RISER_X} ${cy2} L${GRID_CARD_LEFT} ${cy2}`;
+
+// Simple (3 goals): Core / Spend / 1st goal are individually branched; debt+ef6
+// form one grouped wishbone. Spine runs from the income marker down past the last
+// wishbone tap.
+export const connectorsGrid: Connector[] = [
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 552`, arrow: false },
+  { id: 'grid-core', d: GRID_ARM(150), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(242), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(334), arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(472, 426, 518), arrow: false }, // debt + ef6
+];
+// Optimizer (5 goals): same top three individual branches, then TWO grouped
+// wishbones (debt+ef6, travel+brokerage); spine extends to the deeper board.
+export const connectorsGridOptimizer: Connector[] = [
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 736`, arrow: false },
+  { id: 'grid-core', d: GRID_ARM(150), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(242), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(334), arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(472, 426, 518), arrow: false }, // debt + ef6
+  { id: 'grid-goals3', d: GRID_WISHBONE(656, 610, 702), arrow: false }, // travel + brokerage
+];
+
+export const connectorsGridFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsGridOptimizer : connectorsGrid;
+
+// black value pills (WHITE text) at the individual junctions (Core / Spend / 1st
+// goal). Anchored just left of the spine so each pill sits ON its junction. Text
+// reuses the SAME per-card amounts every other style shows: `$X/mo` for accounts,
+// the goal target for the 1st goal. Grouped sibling pairs get no pill (they branch
+// via the square wishbone), matching the reference.
+export interface GridPill { id: string; x: number; y: number; text: string }
+export function gridValuePillsFor(dataset: Dataset): GridPill[] {
+  const cards = cardsFor(dataset);
+  const amt = (id: string) => cards.find((c) => c.id === id)?.amount ?? '';
+  return [
+    { id: 'core', x: GRID_SPINE_X - 2, y: gridCardCY(dataset, 'core'), text: `${amt('core')}/mo` },
+    { id: 'spend', x: GRID_SPINE_X - 2, y: gridCardCY(dataset, 'spend'), text: `${amt('spend')}/mo` },
+    { id: 'ef1', x: GRID_SPINE_X - 2, y: gridCardCY(dataset, 'ef1'), text: amt('ef1') },
+  ];
+}

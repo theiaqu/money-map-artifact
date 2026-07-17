@@ -1555,7 +1555,8 @@ body {
   bottom: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.39;
+  /* barely-there tint: dropped from 0.39 to a faint whisper of color */
+  opacity: 0.12;
   background: linear-gradient(
     to bottom,
     rgba(246, 220, 114, 0) 0px,
@@ -1590,6 +1591,29 @@ body {
 }
 .pbi-grouped-panel--mint .pbi-grouped-label { color: rgba(0, 127, 125, 0.53); }
 .pbi-grouped-panel--pink .pbi-grouped-label { color: #a17187; }
+
+/* ---- "Grouped 2" gate (Figma 802:10838): SAME section panels as Grouped but both
+   tinted GRAY (fill rgba(0,0,0,0.05)) with gray section labels (rgba(0,0,0,0.5)).
+   Own .pbi-grouped2-* classes + z-index 0 so they sit behind the connectors/cards
+   and never touch the Grouped (teal/pink) styling. ---- */
+.pbi-grouped2-panel {
+  position: absolute;
+  border-radius: 12px;
+  z-index: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.05);
+}
+.pbi-grouped2-label {
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  width: 71px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+}
 
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336. Each account/goal card is a colored POT
@@ -3048,13 +3072,18 @@ body {
    and eases up to its settled/native position with a gentle overshoot. Translate
    units are svg user units (viewBox 60x49), so the rise scales with the wallet. */
 .illo-modal-illo--wallet .illo-wallet-card {
+  /* pivot rotation/translate around the card's OWN box (not the svg origin) so the
+     subtle tilt reads as a gentle lean rather than a big swing */
+  transform-box: fill-box;
+  transform-origin: center;
   transform: translateY(7px);
   transition: transform 640ms cubic-bezier(0.34, 1.4, 0.5, 1);
 }
-/* START stays at the original natural tucked spot (+7); the RISEN peek rises a
-   moderate amount (-6) — high enough to clearly pop out of the pocket, but not so
-   high it gets cut off at the top. Same ease-out+settle. */
-.illo-modal-illo--wallet.risen .illo-wallet-card { transform: translateY(-6px); }
+/* START sits tucked (+7); the RISEN peek is a SUBTLE nudge — a small
+   ~5px lift plus a gentle ~1deg tilt, so the card just barely pops out of the
+   pocket with a little character. The clipping fix (extended drop-shadow filter
+   region in IlloWallet) keeps it fully visible even while risen. */
+.illo-modal-illo--wallet.risen .illo-wallet-card { transform: translateY(-5px) rotate(1deg); }
 /* dismiss: clear the scrim + drop the card away while the illustration shrinks */
 .illo-modal--closing .illo-scrim { opacity: 0; }
 .illo-modal--closing .illo-modal-card {
@@ -3081,3 +3110,67 @@ body {
 .sp-illo-bar-2 { background: #37d67a; }
 .sp-illo-figure { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 2px; background: #49c7ef; }
 .sp-illo-figure-2 { background: #37d67a; }
+
+/* ============================================================================
+   "Grid" (grid) — a schematic, black-line-on-graph-paper tree with GRAY card
+   stand-ins. All classes .grid-* / .board-grid + scoped so they never collide
+   with or leak into any other account style (the graph-paper background is
+   rendered ONLY inside the grid board and sits BEHIND the tree + cards).
+   ============================================================================ */
+.board-grid { background: #ffffff; }
+
+/* faint light-gray graph-paper grid filling the board, BEHIND the tree/cards
+   (z-index 0, below the connectors at z-4 and cards at z-2). pointer-events:none
+   so it never intercepts interaction; scoped to the grid board so it can't leak
+   into the config panel or any other style. */
+.grid-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(17, 17, 17, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* plain gray placeholder card (intentional stand-in, no inner content) */
+.grid-card {
+  border-radius: 4px;
+  background: #d9dadd;
+}
+
+/* small black square root marker capping the top of the spine (income row) */
+.grid-income-marker {
+  border-radius: 3px;
+  background: #111;
+}
+
+/* black rounded-pill value label with white text, sitting at a junction */
+.grid-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* style-picker mini-mock: faint grid + black spine + black arm + gray card */
+.sp-grid {
+  position: relative;
+  height: 40px;
+  background:
+    linear-gradient(to right, rgba(17, 17, 17, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.08) 1px, transparent 1px);
+  background-size: 9px 9px;
+}
+.sp-grid-spine { position: absolute; left: 10px; top: 8px; bottom: 8px; width: 1.5px; background: #111; }
+.sp-grid-arm { position: absolute; left: 10px; top: 50%; width: 20px; height: 1.5px; background: #111; transform: translateY(-50%); }
+.sp-grid-card { position: absolute; right: 8px; top: 50%; width: 22px; height: 16px; border-radius: 2px; background: #d0d1d4; transform: translateY(-50%); }
