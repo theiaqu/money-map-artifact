@@ -3134,10 +3134,52 @@ body {
   background-size: 28px 28px;
 }
 
-/* plain gray placeholder card (intentional stand-in, no inner content) */
+/* light-gray placeholder card holding minimalist, line-centric content: name on
+   top, a hairline divider, then the value (amount + `/mo` or fund-by date). */
 .grid-card {
   border-radius: 4px;
-  background: #d9dadd;
+  background: #eceded;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.grid-card-title {
+  font-family: var(--font-family);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: #2c2c2c;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.grid-card-rule {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(17, 17, 17, 0.14);
+}
+.grid-card-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.grid-card-amt {
+  font-family: var(--font-family);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: #111;
+}
+.grid-card-sub {
+  font-family: var(--font-family);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  color: #8a8a8a;
 }
 
 /* small black square root marker capping the top of the spine (income row) */

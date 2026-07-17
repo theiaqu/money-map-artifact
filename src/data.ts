@@ -1913,7 +1913,7 @@ export const GRID_LOWER_SPINE_X = 168; // stepped-right spine carrying the goal 
 export const GRID_LOWER_RISER_X = 196; // goal-pair wishbone riser — 7 cells
 export const GRID_CARD_LEFT = 224; // gray placeholder card left — 8 cells
 export const GRID_CARD_W = 150; // uniform card width
-export const GRID_CARD_H = 60; // uniform card height
+export const GRID_CARD_H = 70; // uniform card height (fits a 2-line name + value)
 export const GRID_INCOME_CY = 56; // income root-marker center (top of the upper spine)
 export const GRID_MARKER = 16; // income root-marker square size
 
@@ -1923,17 +1923,17 @@ export const GRID_MARKER = 16; // income root-marker square size
 // separates the sections; goal pairs keep the 84 within-pair pitch.
 export const gridRowTop: Record<string, number> = {
   income: GRID_INCOME_CY - GRID_CARD_H / 2, // wrapper top (marker centers on the spine)
-  core: 110, // center 140
-  spend: 194, // center 224
-  ef1: 306, // center 336
-  debt: 418, // center 448
-  ef6: 502, // center 532
+  core: 105, // center 140
+  spend: 189, // center 224
+  ef1: 301, // center 336
+  debt: 413, // center 448
+  ef6: 497, // center 532
 };
 // Optimizer: shared rows verbatim, then travel/brokerage as a second grouped pair.
 export const gridRowTopOptimizer: Record<string, number> = {
   ...gridRowTop,
-  travel: 614, // center 644
-  brokerage: 698, // center 728
+  travel: 609, // center 644
+  brokerage: 693, // center 728
 };
 
 export const gridRowTopFor = (dataset: Dataset): Record<string, number> =>
