@@ -694,9 +694,11 @@ export default function Connectors({
 
   if (pbiTree) {
     const pbiById = (id: string) => conns.find((c) => c.id === id)?.d;
-    const pbiTreeW = 1.25;
-    const pbiPulseW = 2;
-    const pbiTreeStroke = 'var(--connector)';
+    // Figma 804:8385: the branches are WHITE and slightly bolder (raised off the
+    // light-gray board with a soft drop shadow), not thin gray.
+    const pbiTreeW = 2;
+    const pbiPulseW = 2.5;
+    const pbiTreeStroke = '#ffffff';
     const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
       const m = mids[armId];
       if (!m) return null;
@@ -714,10 +716,18 @@ export default function Connectors({
     });
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* static gray tree (thin by default; bolder for the Condensed gate) */}
-        {conns.map((c) => (
-          <path key={c.id} d={c.d} stroke={pbiTreeStroke} strokeWidth={pbiTreeW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        ))}
+        <defs>
+          <filter id="pbi-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.12" />
+          </filter>
+        </defs>
+        {/* static WHITE raised tree (Figma 804:8385) — soft drop shadow lifts it off
+            the light-gray board, matching the "1.5, bold" white branches. */}
+        <g filter="url(#pbi-branch-shadow)">
+          {conns.map((c) => (
+            <path key={c.id} d={c.d} stroke={pbiTreeStroke} strokeWidth={pbiTreeW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+        </g>
         {probes}
         {/* colored pulse per in-flight income event */}
         {FLOW_META.map((m) => {
