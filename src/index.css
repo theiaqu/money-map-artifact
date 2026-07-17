@@ -3151,8 +3151,8 @@ body {
   display: inline-flex;
   align-items: center;
   height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
+  padding: 0 9px;
+  border-radius: 4px;
   background: #111;
   color: #fff;
   font-family: var(--font-family);

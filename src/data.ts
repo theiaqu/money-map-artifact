@@ -1901,31 +1901,39 @@ export const connectorsPotsFor = (dataset: Dataset): Connector[] =>
    per-card fill animation). Mirrors the *For(dataset) structure of every other
    style so the Simple (3 goals) and Optimizer (5 goals) datasets both resolve.
    ============================================================================ */
-export const GRID_SPINE_X = 40; // thin black vertical main spine
-export const GRID_CARD_LEFT = 232; // gray placeholder card left
+// The whole tree is laid out on the 28px graph-paper module (see `.grid-paper`):
+// every SPINE / RISER x and every horizontal ARM y lands on a gridline so the
+// composition reads as if drawn ON the paper. The signature move is a STEPPED
+// spine: an UPPER spine carries the Monthly bracket (Core+Spend) and the 1st goal,
+// then the tree STEPS RIGHT to a LOWER spine that drops down and feeds the goal
+// pairs — so each line only travels as far as it needs, keeping the canvas clean.
+export const GRID_SPINE_X = 56; // upper spine (Core/Spend bracket + 1st goal) — 2 cells
+export const GRID_PILL_X = 84; // value-pill left edge + Core/Spend bracket riser — 3 cells
+export const GRID_LOWER_SPINE_X = 168; // stepped-right spine carrying the goal pairs — 6 cells
+export const GRID_LOWER_RISER_X = 196; // goal-pair wishbone riser — 7 cells
+export const GRID_CARD_LEFT = 224; // gray placeholder card left — 8 cells
 export const GRID_CARD_W = 150; // uniform card width
 export const GRID_CARD_H = 60; // uniform card height
-export const GRID_RISER_X = 196; // wishbone vertical riser (sits close to the cards)
-export const GRID_INCOME_CY = 70; // income root-marker center (top of the spine)
+export const GRID_INCOME_CY = 56; // income root-marker center (top of the upper spine)
 export const GRID_MARKER = 16; // income root-marker square size
 
 // account/goal card row TOPS (node-wrapper top); card vertical CENTER = top +
-// GRID_CARD_H/2. Uniform column rhythm (GRID_PITCH between consecutive cards) so
-// the whole stack reads evenly, matching the reference proportions/spacing.
-const GRID_PITCH = 92;
+// GRID_CARD_H/2. Every center is a multiple of 28 so its horizontal arm rides a
+// gridline. Monthly (Core→Spend) sit a tight 84 (3 cells) apart; a wider 112 gap
+// separates the sections; goal pairs keep the 84 within-pair pitch.
 export const gridRowTop: Record<string, number> = {
   income: GRID_INCOME_CY - GRID_CARD_H / 2, // wrapper top (marker centers on the spine)
-  core: 120, // center 150
-  spend: 120 + GRID_PITCH, // 212 -> center 242
-  ef1: 120 + GRID_PITCH * 2, // 304 -> center 334
-  debt: 120 + GRID_PITCH * 3, // 396 -> center 426
-  ef6: 120 + GRID_PITCH * 4, // 488 -> center 518
+  core: 110, // center 140
+  spend: 194, // center 224
+  ef1: 306, // center 336
+  debt: 418, // center 448
+  ef6: 502, // center 532
 };
-// Optimizer: shared rows verbatim, then travel/brokerage continue the same pitch.
+// Optimizer: shared rows verbatim, then travel/brokerage as a second grouped pair.
 export const gridRowTopOptimizer: Record<string, number> = {
   ...gridRowTop,
-  travel: 120 + GRID_PITCH * 5, // 580 -> center 610
-  brokerage: 120 + GRID_PITCH * 6, // 672 -> center 702
+  travel: 614, // center 644
+  brokerage: 698, // center 728
 };
 
 export const gridRowTopFor = (dataset: Dataset): Record<string, number> =>
@@ -1934,53 +1942,65 @@ export const gridRowTopFor = (dataset: Dataset): Record<string, number> =>
 const gridCardCY = (dataset: Dataset, id: string): number =>
   (gridRowTopFor(dataset)[id] ?? 0) + GRID_CARD_H / 2;
 
-// square-corner geometry helpers (all straight L segments -> crisp right angles)
-const GRID_ARM = (cy: number): string => `M${GRID_SPINE_X} ${cy} L${GRID_CARD_LEFT} ${cy}`;
-// wishbone: spine -> short horizontal stub -> vertical riser between the two card
-// centers -> a short horizontal into each card. `jy` is the pair's spine tap
-// (the two cards' vertical midpoint).
-const GRID_WISHBONE = (jy: number, cy1: number, cy2: number): string =>
-  `M${GRID_SPINE_X} ${jy} L${GRID_RISER_X} ${jy}` +
-  ` M${GRID_RISER_X} ${cy1} L${GRID_RISER_X} ${cy2}` +
-  ` M${GRID_RISER_X} ${cy1} L${GRID_CARD_LEFT} ${cy1}` +
-  ` M${GRID_RISER_X} ${cy2} L${GRID_CARD_LEFT} ${cy2}`;
+// square-corner geometry helpers (all straight L segments -> crisp right angles).
+// A plain horizontal arm from an x to the card left, at a card center y.
+const GRID_ARM = (x: number, cy: number): string => `M${x} ${cy} L${GRID_CARD_LEFT} ${cy}`;
+// Monthly bracket: the upper spine taps at the Core/Spend midpoint, elbows right to
+// the pill-x riser, and that riser spans the two rows — each pill then sits ON the
+// riser and its arm continues to the card.
+const GRID_BRACKET = (cy1: number, cy2: number): string =>
+  `M${GRID_SPINE_X} ${(cy1 + cy2) / 2} L${GRID_PILL_X} ${(cy1 + cy2) / 2}` +
+  ` M${GRID_PILL_X} ${cy1} L${GRID_PILL_X} ${cy2}`;
+// Goal-pair wishbone off the LOWER spine: tap at the pair midpoint, elbow to the
+// lower riser, riser spans the two rows, short arms into each card. No pills.
+const GRID_WISHBONE = (cy1: number, cy2: number): string =>
+  `M${GRID_LOWER_SPINE_X} ${(cy1 + cy2) / 2} L${GRID_LOWER_RISER_X} ${(cy1 + cy2) / 2}` +
+  ` M${GRID_LOWER_RISER_X} ${cy1} L${GRID_LOWER_RISER_X} ${cy2}` +
+  ` M${GRID_LOWER_RISER_X} ${cy1} L${GRID_CARD_LEFT} ${cy1}` +
+  ` M${GRID_LOWER_RISER_X} ${cy2} L${GRID_CARD_LEFT} ${cy2}`;
 
-// Simple (3 goals): Core / Spend / 1st goal are individually branched; debt+ef6
-// form one grouped wishbone. Spine runs from the income marker down past the last
-// wishbone tap.
+// Simple (3 goals): the UPPER spine runs from the income marker down to the 1st-goal
+// row, carrying the Core/Spend bracket + the 1st-goal arm. The 1st-goal arm is
+// tapped by the LOWER spine, which drops and feeds the debt+ef6 pair via a wishbone.
 export const connectorsGrid: Connector[] = [
-  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 552`, arrow: false },
-  { id: 'grid-core', d: GRID_ARM(150), arrow: false },
-  { id: 'grid-spend', d: GRID_ARM(242), arrow: false },
-  { id: 'grid-ef1', d: GRID_ARM(334), arrow: false },
-  { id: 'grid-goals2', d: GRID_WISHBONE(472, 426, 518), arrow: false }, // debt + ef6
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 336`, arrow: false },
+  { id: 'grid-monthly', d: GRID_BRACKET(140, 224), arrow: false },
+  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 140), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 224), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 336), arrow: false },
+  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 336 L${GRID_LOWER_SPINE_X} 560`, arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(448, 532), arrow: false }, // debt + ef6
 ];
-// Optimizer (5 goals): same top three individual branches, then TWO grouped
-// wishbones (debt+ef6, travel+brokerage); spine extends to the deeper board.
+// Optimizer (5 goals): same upper spine + Monthly bracket + 1st goal, then the lower
+// spine drops further to feed TWO goal-pair wishbones (debt+ef6, travel+brokerage).
 export const connectorsGridOptimizer: Connector[] = [
-  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 736`, arrow: false },
-  { id: 'grid-core', d: GRID_ARM(150), arrow: false },
-  { id: 'grid-spend', d: GRID_ARM(242), arrow: false },
-  { id: 'grid-ef1', d: GRID_ARM(334), arrow: false },
-  { id: 'grid-goals2', d: GRID_WISHBONE(472, 426, 518), arrow: false }, // debt + ef6
-  { id: 'grid-goals3', d: GRID_WISHBONE(656, 610, 702), arrow: false }, // travel + brokerage
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 336`, arrow: false },
+  { id: 'grid-monthly', d: GRID_BRACKET(140, 224), arrow: false },
+  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 140), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 224), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 336), arrow: false },
+  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 336 L${GRID_LOWER_SPINE_X} 756`, arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(448, 532), arrow: false }, // debt + ef6
+  { id: 'grid-goals3', d: GRID_WISHBONE(644, 728), arrow: false }, // travel + brokerage
 ];
 
 export const connectorsGridFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsGridOptimizer : connectorsGrid;
 
-// black value pills (WHITE text) at the individual junctions (Core / Spend / 1st
-// goal). Anchored just left of the spine so each pill sits ON its junction. Text
-// reuses the SAME per-card amounts every other style shows: `$X/mo` for accounts,
-// the goal target for the 1st goal. Grouped sibling pairs get no pill (they branch
-// via the square wishbone), matching the reference.
+// black value pills (WHITE text) sitting at the individually-branched junctions
+// (Core / Spend / 1st goal). LEFT-anchored at GRID_PILL_X so all three pills line up
+// vertically and each straddles its horizontal arm — the arm enters the pill's left
+// and exits its right into the card, exactly like the reference. Text reuses the
+// SAME per-card amounts every other style shows: `$X/mo` for accounts, the goal
+// target for the 1st goal. Grouped goal pairs get no pill (they branch via the
+// square wishbone off the lower spine), matching the reference.
 export interface GridPill { id: string; x: number; y: number; text: string }
 export function gridValuePillsFor(dataset: Dataset): GridPill[] {
   const cards = cardsFor(dataset);
   const amt = (id: string) => cards.find((c) => c.id === id)?.amount ?? '';
   return [
-    { id: 'core', x: GRID_SPINE_X - 2, y: gridCardCY(dataset, 'core'), text: `${amt('core')}/mo` },
-    { id: 'spend', x: GRID_SPINE_X - 2, y: gridCardCY(dataset, 'spend'), text: `${amt('spend')}/mo` },
-    { id: 'ef1', x: GRID_SPINE_X - 2, y: gridCardCY(dataset, 'ef1'), text: amt('ef1') },
+    { id: 'core', x: GRID_PILL_X, y: gridCardCY(dataset, 'core'), text: `${amt('core')}/mo` },
+    { id: 'spend', x: GRID_PILL_X, y: gridCardCY(dataset, 'spend'), text: `${amt('spend')}/mo` },
+    { id: 'ef1', x: GRID_PILL_X, y: gridCardCY(dataset, 'ef1'), text: amt('ef1') },
   ];
 }
