@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -286,16 +286,69 @@ export default function Connectors({
   // nothing else can render this tree. Square corners: butt caps + miter joins.
   if (gridTree) {
     const pills = gridValuePillsFor(dataset);
+    // Reveal like the Sheet: the grid ASSEMBLES as it plays. Each spine/branch
+    // segment DRAWS ON (stroke dashoffset reveal) over a causal grow window taken
+    // from the shared income-driven timing (sheetGrowWindows), and the value pills
+    // POP in the instant the growing tip reaches their junction. Same causal order
+    // the sheet uses: spine down → monthly bracket + Core/Spend arms → 1st goal →
+    // lower spine → goal pairs. The grid cards + income marker pop in Card.tsx.
+    const sw = sheetGrowWindows(dataset, mode);
+    const s = (id: string) => sw[id]?.start;
+    const e = (id: string) => sw[id]?.end;
+    const isOpt = dataset === 'optimizer';
+    // composite grid connectors map to a [start,end] window from representative
+    // causal segments (grid ids aren't in the standard BRANCH_TIMING set).
+    const gwin: Record<string, { start: number; end: number }> = {
+      'grid-spine': { start: s('c-income-monthly') ?? 0, end: e('c-monthly-goals1') ?? e('c-monthly-core') ?? 0 },
+      'grid-monthly': { start: s('c-monthly-core') ?? 0, end: e('c-monthly-core') ?? 0 },
+      'grid-core': { start: s('c-monthly-core') ?? 0, end: e('c-monthly-core') ?? 0 },
+      'grid-spend': { start: s('c-monthly-spend') ?? 0, end: e('c-monthly-spend') ?? 0 },
+      'grid-ef1': { start: s('c-goals1-ef1') ?? 0, end: e('c-goals1-ef1') ?? 0 },
+      'grid-lower-spine': { start: s('c-goals1-goals2') ?? 0, end: (isOpt ? e('c-goals2-goals3') : e('c-goals1-goals2')) ?? 0 },
+      'grid-goals2': { start: s('c-goals2-debt') ?? 0, end: e('c-goals2-ef6') ?? 0 },
+      'grid-goals3': { start: s('c-goals3-travel') ?? 0, end: e('c-goals3-brokerage') ?? 0 },
+    };
+    const growOf = (id: string): number => {
+      const w = gwin[id];
+      if (!w) return now > 0 ? 1 : 0;
+      const span = Math.max(1e-6, w.end - w.start);
+      return Math.max(0, Math.min(1, (now - w.start) / span));
+    };
+    // a value pill reveals when the tip reaches its junction (= the row arm start)
+    const pillReveal: Record<string, number> = {
+      core: gwin['grid-core'].start,
+      spend: gwin['grid-spend'].start,
+      ef1: gwin['grid-ef1'].start,
+    };
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        {conns.map((c) => (
-          <path key={c.id} d={c.d} stroke="#c3c6cc" strokeWidth={1.5} fill="none" strokeLinecap="butt" strokeLinejoin="miter" />
-        ))}
-        {pills.map((p) => (
-          <foreignObject key={`grid-pill-${p.id}`} x={p.x} y={p.y - 12} width={160} height={24} style={{ overflow: 'visible' }}>
-            <span className="grid-pill">{p.text}</span>
-          </foreignObject>
-        ))}
+        {probes}
+        {conns.map((c) => {
+          const len = lens[c.id];
+          const g = growOf(c.id);
+          if (!len || len <= 0 || g <= 0.0001) return null;
+          return (
+            <path
+              key={c.id}
+              d={c.d}
+              stroke="#c3c6cc"
+              strokeWidth={1.5}
+              fill="none"
+              strokeLinecap="butt"
+              strokeLinejoin="miter"
+              strokeDasharray={`${len.toFixed(2)} ${len.toFixed(2)}`}
+              strokeDashoffset={(len * (1 - g)).toFixed(2)}
+            />
+          );
+        })}
+        {pills.map((p) => {
+          const rs = sheetRevealStyle(now, pillReveal[p.id] ?? 0);
+          return (
+            <foreignObject key={`grid-pill-${p.id}`} x={p.x} y={p.y - 12} width={160} height={24} style={{ overflow: 'visible' }}>
+              <span className="grid-pill" style={{ opacity: rs.opacity, transform: `scale(${rs.scale})` }}>{p.text}</span>
+            </foreignObject>
+          );
+        })}
       </svg>
     );
   }

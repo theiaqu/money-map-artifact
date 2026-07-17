@@ -303,12 +303,18 @@ export default function Card({
   const checkColor = map === 'money-map' ? PINK_MM : PINK_FLOW;
 
   if (isGrid) {
+    // reveal like the Sheet: the marker + each card pops in (fade + subtle scale)
+    // the instant the growing tree tip reaches it, sitting as a faint ghost before
+    // then. Driven off `now` (sim months) via the same causal reveal timing, with
+    // transition:none so the pop tracks the sim clock exactly.
+    const rs = sheetRevealStyle(now, sheetRevealMonths(dataset, mode)[node.id] ?? 0);
+    const revealStyle = { opacity: rs.opacity, transform: `scale(${rs.scale})`, transition: 'none' as const };
     if (node.kind === 'income') {
-      // small black root marker centered on the top of the spine
+      // small root marker centered on the top of the spine
       return (
         <div
           className={`node${dimmed ? ' dimmed' : ''}`}
-          style={{ left: GRID_SPINE_X - GRID_MARKER / 2, top: GRID_INCOME_CY - GRID_MARKER / 2, zIndex: 5 }}
+          style={{ left: GRID_SPINE_X - GRID_MARKER / 2, top: GRID_INCOME_CY - GRID_MARKER / 2, zIndex: 5, ...revealStyle }}
         >
           <GridCard node={node} />
         </div>
@@ -316,7 +322,7 @@ export default function Card({
     }
     const top = gridRowTopFor(dataset)[node.id] ?? node.y;
     return (
-      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: GRID_CARD_LEFT, top, zIndex: 2 }}>
+      <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: GRID_CARD_LEFT, top, zIndex: 2, ...revealStyle }}>
         <GridCard node={node} />
       </div>
     );
