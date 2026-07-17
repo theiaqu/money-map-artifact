@@ -3172,7 +3172,7 @@ body {
   font-size: 15px;
   font-weight: 700;
   line-height: 1;
-  color: #111;
+  color: #3a3d43;
 }
 .grid-card-sub {
   font-family: var(--font-family);
@@ -3182,21 +3182,21 @@ body {
   color: #8a8a8a;
 }
 
-/* small black square root marker capping the top of the spine (income row) */
+/* small soft-gray square root marker capping the top of the spine (income row) */
 .grid-income-marker {
   border-radius: 3px;
-  background: #111;
+  background: #c3c6cc;
 }
 
-/* black rounded-pill value label with white text, sitting at a junction */
+/* soft-gray rounded-pill value label with muted text, sitting at a junction */
 .grid-pill {
   display: inline-flex;
   align-items: center;
   height: 24px;
   padding: 0 9px;
   border-radius: 4px;
-  background: #111;
-  color: #fff;
+  background: #eef0f2;
+  color: #5b616a;
   font-family: var(--font-family);
   font-size: 12px;
   font-weight: 600;
@@ -3213,6 +3213,6 @@ body {
     linear-gradient(to bottom, rgba(17, 17, 17, 0.08) 1px, transparent 1px);
   background-size: 9px 9px;
 }
-.sp-grid-spine { position: absolute; left: 10px; top: 8px; bottom: 8px; width: 1.5px; background: #111; }
-.sp-grid-arm { position: absolute; left: 10px; top: 50%; width: 20px; height: 1.5px; background: #111; transform: translateY(-50%); }
+.sp-grid-spine { position: absolute; left: 10px; top: 8px; bottom: 8px; width: 1.5px; background: #c3c6cc; }
+.sp-grid-arm { position: absolute; left: 10px; top: 50%; width: 20px; height: 1.5px; background: #c3c6cc; transform: translateY(-50%); }
 .sp-grid-card { position: absolute; right: 8px; top: 50%; width: 22px; height: 16px; border-radius: 2px; background: #d0d1d4; transform: translateY(-50%); }

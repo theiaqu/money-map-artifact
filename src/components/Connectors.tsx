@@ -289,7 +289,7 @@ export default function Connectors({
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
         {conns.map((c) => (
-          <path key={c.id} d={c.d} stroke="#111" strokeWidth={1.5} fill="none" strokeLinecap="butt" strokeLinejoin="miter" />
+          <path key={c.id} d={c.d} stroke="#c3c6cc" strokeWidth={1.5} fill="none" strokeLinecap="butt" strokeLinejoin="miter" />
         ))}
         {pills.map((p) => (
           <foreignObject key={`grid-pill-${p.id}`} x={p.x} y={p.y - 12} width={160} height={24} style={{ overflow: 'visible' }}>
