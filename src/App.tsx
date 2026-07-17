@@ -8,7 +8,7 @@ import IlloModal from './components/IlloModal';
 import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -220,7 +220,10 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
 const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'text-only', label: 'Text gates' },
   { id: 'pbi-grouped', label: 'Text gates + backgrounds' },
+  { id: 'pbi-split', label: 'Section split' },
   { id: 'pbi-indented', label: 'Indented' },
+  { id: 'pbi-locked', label: 'Gradient background' },
+  { id: 'pbi-grouped2', label: 'Grouped 2' },
 ];
 
 // "Skinny line" is the thin-tree pairing for the minimalist styles (Super slim,
@@ -430,13 +433,13 @@ export default function App() {
       // stable, non-compact/non-thin gate so no % badges or foreign tree ever
       // render.
       if (s === 'sheet' || s === 'illo' || s === 'grid') return 'text-only';
-      // "Progress bar, inside" offers only text-only / pbi-grouped / pbi-indented, so
-      // entering it from any other gate (e.g. 'compact' carried over from stocks)
-      // falls back to a valid pbi gate (default "Text gates").
-      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-indented' || prev === 'text-only' ? prev : 'text-only';
+      // "Progress bar, inside" offers its own pbi gate set; entering it from any
+      // other gate (e.g. 'compact' carried over from stocks) falls back to the
+      // default "Text gates".
+      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-split' || prev === 'pbi-indented' || prev === 'pbi-locked' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'text-only';
       // the pbi-scoped gates are pbi-only: leaving pbi for any other style resets to
       // a valid shared gate so no non-pbi style renders pbi-scoped geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' || prev === 'pbi-indented' ? 'text-only' : prev;
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' || prev === 'pbi-split' || prev === 'pbi-indented' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -764,6 +767,12 @@ export default function App() {
         {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
         {/* Grouped 2 (pbi-only) GRAY section panels behind the cards/branches. */}
         {style === 'progress' && branch === 'pbi-grouped2' && <PbiGrouped2Panels dataset={dataset} />}
+        {/* "Indented" (pbi-only) faint graph-paper the square tree rides on. */}
+        {style === 'progress' && branch === 'pbi-indented' && <div className="pbi-indented-grid" />}
+        {/* "Section split" (pbi-only) dashed rules dividing Monthly from Goals. */}
+        {style === 'progress' && branch === 'pbi-split' && pbiSplitDividersFor(dataset).map((y, i) => (
+          <div key={`split-${i}`} className="pbi-split-divider" style={{ top: y }} />
+        ))}
         {/* "grid" faint graph-paper background behind the tree + cards (grid-scoped). */}
         {style === 'grid' && <div className="grid-paper" />}
         <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} />

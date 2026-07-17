@@ -32,7 +32,11 @@ export type CardKind = 'income' | 'account' | 'goal';
 // gate: a far-left main spine that steps RIGHT into nested risers, with small
 // amount pills ($5,000, $2,000, …) sitting on each branch stub before it reaches
 // the card. No section labels — the indentation itself expresses the hierarchy.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-grouped2' | 'pbi-indented';
+// 'pbi-split' ("Section split", Figma 907:12864) is a "Progress bar, inside"-only
+// gate: the SAME text-gate tree (thin spine, on-spine text pills, white wishbones)
+// as 'text-only', plus a full-width dashed DIVIDER line between each section
+// (Monthly | Goals | …) — no colored panels, just the dividers.
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-grouped2' | 'pbi-split' | 'pbi-indented';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -1773,44 +1777,50 @@ export function pbiGrouped2PanelsFor(dataset: Dataset): PbiGroupedPanel[] {
    indent one step deeper (x=115). The indentation itself expresses the hierarchy,
    so there are no on-spine section labels. Reuses the shared pulse ids so the causal
    money pulses travel it unchanged, and the pbi cards stay on their default rows. */
-export const PBI_INDENTED_SPINE_X = 41; // main spine (monthly + 1st goal)
-export const PBI_INDENTED_RISER_X = 78; // indented riser for level-2 goals
-export const PBI_INDENTED_RISER2_X = 115; // deeper riser for level-3 goals (Optimizer)
+// The Indented tree rides a 46px grid (see .pbi-indented-grid) offset so gridlines
+// fall exactly on the spine (x=41) and every card CENTER (418/510/602/694/786 —
+// the default pbi rows are a 92px = 2-cell pitch). Verticals sit on the 41 / 87 /
+// 133 gridlines (spine → level-2 riser → level-3 riser) and horizontals ride the
+// row gridlines, so the whole tree reads as drawn ON the paper. All corners are
+// crisp right angles with a small 7px radius (NOT sweeping curves).
+export const PBI_INDENTED_SPINE_X = 41; // main spine (monthly + 1st goal) — gridline
+export const PBI_INDENTED_RISER_X = 87; // indented riser for level-2 goals — +1 cell
+export const PBI_INDENTED_RISER2_X = 133; // deeper riser for level-3 goals — +2 cells
 export const PBI_INDENTED_PILL_X = 52; // left edge of the amount pills near the spine
-// wishbone off the indented riser (rx) at junction jy into a card center cy
-const PBI_IND_ARM = (rx: number, jy: number, cy: number): string =>
-  `M${rx} ${jy} C ${rx + 34} ${jy}, ${rx + 34} ${cy}, 160 ${cy}`;
+const PBI_IND_ARM_END = 160; // arms stop 10px shy of the pbi card left (170)
+const IR = 7; // right-angle corner radius (crisp, grid-aligned — no big curves)
+// down the trunk (tx) from y0 to a rounded right-angle corner at yc, then right to xEnd
+const PBI_IND_ELBOW = (tx: number, y0: number, yc: number, xEnd: number): string =>
+  `M${tx} ${y0} L${tx} ${yc - IR} Q${tx} ${yc} ${tx + IR} ${yc} L${xEnd} ${yc}`;
 export const connectorsProgressIndented: Connector[] = [
-  // main spine (x=41): income drop through the monthly span down to the 1st goal
-  { id: 'c-income-monthly', d: 'M41 360 L 41 464', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M41 464 L 41 602', arrow: false },
-  // step RIGHT off the spine into the indented level-2 riser (x=78) at junction 740
-  { id: 'c-goals1-goals2', d: 'M41 602 C 41 662, 78 662, 78 740', arrow: false },
-  { id: 'c-goals2-down', d: 'M78 740 L 78 946', arrow: false },
-  // monthly + 1st goal — horizontal elbow arms off the spine (amount pills sit here)
-  { id: 'c-monthly-core', d: 'M41 418 L 160 418', arrow: false },
-  { id: 'c-monthly-spend', d: 'M41 510 L 160 510', arrow: false },
-  { id: 'c-goals1-ef1', d: 'M41 602 L 160 602', arrow: false },
-  // level-2 goals — wishbone off the indented riser (junction 740 -> debt 694 / ef6 786)
-  { id: 'c-goals2-debt', d: PBI_IND_ARM(78, 740, 694), arrow: false },
-  { id: 'c-goals2-ef6', d: PBI_IND_ARM(78, 740, 786), arrow: false },
+  // main spine (x=41): income drop → monthly span → 1st goal (straight vertical)
+  { id: 'c-income-monthly', d: 'M41 372 L41 418', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M41 418 L41 602', arrow: false },
+  // monthly + 1st goal — straight horizontal arms off the spine (amount pills sit here)
+  { id: 'c-monthly-core', d: `M41 418 L${PBI_IND_ARM_END} 418`, arrow: false },
+  { id: 'c-monthly-spend', d: `M41 510 L${PBI_IND_ARM_END} 510`, arrow: false },
+  { id: 'c-goals1-ef1', d: `M41 602 L${PBI_IND_ARM_END} 602`, arrow: false },
+  // INDENT: spine steps right into the level-2 riser (x=87) at the debt row (694)
+  { id: 'c-goals1-goals2', d: PBI_IND_ELBOW(41, 602, 694, 87), arrow: false },
+  // level-2 goals off the riser: debt straight out; ef6 drops the riser then out
+  { id: 'c-goals2-debt', d: `M87 694 L${PBI_IND_ARM_END} 694`, arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_IND_ELBOW(87, 694, 786, PBI_IND_ARM_END), arrow: false },
 ];
-// Optimizer: shared rows verbatim, then a deeper indented riser (x=115) for the
-// level-3 goals (travel/brokerage) forking at their midpoint 924.
+// Optimizer: shared rows verbatim, then the riser steps deeper (x=133) for the
+// level-3 goals (travel 878 / brokerage 970).
 export const connectorsProgressIndentedOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M41 360 L 41 464', arrow: false },
-  { id: 'c-monthly-goals1', d: 'M41 464 L 41 602', arrow: false },
-  { id: 'c-goals1-goals2', d: 'M41 602 C 41 662, 78 662, 78 740', arrow: false },
-  { id: 'c-monthly-core', d: 'M41 418 L 160 418', arrow: false },
-  { id: 'c-monthly-spend', d: 'M41 510 L 160 510', arrow: false },
-  { id: 'c-goals1-ef1', d: 'M41 602 L 160 602', arrow: false },
-  { id: 'c-goals2-debt', d: PBI_IND_ARM(78, 740, 694), arrow: false },
-  { id: 'c-goals2-ef6', d: PBI_IND_ARM(78, 740, 786), arrow: false },
-  // step deeper off the level-2 riser into the level-3 riser (x=115) at junction 924
-  { id: 'c-goals2-goals3', d: 'M78 740 C 78 850, 115 850, 115 924', arrow: false },
-  { id: 'c-goals3-down', d: 'M115 924 L 115 1186', arrow: false },
-  { id: 'c-goals3-travel', d: PBI_IND_ARM(115, 924, 878), arrow: false },
-  { id: 'c-goals3-brokerage', d: PBI_IND_ARM(115, 924, 970), arrow: false },
+  { id: 'c-income-monthly', d: 'M41 372 L41 418', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M41 418 L41 602', arrow: false },
+  { id: 'c-monthly-core', d: `M41 418 L${PBI_IND_ARM_END} 418`, arrow: false },
+  { id: 'c-monthly-spend', d: `M41 510 L${PBI_IND_ARM_END} 510`, arrow: false },
+  { id: 'c-goals1-ef1', d: `M41 602 L${PBI_IND_ARM_END} 602`, arrow: false },
+  { id: 'c-goals1-goals2', d: PBI_IND_ELBOW(41, 602, 694, 87), arrow: false },
+  { id: 'c-goals2-debt', d: `M87 694 L${PBI_IND_ARM_END} 694`, arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_IND_ELBOW(87, 694, 786, PBI_IND_ARM_END), arrow: false },
+  // INDENT deeper: level-2 riser steps right into the level-3 riser (x=133) at travel (878)
+  { id: 'c-goals2-goals3', d: PBI_IND_ELBOW(87, 694, 878, 133), arrow: false },
+  { id: 'c-goals3-travel', d: `M133 878 L${PBI_IND_ARM_END} 878`, arrow: false },
+  { id: 'c-goals3-brokerage', d: PBI_IND_ELBOW(133, 878, 970, PBI_IND_ARM_END), arrow: false },
 ];
 export const connectorsProgressIndentedFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsProgressIndentedOptimizer : connectorsProgressIndented;
@@ -1833,6 +1843,15 @@ export const pbiIndentedPills: Record<Dataset, PbiIndentedPill[]> = {
 };
 export const pbiIndentedPillsFor = (dataset: Dataset): PbiIndentedPill[] =>
   dataset === 'optimizer' ? pbiIndentedPills.optimizer : pbiIndentedPills.simple;
+
+/* "Section split" gate (Figma 907:12864): the same text-gate tree as 'text-only',
+   plus a full-width dashed rule dividing the Monthly Expenses block (Core + Spend)
+   from the Goals block. Returns the board-Y of each divider (midway between the
+   Spend card bottom and the first goal card top). */
+export const pbiSplitDividersFor = (dataset: Dataset): number[] => {
+  const rows = dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
+  return [(rows.spend + 80 + rows.ef1) / 2];
+};
 
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336.

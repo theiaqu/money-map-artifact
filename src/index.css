@@ -3223,6 +3223,34 @@ body.is-scrubbing-noselect * {
   background-size: 40px 40px;
 }
 
+/* "Indented" pbi gate (Figma 886:12513): faint graph-paper behind the tree. The
+   46px module + (41px, 4px) offset lands vertical gridlines on the spine/risers
+   (x=41 / 87 / 133) and horizontal gridlines on every card center (418/510/602/
+   694/786 — the 92px = 2-cell pitch), so the square branches ride the grid. */
+.pbi-indented-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(17, 17, 17, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.05) 1px, transparent 1px);
+  background-size: 46px 46px;
+  background-position: 41px 4px;
+}
+
+/* "Section split" pbi gate (Figma 907:12864): a full-width dashed rule dividing
+   the Monthly Expenses block from the Goals block. */
+.pbi-split-divider {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  height: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-top: 1px dashed rgba(17, 17, 17, 0.18);
+}
+
 /* light-gray placeholder card holding minimalist, line-centric content: name on
    top, a hairline divider, then the value (amount + `/mo` or fund-by date). */
 .grid-card {
