@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
 import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
-import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, type Dataset, type Mode } from '../scenario';
+import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
 const MM_ROPE = (id: string): string =>
@@ -392,6 +392,47 @@ export default function Connectors({
     );
   }
 
+  /* STRICT sequential gate shared by ALL "Progress bar, inside" gate styles: a
+     branch that flows into the NEXT section must not fire until EVERY card in the
+     current section has its progress bar 100% full (cardDone). We binary-search
+     the month each section completes (fill curves are non-decreasing, so cardDone
+     flips once and stays true) and floor each downstream branch's pulse departure
+     at it — spine hops release at the section-done month, card arms one near-instant
+     spine hop later. Sections a dataset lacks resolve to Infinity (branch stays
+     gray), which is harmless. Computed once here, used by every pbi renderer. */
+  const pbiGate: Record<string, number> = ((): Record<string, number> => {
+    if (!pbiTree) return {};
+    const doneMonth = (cardIds: string[]): number => {
+      const allDone = (t: number) => cardIds.every((c) => cardDone(dataset, mode, c, t));
+      const hiCap = animMonths(dataset, mode);
+      if (cardIds.length === 0 || !allDone(hiCap)) return Infinity;
+      let lo = 0;
+      let hi = hiCap;
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        if (allDone(mid)) hi = mid;
+        else lo = mid;
+      }
+      return hi;
+    };
+    const monthlyDone = doneMonth(['core', 'spend']);
+    const goal1Done = doneMonth(['ef1']);
+    const goal2Done = doneMonth(['debt', 'ef6']);
+    const hop = spineTravelMonths(mode); // one gate hop, added for card arms
+    return {
+      'c-monthly-goals1': monthlyDone,
+      'c-goals1-ef1': monthlyDone + hop,
+      'c-goals1-goals2': goal1Done,
+      'c-goals2-debt': goal1Done + hop,
+      'c-goals2-ef6': goal1Done + hop,
+      'c-goals2-down': goal1Done,
+      'c-goals2-goals3': goal2Done,
+      'c-goals3-travel': goal2Done + hop,
+      'c-goals3-brokerage': goal2Done + hop,
+      'c-goals3-down': goal2Done,
+    };
+  })();
+
   // ---------- pbi "Locked path": bold WHITE spine + heavy white curvy branches + animated padlock discs ----------
   // (Figma 802:10378) A thick rounded WHITE track spine with heavy organic white
   // wishbone branches into the cards, plain gray gate labels to the left (rendered
@@ -437,7 +478,7 @@ export default function Connectors({
           const d = lockById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -510,7 +551,7 @@ export default function Connectors({
           const d = grpById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -574,7 +615,7 @@ export default function Connectors({
           const d = grp2ById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -630,7 +671,7 @@ export default function Connectors({
           const d = pbiById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (

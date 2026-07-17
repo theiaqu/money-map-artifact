@@ -509,6 +509,10 @@ const SPINE_TRAVEL_BY_MODE: Record<Mode, number> = {
   illustrative: 0.22,
 };
 
+// exposed so gated renderers (e.g. pbi) can offset a card ARM's release by the
+// one near-instant spine hop it takes for the parent gate to be reached.
+export const spineTravelMonths = (mode: Mode): number => SPINE_TRAVEL_BY_MODE[mode];
+
 type BranchKind = 'spine' | 'arm';
 // gateDepth = # of near-instant spine hops before this branch departs its event.
 // kind = spine (zips at SPINE_TRAVEL) vs arm (paced at BRANCH_PACING.travel).
@@ -734,7 +738,7 @@ const FILL_SPAN_BY_MODE: Record<Mode, number> = {
    fire on the 2nd (overflow) paycheck, we emit ONE pulse per firing event that
    is still within its travel + fade window, so overlapping pulses STACK and
    blend on the same branch rather than the old one snapping away. */
-export function branchFlow(dataset: Dataset, mode: Mode, now: number, branchId: string): Flow[] {
+export function branchFlow(dataset: Dataset, mode: Mode, now: number, branchId: string, gateRelease = -Infinity): Flow[] {
   const sc = getScenario(dataset, mode);
   const events = sc.eventActive;
   const pace = BRANCH_PACING[mode];
@@ -746,7 +750,11 @@ export function branchFlow(dataset: Dataset, mode: Mode, now: number, branchId: 
   for (const t of sc.income) {
     if (t > now + 1e-9) break;
     if (!events[t]?.has(branchId)) continue;
-    const local = now - t - dep;
+    // `gateRelease` (pbi) floors a branch's departure so it can't begin flowing
+    // until its upstream section's cards are 100% funded — the pulse starts at the
+    // LATER of its natural causal departure (t + dep) and that release month.
+    const start = Math.max(t + dep, gateRelease);
+    const local = now - start;
     if (local < 0) continue;
     if (local <= tr) {
       out.push({ p: smootherstep(clamp(local / tr)), alpha: 1 });
