@@ -130,6 +130,18 @@ export function goalDateLabel(dateMode: DateMode, badge: string | undefined): st
   return n <= 0 ? 'now' : `${n} mo. from now`;
 }
 
+// The emphasized date the paycheck-carousel scrubber overlays while dragging
+// (e.g. "October 2026"). `now` is months elapsed from the reference month
+// (July 2026), rounded to the nearest whole month so the label snaps to a
+// paycheck period as you scrub.
+const MONTH_FULL_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export function scrubMonthLabel(now: number): string {
+  const idx = DATE_REF_YEAR * 12 + DATE_REF_MONTH + Math.round(now);
+  const y = Math.floor(idx / 12);
+  const m = ((idx % 12) + 12) % 12;
+  return `${MONTH_FULL_NAMES[m]} ${y}`;
+}
+
 export const WINDOW_MONTHS = 3; // squeeze -> scroll cutoff
 export const MAX_BARS = 7;
 // NOTE: the animation's total duration is derived PER (dataset, mode) from the

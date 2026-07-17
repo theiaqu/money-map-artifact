@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import Card, { PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
+import Card, { HeroHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
@@ -8,10 +8,9 @@ import IlloModal from './components/IlloModal';
 import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
-import FruitfulLogo from './components/FruitfulLogo';
 import { cardsFor, sectionsFor, badgesFor, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle } from './components/Card';
-import { animMonths, endSecs, monthSecs, dimmedNodes, heroHeadline, type Dataset, type Mode, type DateMode } from './scenario';
+import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'illustrative', label: 'Illustrative' },
@@ -462,6 +461,24 @@ export default function App() {
     };
   }, []);
 
+  // Paycheck-carousel scrubber (pbi style): dragging the carousel takes over the
+  // clock and parks the sim at the dragged month so the user can watch the goal
+  // accounts fill/unfill at any point in time. It stops the RAF loop and leaves
+  // the sim PAUSED at that frame, so the Play button resumes from there.
+  const scrubTo = useCallback(
+    (nowMonths: number) => {
+      cancelAnimationFrame(raf.current);
+      const clamped = Math.max(0, Math.min(nowMonths, animMonths(dataset, effMode)));
+      const secs = clamped * monthSecs(effMode);
+      elapsedRef.current = secs;
+      setT(secs);
+      setPlaying(false);
+      setPaused(true);
+      setHasPlayed(true);
+    },
+    [dataset, effMode],
+  );
+
   const now = t < 0 ? 0 : Math.min(t / monthSecs(effMode), animMonths(dataset, effMode));
   const dimmed = dimmedNodes(dataset, effMode, now);
 
@@ -703,8 +720,16 @@ export default function App() {
   // headline whose date derives from the dataset's milestone goal. The footer pill
   // sits near the screen bottom for Simple, and drops below the taller Optimizer
   // row stack so it never overlaps the last row.
-  const iconHero = heroHeadline(dataset);
   const iconFooterTop = dataset === 'optimizer' ? 877 : 828;
+  // Which styles render the shared board-level hero header. pbi + pots draw it
+  // themselves (via their income chrome), so they're excluded here. Icons only
+  // shows it in its default "skinny-line" gate (the "Labeled" gate has its own
+  // top-center income header instead). NOTE: stocks + illustrated lead with
+  // their own top content and still need a tree-shift before they can adopt the
+  // shared hero, so they're intentionally omitted for now.
+  const showHero =
+    style === 'grid' ||
+    (style === 'icons' && branch === 'skinny-line');
   const boardEl = (
     <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: boardH }}>
       {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
@@ -718,37 +743,13 @@ export default function App() {
       {style === 'grid' && <div className="grid-paper" />}
       <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} />
 
+      {/* every artifact leads with the identical shared hero header. Styles whose
+          tree starts at the very top (stocks, illustrated) shift down to clear it. */}
+      {showHero && <HeroHeader dataset={dataset} />}
       {style === 'icons' && branch === 'skinny-line' && (
-        <>
-          <div className="icon-hero-logo">
-            <FruitfulLogo size={40} color="#2f8b52" />
-          </div>
-          <p className="icon-hero-sub">
-            Your Money Map is ready! Based on everything you&rsquo;ve told us, we estimate you could be...
-          </p>
-          <h2 className="icon-hero-headline">
-            {iconHero.pre} {iconHero.date}
-          </h2>
-          <div className="icon-footer" style={{ top: iconFooterTop }}>
-            fruitful.com
-          </div>
-        </>
-      )}
-
-      {/* "grid" reuses the exact pbi hero header (sprout logo · gray subtitle · large
-          serif headline derived from the dataset's milestone goal); the grid tree is
-          shifted down by GRID_TOP so it clears this block. */}
-      {style === 'grid' && (
-        <>
-          <div className="pbi-hero-logo">
-            <FruitfulLogo size={40} color="#2f8f4e" />
-          </div>
-          <p className="pbi-hero-sub">
-            Your Money Map is ready!<br />
-            Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
-          </p>
-          <h1 className="pbi-hero-title">{`${iconHero.pre} ${iconHero.date}`}</h1>
-        </>
+        <div className="icon-footer" style={{ top: iconFooterTop }}>
+          fruitful.com
+        </div>
       )}
 
       {/* "sheet" renders its own grouped panels + on-connector pills instead of the
@@ -763,7 +764,7 @@ export default function App() {
       ))}
 
       {cards.map((c) => (
-        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} />
+        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} onScrub={style === 'progress' ? scrubTo : undefined} />
       ))}
 
       {!stocksFixed && branch === 'compact' && style !== 'pots' &&

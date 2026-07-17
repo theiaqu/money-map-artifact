@@ -1421,6 +1421,90 @@ body {
   min-width: 68px;
 }
 
+/* while dragging the paycheck carousel, suppress text highlighting across the
+   whole page (dragging over the hero/cards must never select text) */
+body.is-scrubbing-noselect,
+body.is-scrubbing-noselect * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: ew-resize !important;
+}
+
+/* ---- paycheck carousel as a time scrubber ---- */
+/* the row becomes a fixed-width VIEWPORT: the leftmost slot is the yellow
+   "active" spot and the whole pill strip swipes so the active paycheck snaps
+   into it (replacing Income). Upcoming paychecks queue to the right; past ones
+   swipe off the clipped left edge. */
+.pbi-income-row--scrub {
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+  width: 372px;
+  overflow: hidden;
+}
+.pbi-income-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+/* every pill in the scrubber is a uniform fixed-width slot so the strip swipes
+   by a constant pitch */
+.pbi-income-row--scrub .pbi-pill-slot {
+  box-sizing: border-box;
+  width: 76px;
+  flex: 0 0 auto;
+  pointer-events: none; /* the viewport owns the drag; pills never intercept */
+  transition: background 220ms ease, color 220ms ease;
+}
+/* the pill sitting in the yellow slot */
+.pbi-income-row--scrub .pbi-pill-active {
+  background: #f6dc72;
+  color: #111111;
+}
+/* while scrubbing, the big serif hero headline steps aside so the date banner
+   can take its place (no overlap) */
+.pbi-hero-title.is-scrub-hidden {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+/* emphasized "Paycheck in {Month}" banner overlaid while dragging — sits in the
+   hero headline's slot */
+.pbi-scrub-banner {
+  position: absolute;
+  left: 0;
+  top: 236px;
+  width: 402px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 30;
+  pointer-events: none;
+  animation: pbi-scrub-in 160ms ease;
+}
+@keyframes pbi-scrub-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pbi-scrub-lead {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: #9aa0a8;
+}
+.pbi-scrub-date {
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -1.6px;
+  line-height: 0.95;
+  color: #191919;
+}
+
 /* ---- gate-label pills, centered ON the thin spine (x=50) ---- */
 .pbi-gate {
   transform: translateX(-50%);
