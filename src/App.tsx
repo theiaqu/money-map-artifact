@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import Card, { HeroHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
+import Card, { ArtifactHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
@@ -8,7 +8,7 @@ import IlloModal from './components/IlloModal';
 import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, PBI_INCOME_LEFT, PBI_LOCK_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -721,58 +721,80 @@ export default function App() {
   // sits near the screen bottom for Simple, and drops below the taller Optimizer
   // row stack so it never overlaps the last row.
   const iconFooterTop = dataset === 'optimizer' ? 877 : 828;
-  // Which styles render the shared board-level hero header. pbi + pots draw it
-  // themselves (via their income chrome), so they're excluded here. Icons only
-  // shows it in its default "skinny-line" gate (the "Labeled" gate has its own
-  // top-center income header instead). NOTE: stocks + illustrated lead with
-  // their own top content and still need a tree-shift before they can adopt the
-  // shared hero, so they're intentionally omitted for now.
-  const showHero =
+  // Every artifact carries the SAME header: the "Money Map is ready!" hero +
+  // the paycheck-scrubber carousel (ArtifactHeader). The carousel acts as the
+  // income element, so each style's own income node is suppressed (hideIncome)
+  // and its prototype is shifted DOWN by `treeShift` so nothing overlaps the
+  // header. Icons uses the header only in its default "skinny-line" gate (the
+  // "Labeled" gate has its own top-center income header).
+  const usesHeader =
+    style === 'progress' ||
+    style === 'pots' ||
     style === 'grid' ||
+    style === 'stocks' ||
+    style === 'illo' ||
     (style === 'icons' && branch === 'skinny-line');
+  // Per-style downward shift so the prototype clears the hero + carousel. Styles
+  // that already reserved header space (pbi/icons/grid) need ~none; styles whose
+  // content led at the very top (stocks, illustrated) shift the most; pots nudges
+  // down so its first pot clears the carousel.
+  const TREE_SHIFT: Partial<Record<ChartStyle, number>> = {
+    stocks: 190,
+    illo: 175,
+    pots: 44,
+  };
+  const treeShift = usesHeader ? TREE_SHIFT[style] ?? 0 : 0;
+  const headerIncomeLeft = style === 'progress' && branch === 'pbi-locked' ? PBI_LOCK_INCOME_LEFT : PBI_INCOME_LEFT;
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: boardH }}>
-      {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
-          tree; scoped to this gate so no other gate/style is tinted. */}
-      {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
-      {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
-      {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
-      {/* Grouped 2 (pbi-only) GRAY section panels behind the cards/branches. */}
-      {style === 'progress' && branch === 'pbi-grouped2' && <PbiGrouped2Panels dataset={dataset} />}
-      {/* "grid" faint graph-paper background behind the tree + cards (grid-scoped). */}
-      {style === 'grid' && <div className="grid-paper" />}
-      <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} />
-
-      {/* every artifact leads with the identical shared hero header. Styles whose
-          tree starts at the very top (stocks, illustrated) shift down to clear it. */}
-      {showHero && <HeroHeader dataset={dataset} />}
-      {style === 'icons' && branch === 'skinny-line' && (
-        <div className="icon-footer" style={{ top: iconFooterTop }}>
-          fruitful.com
-        </div>
+    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: boardH + treeShift }}>
+      {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
+          top of every artifact, OUTSIDE the shifted tree so it never moves. The
+          carousel is the income element (each style's income node is hidden). */}
+      {usesHeader && (
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} />
       )}
 
-      {/* "sheet" renders its own grouped panels + on-connector pills instead of the
-          shared section-node gate labels */}
-      {style === 'sheet' && <SheetChrome dataset={dataset} now={now} mode={effMode} />}
+      {/* the prototype tree, shifted DOWN so it clears the header */}
+      <div className="tree-shift" style={treeShift ? { transform: `translateY(${treeShift}px)` } : undefined}>
+        {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
+            tree; scoped to this gate so no other gate/style is tinted. */}
+        {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
+        {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
+        {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
+        {/* Grouped 2 (pbi-only) GRAY section panels behind the cards/branches. */}
+        {style === 'progress' && branch === 'pbi-grouped2' && <PbiGrouped2Panels dataset={dataset} />}
+        {/* "grid" faint graph-paper background behind the tree + cards (grid-scoped). */}
+        {style === 'grid' && <div className="grid-paper" />}
+        <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} />
 
-      {/* "illustrated" renders the green-bordered Fruitful root circle on the spine */}
-      {style === 'illo' && <IlloCircle />}
-
-      {style !== 'sheet' && style !== 'grid' && sectionsFor(dataset).map((s) => (
-        <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} pots={style === 'pots'} />
-      ))}
-
-      {cards.map((c) => (
-        <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} onScrub={style === 'progress' ? scrubTo : undefined} />
-      ))}
-
-      {!stocksFixed && branch === 'compact' && style !== 'pots' &&
-        percentBadges.map((b) => (
-          <div key={b.id} className={`node${dimmed.has(b.id) ? ' dimmed' : ''}`} style={{ left: b.x, top: b.y, zIndex: 6 }}>
-            <div className="pct-badge">{b.text}</div>
+        {style === 'icons' && branch === 'skinny-line' && (
+          <div className="icon-footer" style={{ top: iconFooterTop }}>
+            fruitful.com
           </div>
+        )}
+
+        {/* "sheet" renders its own grouped panels + on-connector pills instead of the
+            shared section-node gate labels */}
+        {style === 'sheet' && <SheetChrome dataset={dataset} now={now} mode={effMode} />}
+
+        {/* "illustrated" renders the green-bordered Fruitful root circle on the spine */}
+        {style === 'illo' && <IlloCircle />}
+
+        {style !== 'sheet' && style !== 'grid' && sectionsFor(dataset).map((s) => (
+          <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} pots={style === 'pots'} />
         ))}
+
+        {cards.map((c) => (
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} />
+        ))}
+
+        {!stocksFixed && branch === 'compact' && style !== 'pots' &&
+          percentBadges.map((b) => (
+            <div key={b.id} className={`node${dimmed.has(b.id) ? ' dimmed' : ''}`} style={{ left: b.x, top: b.y, zIndex: 6 }}>
+              <div className="pct-badge">{b.text}</div>
+            </div>
+          ))}
+      </div>
 
       {/* Conversational keeps its bottom "About your {name}" sheet (ConvoModal);
           Illustrated gets its OWN centered card + shared-element illustration

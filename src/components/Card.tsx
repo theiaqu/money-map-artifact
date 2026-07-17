@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
-import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_LOCK_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
+import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
 import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
@@ -85,35 +85,27 @@ export function HeroHeader({ dataset }: { dataset: Dataset }) {
   );
 }
 
-// pbi hero + income-pill chrome: the sprout logo, gray subtitle, large serif
-// headline (derived from the dataset's milestone goal), and the INCOME + PAYCHECK
-// pill row that sits at the top of the left spine. Rendered inline in the income
-// render branch so it stays scoped to this style (own .pbi-* classes).
-function PbiChrome({
+// The paycheck carousel / time-scrubber. Dragging horizontally across the pill
+// row maps the pointer position (0 = far left → start, 1 = far right → the last
+// funded month) to the sim clock, so the cards fill/unfill live. The leftmost
+// slot is a fixed yellow highlight; the strip swipes so the ACTIVE paycheck snaps
+// into it (replacing Income). While dragging, an emphasized "Paycheck in {Month}"
+// banner overlays and the hero headline steps aside. Part of the shared header.
+function PaycheckCarousel({
   dataset,
-  amount,
   mode,
   now,
   onScrub,
-  pbiLocked = false,
+  incomeLeft = PBI_INCOME_LEFT,
+  onDraggingChange,
 }: {
   dataset: Dataset;
-  amount: string;
   mode: Mode;
   now: number;
-  onScrub?: (nowMonths: number) => void; // pbi paycheck-carousel scrubber → parks the sim at the dragged month
-  pbiLocked?: boolean;
+  onScrub?: (nowMonths: number) => void;
+  incomeLeft?: number;
+  onDraggingChange?: (dragging: boolean) => void;
 }) {
-  const hero = heroHeadline(dataset);
-  // "Gradient background" gate (pbi-locked): spine sits at x=84, so the income
-  // pill row shifts right to keep the Income pill centered on the spine. Other
-  // pbi gates keep the default left.
-  const incomeLeft = pbiLocked ? PBI_LOCK_INCOME_LEFT : PBI_INCOME_LEFT;
-
-  // Paycheck carousel as a time scrubber: dragging horizontally across the pill
-  // row maps the pointer position (0 = far left → start, 1 = far right → the
-  // last funded month) to the sim clock, so the cards fill/unfill live. While
-  // dragging, an emphasized "Paycheck in {Month}" banner overlays the board.
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const total = animMonths(dataset, mode);
@@ -126,11 +118,12 @@ function PbiChrome({
     const f = r.width > 0 ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0;
     onScrub(f * total);
   };
-  // The carousel is a fixed-width slot at the far left (the yellow highlight) with
-  // upcoming paychecks queued to its right. Scrubbing swipes the whole strip so
-  // the ACTIVE pill snaps into that yellow slot — 0 = Income, 1..5 = Paychecks.
-  const activeIdx = Math.round(frac * 5);
+  const activeIdx = Math.round(frac * 5); // 0 = Income slot, 1..5 = Paychecks
   const PILL_PITCH = 84; // 76px fixed pill width + 8px gap
+  const setDrag = (d: boolean) => {
+    setDragging(d);
+    onDraggingChange?.(d);
+  };
 
   // while dragging, kill text selection everywhere so scrubbing across the board
   // never leaves highlighted text behind
@@ -143,15 +136,6 @@ function PbiChrome({
 
   return (
     <>
-      <div className="pbi-hero-logo">
-        <FruitfulLogo size={40} color="#2f8f4e" />
-      </div>
-      <p className="pbi-hero-sub">
-        Your Money Map is ready!<br />
-        Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
-      </p>
-      <h1 className={`pbi-hero-title${dragging ? ' is-scrub-hidden' : ''}`}>{`${hero.pre} ${hero.date}`}</h1>
-      {/* the pbi header additionally carries the paycheck-scrubber carousel below */}
       {dragging && (
         <div className="pbi-scrub-banner">
           <span className="pbi-scrub-lead">Paycheck in</span>
@@ -161,14 +145,14 @@ function PbiChrome({
       <div
         ref={rowRef}
         className={`pbi-income-row${scrubbable ? ' pbi-income-row--scrub' : ''}${dragging ? ' is-scrubbing' : ''}`}
-        title={scrubbable ? 'Drag to scrub through time' : amount}
+        title={scrubbable ? 'Drag to scrub through time' : undefined}
         style={{ left: incomeLeft, top: PBI_INCOME_TOP }}
         onPointerDown={
           scrubbable
             ? (e) => {
                 e.preventDefault(); // stop the browser from starting a text selection
                 try { rowRef.current?.setPointerCapture?.(e.pointerId); } catch { /* no active pointer (synthetic) */ }
-                setDragging(true);
+                setDrag(true);
                 scrubFromClientX(e.clientX);
               }
             : undefined
@@ -178,11 +162,11 @@ function PbiChrome({
           scrubbable
             ? (e) => {
                 try { rowRef.current?.releasePointerCapture?.(e.pointerId); } catch { /* ignore */ }
-                setDragging(false);
+                setDrag(false);
               }
             : undefined
         }
-        onPointerCancel={scrubbable ? () => setDragging(false) : undefined}
+        onPointerCancel={scrubbable ? () => setDrag(false) : undefined}
       >
         <div
           className="pbi-income-track"
@@ -203,6 +187,48 @@ function PbiChrome({
           ))}
         </div>
       </div>
+    </>
+  );
+}
+
+// The shared artifact header carried by EVERY account style: the "Money Map is
+// ready!" hero (logo · subtitle · serif headline) PLUS the paycheck-scrubber
+// carousel beneath it. Rendered once at board level; each style's prototype is
+// shifted down below it so nothing overlaps. While scrubbing, the serif headline
+// steps aside for the "Paycheck in {Month}" banner.
+export function ArtifactHeader({
+  dataset,
+  mode,
+  now,
+  onScrub,
+  incomeLeft = PBI_INCOME_LEFT,
+}: {
+  dataset: Dataset;
+  mode: Mode;
+  now: number;
+  onScrub?: (nowMonths: number) => void;
+  incomeLeft?: number;
+}) {
+  const hero = heroHeadline(dataset);
+  const [dragging, setDragging] = useState(false);
+  return (
+    <>
+      <div className="pbi-hero-logo">
+        <FruitfulLogo size={40} color="#2f8f4e" />
+      </div>
+      <p className="pbi-hero-sub">
+        Your Money Map is ready!<br />
+        Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+      </p>
+      <h1 className={`pbi-hero-title${dragging ? ' is-scrub-hidden' : ''}`}>{`${hero.pre} ${hero.date}`}</h1>
+      <PaycheckCarousel
+        dataset={dataset}
+        mode={mode}
+        now={now}
+        onScrub={onScrub}
+        incomeLeft={incomeLeft}
+        onDraggingChange={setDragging}
+      />
     </>
   );
 }
@@ -255,17 +281,6 @@ export function PbiGrouped2Panels({ dataset }: { dataset: Dataset }) {
 // dataset's milestone goal), then a single yellow INCOME pill sitting at the top
 // of the left spine (no PAYCHECK pills here — the Figma income is just the pill).
 // Own .pot-* classes so it stays scoped to this style.
-function PotChrome({ dataset }: { dataset: Dataset }) {
-  return (
-    <>
-      <HeroHeader dataset={dataset} />
-      <div className="pot-income-row">
-        <span className="pot-income-pill">Income</span>
-      </div>
-    </>
-  );
-}
-
 // bottom text row for the "Title tertiary" card style (goal cards only)
 function TertiaryText({ node, variant }: { node: CardNode; variant: TitleVariant }) {
   const date = node.badge ?? '';
@@ -307,7 +322,7 @@ export default function Card({
   pbiLocked = false,
   onConvoTap,
   modalCardId = null,
-  onScrub,
+  hideIncome = false,
 }: {
   node: CardNode;
   now: number;
@@ -326,8 +341,11 @@ export default function Card({
   pbiLocked?: boolean; // pbi "Gradient background" gate: income pill shifts to the right-moved spine (x=84)
   onConvoTap?: (id: string, rect: DOMRect) => void; // "convo": tap a card to open its detail modal (passes rect for the FLIP morph)
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
-  onScrub?: (nowMonths: number) => void; // pbi: drag the paycheck carousel to scrub the sim clock
+  hideIncome?: boolean; // styles that carry the shared ArtifactHeader render the carousel AS income, so the per-style income node is suppressed
 }) {
+  // Styles that render the shared board-level ArtifactHeader use its paycheck
+  // carousel as the income element, so the per-style income node is suppressed.
+  if (node.kind === 'income' && hideIncome) return null;
   // Stocks Condensed sub-variant (Figma 522:6440): compact horizontal cards with
   // their OWN tighter row layout. Takes precedence over everything below.
   if (condensed && style === 'stocks') {
@@ -437,15 +455,7 @@ export default function Card({
   }
 
   if (isPots) {
-    if (node.kind === 'income') {
-      // full-board-width wrapper so the centered hero resolves 50% against the
-      // 402-wide board and the income pill can be placed in board coordinates.
-      return (
-        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: 0, top: 0, width: 402, height: 0 }}>
-          <PotChrome dataset={dataset} />
-        </div>
-      );
-    }
+    // income is rendered by the shared ArtifactHeader carousel (hideIncome)
     // pot fill fraction reuses progressAt so the plants grow in step with funding
     const p = progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
@@ -679,16 +689,7 @@ export default function Card({
   // an uppercase date pill). Fill fraction reuses progressAt so the bar fills in
   // step with the branch pulse; isReached flips the goal date pill to "reached".
   if (isProgress) {
-    if (node.kind === 'income') {
-      // full-board-width wrapper so the centered hero resolves 50% against the
-      // 402-wide board (not the shrink-to-fit node), and the income pill row +
-      // hero can be absolutely placed in board coordinates.
-      return (
-        <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: 0, top: 0, width: 402, height: 0 }}>
-          <PbiChrome dataset={dataset} amount={node.amount} mode={mode} now={now} onScrub={onScrub} pbiLocked={pbiLocked} />
-        </div>
-      );
-    }
+    // income is rendered by the shared ArtifactHeader carousel (hideIncome)
     const p = progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
     const top = (pbiGrouped ? pbiGroupedRowTopFor(dataset) : pbiRowTopFor(dataset))[node.id] ?? node.y;

@@ -135,6 +135,11 @@ body {
   margin: 0 auto;
 }
 
+/* wrapper that shifts a style's whole prototype down to clear the shared header
+   (the transform makes it the containing block for the absolutely-positioned
+   tree + connectors SVG). */
+.tree-shift { position: relative; }
+
 .node { position: absolute; transition: opacity 0.5s ease, filter 0.5s ease; }
 .node.dimmed { opacity: 0.4; filter: grayscale(1); }
 
