@@ -8,7 +8,7 @@ import IlloModal from './components/IlloModal';
 import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, PBI_INCOME_LEFT, PBI_LOCK_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -218,10 +218,9 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
 // pbi-only), so they're offered ONLY for the progress style; "Lines with %" and
 // "Condensed" are intentionally NOT offered here.
 const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
-  { id: 'text-only', label: 'Text only' },
-  { id: 'pbi-locked', label: 'Gradient background' },
-  { id: 'pbi-grouped', label: 'Grouped' },
-  { id: 'pbi-grouped2', label: 'Grouped 2' },
+  { id: 'text-only', label: 'Text gates' },
+  { id: 'pbi-grouped', label: 'Text gates + backgrounds' },
+  { id: 'pbi-indented', label: 'Indented' },
 ];
 
 // "Skinny line" is the thin-tree pairing for the minimalist styles (Super slim,
@@ -431,13 +430,13 @@ export default function App() {
       // stable, non-compact/non-thin gate so no % badges or foreign tree ever
       // render.
       if (s === 'sheet' || s === 'illo' || s === 'grid') return 'text-only';
-      // "Progress bar, inside" offers only text-only / pbi-locked / pbi-grouped, so
+      // "Progress bar, inside" offers only text-only / pbi-grouped / pbi-indented, so
       // entering it from any other gate (e.g. 'compact' carried over from stocks)
-      // falls back to a valid pbi gate (default "Text only").
-      if (s === 'progress') return prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'text-only';
-      // 'pbi-locked' / 'pbi-grouped' / 'pbi-grouped2' are pbi-only: leaving pbi for any
-      // other style resets to a valid shared gate so no non-pbi style renders pbi-scoped geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' ? 'text-only' : prev;
+      // falls back to a valid pbi gate (default "Text gates").
+      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-indented' || prev === 'text-only' ? prev : 'text-only';
+      // the pbi-scoped gates are pbi-only: leaving pbi for any other style resets to
+      // a valid shared gate so no non-pbi style renders pbi-scoped geometry.
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' || prev === 'pbi-indented' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -744,7 +743,9 @@ export default function App() {
     pots: 44,
   };
   const treeShift = usesHeader ? TREE_SHIFT[style] ?? 0 : 0;
-  const headerIncomeLeft = style === 'progress' && branch === 'pbi-locked' ? PBI_LOCK_INCOME_LEFT : PBI_INCOME_LEFT;
+  // the paycheck carousel always spans the full device width (left-anchored at
+  // PBI_INCOME_LEFT); no per-gate shift, so it never clips on the Gradient gate.
+  const headerIncomeLeft = PBI_INCOME_LEFT;
   const boardEl = (
     <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: boardH + treeShift }}>
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very

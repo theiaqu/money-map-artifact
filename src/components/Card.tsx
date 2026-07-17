@@ -233,11 +233,12 @@ export function ArtifactHeader({
   );
 }
 
-// "Grouped" pbi gate (Figma 802:10601): the rounded COLORED SECTION PANELS that
-// sit BEHIND the pbi cards/branches — a teal/mint panel behind Monthly Expenses
-// (Core + Spend) and a pink panel behind Goals (all goal cards) — each with a small
-// section label in its top-left. Board-level chrome rendered once (behind the
-// connectors + cards) when the Grouped gate is active. Own .pbi-grouped-* classes.
+// "Text gates + backgrounds" pbi gate (Figma 885:11940): the rounded COLORED
+// SECTION PANELS that sit BEHIND the pbi cards/branches — a teal/mint panel
+// behind Monthly Expenses (Core + Spend) and a pink panel behind Goals (all goal
+// cards). The section names are carried by the on-spine text gate pills, so the
+// panels themselves have no corner labels. Board-level chrome rendered once
+// (behind the connectors + cards) when this gate is active. Own .pbi-grouped-*.
 export function PbiGroupedPanels({ dataset }: { dataset: Dataset }) {
   const panels = pbiGroupedPanelsFor(dataset);
   return (
@@ -247,9 +248,7 @@ export function PbiGroupedPanels({ dataset }: { dataset: Dataset }) {
           key={p.id}
           className={`pbi-grouped-panel pbi-grouped-panel--${p.tint}`}
           style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
-        >
-          <span className="pbi-grouped-label">{p.label}</span>
-        </div>
+        />
       ))}
     </>
   );
@@ -692,7 +691,9 @@ export default function Card({
     // income is rendered by the shared ArtifactHeader carousel (hideIncome)
     const p = progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
-    const top = (pbiGrouped ? pbiGroupedRowTopFor(dataset) : pbiRowTopFor(dataset))[node.id] ?? node.y;
+    // every pbi gate (Text gates / Text gates + backgrounds / Indented) shares the
+    // default uniform-pitch rows; the panels/tree are built around these same rows.
+    const top = pbiRowTopFor(dataset)[node.id] ?? node.y;
     const cardLeft = PBI_CARD_LEFT;
     const Glyph = pbiIconFor(node);
     return (

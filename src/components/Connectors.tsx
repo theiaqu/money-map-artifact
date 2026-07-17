@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, connectorsProgressIndentedFor, pbiIndentedPillsFor, PBI_INDENTED_PILL_X, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
 import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
@@ -175,12 +175,14 @@ export default function Connectors({
   const isPbiGrouped = pbiTree && branch === 'pbi-grouped';
   // "Grouped 2": gray section panels + offset-riser branch routing (Figma 802:10838).
   const isPbiGrouped2 = pbiTree && branch === 'pbi-grouped2';
+  // "Indented" (Figma 886:12513): far-left spine + indented risers + amount pills.
+  const isPbiIndented = pbiTree && branch === 'pbi-indented';
   const baseConns: Connector[] = gridTree
     ? connectorsGridFor(dataset)
     : potsTree
     ? connectorsPotsFor(dataset)
     : pbiTree
-    ? (isPbiLocked ? connectorsProgressLockedFor(dataset) : isPbiGrouped ? connectorsProgressGroupedFor(dataset) : isPbiGrouped2 ? connectorsProgressGrouped2For(dataset) : connectorsProgressFor(dataset))
+    ? (isPbiLocked ? connectorsProgressLockedFor(dataset) : isPbiGrouped2 ? connectorsProgressGrouped2For(dataset) : isPbiIndented ? connectorsProgressIndentedFor(dataset) : connectorsProgressFor(dataset))
     : illoTree
     ? connectorsIlloFor(dataset)
     : sheetTree
@@ -555,35 +557,16 @@ export default function Connectors({
     );
   }
 
-  // ---------- pbi "Grouped": uniform white tree (spine + arms) + padlock discs ----------
-  // (Figma 802:10601) Closely related to Locked path, but LIGHTER: the spine, the
-  // section stems, and the wishbone arms are ONE uniform white 4px stroke (no gray
-  // trunk vs white arms), plus colored section panels behind the cards (the panels
-  // are board-level chrome — see PbiGroupedPanels in App). Each section's arm(s) fork
-  // off the spine at a single junction and curve smoothly into the card(s). Padlock
-  // discs sit ON the spine at each section's branch junction and UNLOCK the moment
-  // every card in that section finishes funding (same cardDone source the check discs
-  // use). Money still travels as thin colored pulses over the white branches.
+  // ---------- pbi "Text gates + backgrounds": uniform white tree over colored panels ----------
+  // (Figma 885:11940) Reuses the DEFAULT (text-only) pbi tree geometry — thin spine
+  // at x=50, on-spine text gate pills (rendered by SectionNodeView), white wishbone
+  // arms into the pbi cards on their default rows — and lets the colored section
+  // panels (board-level chrome, see PbiGroupedPanels in App) sit behind everything.
+  // The spine, section stems, and wishbone arms are ONE uniform white 4px stroke.
+  // No padlock discs — the panels + text pills carry the hierarchy. Money still
+  // travels as thin colored pulses over the white branches.
   if (isPbiGrouped) {
     const grpById = (id: string) => conns.find((c) => c.id === id)?.d;
-    const lockDiscs = pbiGroupedLockDiscsFor(dataset).map((d) => {
-      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now));
-      return (
-        <g key={d.id} transform={`translate(${PBI_GROUPED_SPINE_X} ${d.y})`}>
-          <circle r={12} fill="#ffffff" stroke="#e6e7ea" strokeWidth={1} />
-          <g style={{ opacity: unlocked ? 0 : 1, transition: 'opacity 0.45s ease' }}>
-            <Lock x={-7} y={-7} width={14} height={14} color="#6b7280" strokeWidth={2.2} />
-          </g>
-          <g style={{ opacity: unlocked ? 1 : 0, transition: 'opacity 0.45s ease' }}>
-            <LockOpen x={-7} y={-7} width={14} height={14} color="#2f8f57" strokeWidth={2.2} />
-          </g>
-        </g>
-      );
-    });
-    // Figma 802:10601: the spine (Vector 808), the section stems, and every wishbone
-    // arm (path - bills) are ONE uniform stroke — white, 4px. Draw the entire tree
-    // (spine hops + arms) with a single identical stroke so the trunk and the arms
-    // are indistinguishable in color/weight (no gray spine vs white arms).
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* uniform white tree — spine + stems + wishbone arms, one color + weight
@@ -623,7 +606,6 @@ export default function Connectors({
             );
           });
         })}
-        {lockDiscs}
       </svg>
     );
   }
@@ -688,6 +670,64 @@ export default function Connectors({
           });
         })}
         {lockDiscs}
+      </svg>
+    );
+  }
+
+  // ---------- pbi "Indented": far-left spine + indented risers + amount pills ----------
+  // (Figma 886:12513) A nested tree: a thin gray MAIN spine at x=41 with horizontal
+  // elbow arms into the monthly (Core/Spend) + 1st-goal cards — each tagged with a
+  // small AMOUNT PILL near the spine — and the deeper goal levels hanging off
+  // indented risers (x=78 / x=115). No section labels; the indentation IS the
+  // hierarchy. Money travels as the shared colored pulses over the gray branches.
+  if (isPbiIndented) {
+    const indById = (id: string) => conns.find((c) => c.id === id)?.d;
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* thin gray indented tree (spine + risers + elbow/wishbone arms) */}
+        {conns.map((c) => (
+          <path key={`ind-tree-${c.id}`} d={c.d} stroke="#d3d6db" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {probes}
+        {/* colored pulse per in-flight income event */}
+        {FLOW_META.map((m) => {
+          const d = indById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`ind-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={2.5}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {/* amount pills tagging the monthly + 1st-goal arms near the spine */}
+        {pbiIndentedPillsFor(dataset).map((p) => (
+          <g key={`ind-pill-${p.id}`}>
+            <rect x={PBI_INDENTED_PILL_X} y={p.y - 9.5} width={54} height={19} rx={4} fill="#ffffff" stroke="#e6e7ea" strokeWidth={1} />
+            <text
+              x={PBI_INDENTED_PILL_X + 27}
+              y={p.y + 3.5}
+              textAnchor="middle"
+              style={{ fontFamily: 'var(--font-family)', fontSize: 10, fontWeight: 600 }}
+              fill="#111827"
+            >
+              {p.amount}
+            </text>
+          </g>
+        ))}
       </svg>
     );
   }

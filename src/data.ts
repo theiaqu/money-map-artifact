@@ -28,7 +28,11 @@ export type CardKind = 'income' | 'account' | 'goal';
 // routing: the arms leave the main spine via a short bend to an OFFSET secondary
 // riser (x=97) and the padlock discs sit at those offset branch junctions rather
 // than directly on the main spine.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-grouped2';
+// 'pbi-indented' ("Indented", Figma 886:12513) is a "Progress bar, inside"-only
+// gate: a far-left main spine that steps RIGHT into nested risers, with small
+// amount pills ($5,000, $2,000, …) sitting on each branch stub before it reaches
+// the card. No section labels — the indentation itself expresses the hierarchy.
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-grouped2' | 'pbi-indented';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -198,7 +202,7 @@ export function badgesFor(dataset: Dataset): PercentBadge[] {
    carry an arrowhead; the fan-outs into cards do not. */
 export const connectors: Connector[] = [
   // income -> monthly expenses
-  { id: 'c-income-monthly', d: 'M201 167 C 201 255, 50.5 220, 50.5 305', arrow: true },
+  { id: 'c-income-monthly', d: 'M50.5 170 L 50.5 305', arrow: true },
   // vertical section chain
   { id: 'c-monthly-goals1', d: 'M50.5 379 L 50.5 514', arrow: true },
   { id: 'c-goals1-goals2', d: 'M50.5 568 L 50.5 736', arrow: true },
@@ -222,7 +226,7 @@ export const connectors: Connector[] = [
    at x≈49 and meets each pill; the arrow lands just above the pill. Fan-outs to
    the account/goal cards emerge from each pill's right edge. */
 export const connectorsCompact: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 167 C 201 258, 49 246, 49 331', arrow: true },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 331', arrow: true },
   { id: 'c-monthly-goals1', d: 'M49 365 L 49 502', arrow: true },
   { id: 'c-goals1-goals2', d: 'M49 558 L 49 674', arrow: true },
   { id: 'c-goals2-down', d: 'M49 716 L 49 946', arrow: true },
@@ -247,7 +251,7 @@ export const connectorsMoneyMap: Connector[] = [
   // income S-curve into the monthly pill (double-bezier, matches Vector 702).
   // Ends at 322 = top of the monthly gap (gap [322,352] centered on the wishbone
   // junction 337 so the label + brace sit in the break).
-  { id: 'c-income-monthly', d: 'M201 168 C 201 197, 146 197, 106 222 C 66 247, 49 301, 49 322', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 322', arrow: false },
 
   // vertical spine (x=49), broken by a ~30px gap at each gate. Each gap is
   // CENTERED on that gate's brace/wishbone junction so the section label and the
@@ -579,7 +583,7 @@ export const V1_CARD_LEFT = { income: 93, column: 164 } as const;
    monthly 383 -> [368,398]; goals1 570 -> [555,585]; goals2 736.5 -> [721,752]. */
 export const connectorsV1: Connector[] = [
   // income card -> monthly gate: an S-curve down-left into the top of the spine
-  { id: 'c-income-monthly', d: 'M201 205 C 201 300, 49 300, 49 368', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 368', arrow: false },
   // vertical spine (x=49), broken by a gap at each gate junction
   { id: 'c-monthly-goals1', d: 'M49 398 L 49 555', arrow: false },
   { id: 'c-goals1-goals2', d: 'M49 585 L 49 721', arrow: false },
@@ -627,7 +631,7 @@ export const CONDENSED_CARD_LEFT = { income: 93, account: 122, goal: 117 } as co
    to the spine here, so the arms are short "(" curves ending at x≈116/120. */
 export const connectorsCondensed: Connector[] = [
   // income card -> monthly gate: same S-curve as V1 into the top of the spine
-  { id: 'c-income-monthly', d: 'M201 205 C 201 300, 49 300, 49 368', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 368', arrow: false },
   // vertical spine (x=49), broken by a gap at each gate junction
   { id: 'c-monthly-goals1', d: 'M49 399 L 49 516', arrow: false },
   { id: 'c-goals1-goals2', d: 'M49 546 L 49 665', arrow: false },
@@ -669,7 +673,7 @@ export const CONDENSED_PINK_SEGMENTS: { y1: number; y2: number }[] = [
 // 830); 3rd brace = that brace shifted +286 -> junction 1044.5 (travel 973 /
 // brokerage 1116).
 export const connectorsOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 167 C 201 255, 50.5 220, 50.5 305', arrow: true },
+  { id: 'c-income-monthly', d: 'M50.5 170 L 50.5 305', arrow: true },
   { id: 'c-monthly-goals1', d: 'M50.5 379 L 50.5 514', arrow: true },
   { id: 'c-goals1-goals2', d: 'M50.5 568 L 50.5 736', arrow: true },
   { id: 'c-monthly-core', d: 'M91 349 C 126 349, 122 289, 147 289', arrow: false },
@@ -688,7 +692,7 @@ export const connectorsOptimizer: Connector[] = [
 // (accounts +55, goals +66). Shared rows verbatim from `connectorsCompact`. 2nd
 // brace junction 759; 3rd brace = that brace shifted +286 -> junction 1044.5.
 export const connectorsCompactOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 167 C 201 258, 49 246, 49 331', arrow: true },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 331', arrow: true },
   { id: 'c-monthly-goals1', d: 'M49 365 L 49 502', arrow: true },
   { id: 'c-goals1-goals2', d: 'M49 558 L 49 674', arrow: true },
   { id: 'c-monthly-core', d: 'M81 349 C 120 349, 118 289, 147 289', arrow: false },
@@ -709,7 +713,7 @@ export const connectorsCompactOptimizer: Connector[] = [
 // brace = the 2nd brace shifted +286 -> junction 1027.5 (travel 950 / brokerage
 // 1105).
 export const connectorsMoneyMapOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 168 C 201 197, 146 197, 106 222 C 66 247, 49 301, 49 322', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 322', arrow: false },
   { id: 'c-monthly-goals1', d: 'M49 352 L 49 507', arrow: false },
   { id: 'c-goals1-goals2', d: 'M49 537 L 49 726.5', arrow: false },
   { id: 'c-monthly-core', d: 'M85 337 C 121 337, 121 277, 147 277', arrow: false },
@@ -843,7 +847,7 @@ export const v1RowTopOptimizer: Record<string, number> = {
 // goals2 736.5). 3rd brace = the 2nd brace shifted +218 -> junction 954.5 (travel
 // 900 / brokerage 1009).
 export const connectorsV1Optimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 205 C 201 300, 49 300, 49 368', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 368', arrow: false },
   { id: 'c-monthly-goals1', d: 'M49 398 L 49 555', arrow: false },
   { id: 'c-goals1-goals2', d: 'M49 585 L 49 721', arrow: false },
   { id: 'c-monthly-core', d: 'M90 383 C 125 383, 125 329, 164 329', arrow: false },
@@ -883,7 +887,7 @@ export const condensedRowTopOptimizer: Record<string, number> = {
 // goals1 531 / goals2 680.5). 3rd brace = the 2nd brace shifted +154 -> junction
 // 834.5 (travel 790 / brokerage 879).
 export const connectorsCondensedOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 205 C 201 300, 49 300, 49 368', arrow: false },
+  { id: 'c-income-monthly', d: 'M49 170 L 49 368', arrow: false },
   { id: 'c-monthly-goals1', d: 'M49 399 L 49 516', arrow: false },
   { id: 'c-goals1-goals2', d: 'M49 546 L 49 665', arrow: false },
   { id: 'c-monthly-core', d: 'M89 383.5 C 105 383.5, 105 342, 120 342', arrow: false },
@@ -1646,18 +1650,28 @@ export const pbiGroupedLockDiscs: Record<Dataset, PbiLockDisc[]> = {
 export const pbiGroupedLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
   dataset === 'optimizer' ? pbiGroupedLockDiscs.optimizer : pbiGroupedLockDiscs.simple;
 
-/* Rounded colored SECTION PANELS sitting BEHIND the grouped cards (Figma 802:10601).
-   Monthly Expenses (teal) wraps Core + Spend; Goals (pink) wraps every goal card
-   (it grows for the Optimizer's 5 goals). Rects are the pbi card bounds + soft
-   padding; fills/labels/radius are the Figma tokens. */
+/* Rounded colored SECTION PANELS sitting BEHIND the "Text gates + backgrounds"
+   cards (Figma 885:11940). This gate reuses the DEFAULT (text-only) pbi tree —
+   thin spine at x=50, on-spine text gate pills, white wishbones into the pbi
+   cards on their default rows (pbiRowTop) — and layers a full-width colored
+   panel behind each section: Monthly Expenses (mint) wraps Core + Spend; Goals
+   (pink) wraps every goal card (it grows for the Optimizer's 5 goals). Panels
+   span nearly the whole device (x=11 → w=379) so the spine + pills read as
+   sitting inside the colored band, exactly like the Figma. No corner labels —
+   the on-spine gate pills carry the section names. */
 export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink' | 'gray'; label: string }
 export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
-  // pink Goals panel grows to enclose the last goal card (ef6 for Simple,
-  // brokerage for Optimizer): bottom = last card top + card height (80) + pad (14).
-  const goalsBottom = (dataset === 'optimizer' ? 949 : 765) + 80 + 14;
+  const rows = dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
+  const lastGoal = dataset === 'optimizer' ? rows.brokerage : rows.ef6;
+  const PAD_T = 10; // top/side breathing room above a card
+  const PAD_B = 8; // extra below a card (card height = 80)
+  const mintTop = rows.core - PAD_T;
+  const mintBottom = rows.spend + 80 + PAD_B;
+  const pinkTop = rows.ef1 - PAD_T;
+  const pinkBottom = lastGoal + 80 + PAD_B;
   return [
-    { id: 'monthly', x: 61, y: 367, w: 335, h: 194, tint: 'mint', label: 'Monthly Expenses' },
-    { id: 'goals', x: 61, y: 567, w: 335, h: goalsBottom - 567, tint: 'pink', label: 'Goals' },
+    { id: 'monthly', x: 11, y: mintTop, w: 379, h: mintBottom - mintTop, tint: 'mint', label: '' },
+    { id: 'goals', x: 11, y: pinkTop, w: 379, h: pinkBottom - pinkTop, tint: 'pink', label: '' },
   ];
 }
 
@@ -1749,6 +1763,76 @@ export const pbiGrouped2LockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
 export function pbiGrouped2PanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   return pbiGroupedPanelsFor(dataset).map((p) => ({ ...p, tint: 'gray' as const }));
 }
+
+/* ---- "Indented" gate (pbi-scoped, BranchStyle 'pbi-indented') — Figma 886:12513 ----
+   A nested/indented tree instead of section-label gates. A thin gray MAIN SPINE at
+   the far left (x=41) carries the monthly children (Core/Spend) and the 1st goal
+   (ef1) as short horizontal ELBOW arms, each tagged with a small AMOUNT PILL near
+   the spine ($4,000 / $2,000 / surplus). The 2nd-level goals (debt/ef6) hang off an
+   INDENTED secondary riser (x=78); Optimizer's 3rd-level goals (travel/brokerage)
+   indent one step deeper (x=115). The indentation itself expresses the hierarchy,
+   so there are no on-spine section labels. Reuses the shared pulse ids so the causal
+   money pulses travel it unchanged, and the pbi cards stay on their default rows. */
+export const PBI_INDENTED_SPINE_X = 41; // main spine (monthly + 1st goal)
+export const PBI_INDENTED_RISER_X = 78; // indented riser for level-2 goals
+export const PBI_INDENTED_RISER2_X = 115; // deeper riser for level-3 goals (Optimizer)
+export const PBI_INDENTED_PILL_X = 52; // left edge of the amount pills near the spine
+// wishbone off the indented riser (rx) at junction jy into a card center cy
+const PBI_IND_ARM = (rx: number, jy: number, cy: number): string =>
+  `M${rx} ${jy} C ${rx + 34} ${jy}, ${rx + 34} ${cy}, 160 ${cy}`;
+export const connectorsProgressIndented: Connector[] = [
+  // main spine (x=41): income drop through the monthly span down to the 1st goal
+  { id: 'c-income-monthly', d: 'M41 360 L 41 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M41 464 L 41 602', arrow: false },
+  // step RIGHT off the spine into the indented level-2 riser (x=78) at junction 740
+  { id: 'c-goals1-goals2', d: 'M41 602 C 41 662, 78 662, 78 740', arrow: false },
+  { id: 'c-goals2-down', d: 'M78 740 L 78 946', arrow: false },
+  // monthly + 1st goal — horizontal elbow arms off the spine (amount pills sit here)
+  { id: 'c-monthly-core', d: 'M41 418 L 160 418', arrow: false },
+  { id: 'c-monthly-spend', d: 'M41 510 L 160 510', arrow: false },
+  { id: 'c-goals1-ef1', d: 'M41 602 L 160 602', arrow: false },
+  // level-2 goals — wishbone off the indented riser (junction 740 -> debt 694 / ef6 786)
+  { id: 'c-goals2-debt', d: PBI_IND_ARM(78, 740, 694), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_IND_ARM(78, 740, 786), arrow: false },
+];
+// Optimizer: shared rows verbatim, then a deeper indented riser (x=115) for the
+// level-3 goals (travel/brokerage) forking at their midpoint 924.
+export const connectorsProgressIndentedOptimizer: Connector[] = [
+  { id: 'c-income-monthly', d: 'M41 360 L 41 464', arrow: false },
+  { id: 'c-monthly-goals1', d: 'M41 464 L 41 602', arrow: false },
+  { id: 'c-goals1-goals2', d: 'M41 602 C 41 662, 78 662, 78 740', arrow: false },
+  { id: 'c-monthly-core', d: 'M41 418 L 160 418', arrow: false },
+  { id: 'c-monthly-spend', d: 'M41 510 L 160 510', arrow: false },
+  { id: 'c-goals1-ef1', d: 'M41 602 L 160 602', arrow: false },
+  { id: 'c-goals2-debt', d: PBI_IND_ARM(78, 740, 694), arrow: false },
+  { id: 'c-goals2-ef6', d: PBI_IND_ARM(78, 740, 786), arrow: false },
+  // step deeper off the level-2 riser into the level-3 riser (x=115) at junction 924
+  { id: 'c-goals2-goals3', d: 'M78 740 C 78 850, 115 850, 115 924', arrow: false },
+  { id: 'c-goals3-down', d: 'M115 924 L 115 1186', arrow: false },
+  { id: 'c-goals3-travel', d: PBI_IND_ARM(115, 924, 878), arrow: false },
+  { id: 'c-goals3-brokerage', d: PBI_IND_ARM(115, 924, 970), arrow: false },
+];
+export const connectorsProgressIndentedFor = (dataset: Dataset): Connector[] =>
+  dataset === 'optimizer' ? connectorsProgressIndentedOptimizer : connectorsProgressIndented;
+
+/* Amount pills that sit on the Indented gate's monthly + 1st-goal elbow arms
+   (Figma 886:12513): the monthly Core/Spend allocations and the 1st-goal surplus.
+   `y` is the arm's center (= the card's vertical center on the default pbi rows). */
+export interface PbiIndentedPill { id: string; y: number; amount: string }
+export const pbiIndentedPills: Record<Dataset, PbiIndentedPill[]> = {
+  simple: [
+    { id: 'core', y: 418, amount: '$4,000' },
+    { id: 'spend', y: 510, amount: '$2,000' },
+    { id: 'ef1', y: 602, amount: '$2,000' },
+  ],
+  optimizer: [
+    { id: 'core', y: 418, amount: '$6,000' },
+    { id: 'spend', y: 510, amount: '$4,000' },
+    { id: 'ef1', y: 602, amount: '$5,000' },
+  ],
+};
+export const pbiIndentedPillsFor = (dataset: Dataset): PbiIndentedPill[] =>
+  dataset === 'optimizer' ? pbiIndentedPills.optimizer : pbiIndentedPills.simple;
 
 /* ============================================================================
    "Pots" (pots) — Figma node 802:9336.

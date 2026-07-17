@@ -159,10 +159,16 @@ export default function SectionNodeView({
       </div>
     );
   }
-  // "Grouped" / "Grouped 2" pbi gates (Figma 802:10601 / 802:10838): the section
-  // labels live INSIDE the panels (rendered by PbiGroupedPanels / PbiGrouped2Panels),
-  // so the on-spine gate nodes render nothing here.
-  if (pbi && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')) {
+  // "Grouped 2" pbi gate (Figma 802:10838): its section labels live INSIDE the
+  // gray panels (rendered by PbiGrouped2Panels), so the on-spine gate node renders
+  // nothing here. ("Text gates + backgrounds" (pbi-grouped) intentionally falls
+  // through to the default pbi on-spine text pills below.)
+  if (pbi && branch === 'pbi-grouped2') {
+    return null;
+  }
+  // "Indented" pbi gate (Figma 886:12513): the nested tree + amount pills express
+  // the hierarchy, so there are NO on-spine section labels.
+  if (pbi && branch === 'pbi-indented') {
     return null;
   }
   // "Locked path" pbi gate (Figma 802:10378): plain title-case GRAY text labels
