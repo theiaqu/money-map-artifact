@@ -1901,39 +1901,38 @@ export const connectorsPotsFor = (dataset: Dataset): Connector[] =>
    per-card fill animation). Mirrors the *For(dataset) structure of every other
    style so the Simple (3 goals) and Optimizer (5 goals) datasets both resolve.
    ============================================================================ */
-// The whole tree is laid out on the 28px graph-paper module (see `.grid-paper`):
-// every SPINE / RISER x and every horizontal ARM y lands on a gridline so the
-// composition reads as if drawn ON the paper. The signature move is a STEPPED
-// spine: an UPPER spine carries the Monthly bracket (Core+Spend) and the 1st goal,
-// then the tree STEPS RIGHT to a LOWER spine that drops down and feeds the goal
-// pairs — so each line only travels as far as it needs, keeping the canvas clean.
-export const GRID_SPINE_X = 56; // upper spine (Core/Spend bracket + 1st goal) — 2 cells
-export const GRID_PILL_X = 84; // value-pill left edge + Core/Spend bracket riser — 3 cells
-export const GRID_LOWER_SPINE_X = 168; // stepped-right spine carrying the goal pairs — 6 cells
-export const GRID_LOWER_RISER_X = 196; // goal-pair wishbone riser — 7 cells
-export const GRID_CARD_LEFT = 224; // gray placeholder card left — 8 cells
+// Faithful to Figma 878:11263 ("on grid"). The tree is laid out on a 40px module
+// (see `.grid-paper`): a UNIFORM 80px card pitch (= 2 cells), with every card CENTER
+// and both main SPINES riding gridlines so the composition reads as drawn ON the
+// paper. The signature move is a STEPPED spine — an UPPER spine carries the Monthly
+// bracket (Core+Spend) and the 1st goal, then the tree STEPS RIGHT to a LOWER spine
+// that drops and feeds the goal pairs — so each line only travels as far as it needs.
+export const GRID_SPINE_X = 80; // upper spine (Core/Spend bracket + 1st goal) — 2 cells
+export const GRID_PILL_X = 96; // value-pill left edge + Core/Spend bracket riser
+export const GRID_LOWER_SPINE_X = 200; // stepped-right spine carrying the goal pairs — 5 cells
+export const GRID_LOWER_RISER_X = 216; // goal-pair wishbone riser
+export const GRID_CARD_LEFT = 240; // gray placeholder card left — 6 cells
 export const GRID_CARD_W = 150; // uniform card width
-export const GRID_CARD_H = 70; // uniform card height (fits a 2-line name + value)
-export const GRID_INCOME_CY = 56; // income root-marker center (top of the upper spine)
+export const GRID_CARD_H = 66; // uniform card height (Figma 66; fits a 2-line name + value)
+export const GRID_INCOME_CY = 40; // income root-marker center (top of the upper spine)
 export const GRID_MARKER = 16; // income root-marker square size
 
 // account/goal card row TOPS (node-wrapper top); card vertical CENTER = top +
-// GRID_CARD_H/2. Every center is a multiple of 28 so its horizontal arm rides a
-// gridline. Monthly (Core→Spend) sit a tight 84 (3 cells) apart; a wider 112 gap
-// separates the sections; goal pairs keep the 84 within-pair pitch.
+// GRID_CARD_H/2. Every center is a multiple of 40 (uniform 80px pitch) so each
+// horizontal arm rides a gridline — no section gaps, exactly like the Figma.
 export const gridRowTop: Record<string, number> = {
   income: GRID_INCOME_CY - GRID_CARD_H / 2, // wrapper top (marker centers on the spine)
-  core: 105, // center 140
-  spend: 189, // center 224
-  ef1: 301, // center 336
-  debt: 413, // center 448
-  ef6: 497, // center 532
+  core: 87, // center 120
+  spend: 167, // center 200
+  ef1: 247, // center 280
+  debt: 327, // center 360
+  ef6: 407, // center 440
 };
 // Optimizer: shared rows verbatim, then travel/brokerage as a second grouped pair.
 export const gridRowTopOptimizer: Record<string, number> = {
   ...gridRowTop,
-  travel: 609, // center 644
-  brokerage: 693, // center 728
+  travel: 487, // center 520
+  brokerage: 567, // center 600
 };
 
 export const gridRowTopFor = (dataset: Dataset): Record<string, number> =>
@@ -1963,25 +1962,25 @@ const GRID_WISHBONE = (cy1: number, cy2: number): string =>
 // row, carrying the Core/Spend bracket + the 1st-goal arm. The 1st-goal arm is
 // tapped by the LOWER spine, which drops and feeds the debt+ef6 pair via a wishbone.
 export const connectorsGrid: Connector[] = [
-  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 336`, arrow: false },
-  { id: 'grid-monthly', d: GRID_BRACKET(140, 224), arrow: false },
-  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 140), arrow: false },
-  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 224), arrow: false },
-  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 336), arrow: false },
-  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 336 L${GRID_LOWER_SPINE_X} 560`, arrow: false },
-  { id: 'grid-goals2', d: GRID_WISHBONE(448, 532), arrow: false }, // debt + ef6
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 280`, arrow: false },
+  { id: 'grid-monthly', d: GRID_BRACKET(120, 200), arrow: false },
+  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 120), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 200), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 280), arrow: false },
+  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 280 L${GRID_LOWER_SPINE_X} 512`, arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(360, 440), arrow: false }, // debt + ef6
 ];
 // Optimizer (5 goals): same upper spine + Monthly bracket + 1st goal, then the lower
 // spine drops further to feed TWO goal-pair wishbones (debt+ef6, travel+brokerage).
 export const connectorsGridOptimizer: Connector[] = [
-  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 336`, arrow: false },
-  { id: 'grid-monthly', d: GRID_BRACKET(140, 224), arrow: false },
-  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 140), arrow: false },
-  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 224), arrow: false },
-  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 336), arrow: false },
-  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 336 L${GRID_LOWER_SPINE_X} 756`, arrow: false },
-  { id: 'grid-goals2', d: GRID_WISHBONE(448, 532), arrow: false }, // debt + ef6
-  { id: 'grid-goals3', d: GRID_WISHBONE(644, 728), arrow: false }, // travel + brokerage
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 280`, arrow: false },
+  { id: 'grid-monthly', d: GRID_BRACKET(120, 200), arrow: false },
+  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 120), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 200), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 280), arrow: false },
+  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 280 L${GRID_LOWER_SPINE_X} 672`, arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(360, 440), arrow: false }, // debt + ef6
+  { id: 'grid-goals3', d: GRID_WISHBONE(520, 600), arrow: false }, // travel + brokerage
 ];
 
 export const connectorsGridFor = (dataset: Dataset): Connector[] =>

@@ -3131,7 +3131,7 @@ body {
   background-image:
     linear-gradient(to right, rgba(17, 17, 17, 0.06) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(17, 17, 17, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-size: 40px 40px;
 }
 
 /* light-gray placeholder card holding minimalist, line-centric content: name on
@@ -3140,7 +3140,7 @@ body {
   border-radius: 4px;
   background: #eceded;
   box-sizing: border-box;
-  padding: 10px 11px;
+  padding: 8px 11px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -3159,7 +3159,7 @@ body {
 }
 .grid-card-rule {
   height: 1px;
-  margin: 4px 0;
+  margin: 3px 0;
   background: rgba(17, 17, 17, 0.14);
 }
 .grid-card-foot {
