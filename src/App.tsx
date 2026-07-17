@@ -735,6 +735,22 @@ export default function App() {
         </>
       )}
 
+      {/* "grid" reuses the exact pbi hero header (sprout logo · gray subtitle · large
+          serif headline derived from the dataset's milestone goal); the grid tree is
+          shifted down by GRID_TOP so it clears this block. */}
+      {style === 'grid' && (
+        <>
+          <div className="pbi-hero-logo">
+            <FruitfulLogo size={40} color="#2f8f4e" />
+          </div>
+          <p className="pbi-hero-sub">
+            Your Money Map is ready!<br />
+            Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+          </p>
+          <h1 className="pbi-hero-title">{`${iconHero.pre} ${iconHero.date}`}</h1>
+        </>
+      )}
+
       {/* "sheet" renders its own grouped panels + on-connector pills instead of the
           shared section-node gate labels */}
       {style === 'sheet' && <SheetChrome dataset={dataset} now={now} mode={effMode} />}

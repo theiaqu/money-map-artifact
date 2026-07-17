@@ -1914,7 +1914,13 @@ export const GRID_LOWER_RISER_X = 216; // goal-pair wishbone riser
 export const GRID_CARD_LEFT = 240; // gray placeholder card left — 6 cells
 export const GRID_CARD_W = 150; // uniform card width
 export const GRID_CARD_H = 66; // uniform card height (Figma 66; fits a 2-line name + value)
-export const GRID_INCOME_CY = 40; // income root-marker center (top of the upper spine)
+// Header reserve: the grid tree starts BELOW a pbi-style hero (sprout logo · gray
+// subtitle · large serif headline), so every grid Y is shifted DOWN by GRID_TOP.
+// 320 = 8 grid cells, so every card center stays a multiple of 40 and keeps riding
+// the graph-paper gridlines exactly as before.
+export const GRID_TOP = 320;
+const GC = (cy: number): number => GRID_TOP + cy; // design-space center -> board space
+export const GRID_INCOME_CY = GC(40); // income root-marker center (top of the upper spine)
 export const GRID_MARKER = 16; // income root-marker square size
 
 // account/goal card row TOPS (node-wrapper top); card vertical CENTER = top +
@@ -1922,17 +1928,17 @@ export const GRID_MARKER = 16; // income root-marker square size
 // horizontal arm rides a gridline — no section gaps, exactly like the Figma.
 export const gridRowTop: Record<string, number> = {
   income: GRID_INCOME_CY - GRID_CARD_H / 2, // wrapper top (marker centers on the spine)
-  core: 87, // center 120
-  spend: 167, // center 200
-  ef1: 247, // center 280
-  debt: 327, // center 360
-  ef6: 407, // center 440
+  core: GC(120) - GRID_CARD_H / 2, // center 120 (+ GRID_TOP)
+  spend: GC(200) - GRID_CARD_H / 2, // center 200
+  ef1: GC(280) - GRID_CARD_H / 2, // center 280
+  debt: GC(360) - GRID_CARD_H / 2, // center 360
+  ef6: GC(440) - GRID_CARD_H / 2, // center 440
 };
 // Optimizer: shared rows verbatim, then travel/brokerage as a second grouped pair.
 export const gridRowTopOptimizer: Record<string, number> = {
   ...gridRowTop,
-  travel: 487, // center 520
-  brokerage: 567, // center 600
+  travel: GC(520) - GRID_CARD_H / 2, // center 520
+  brokerage: GC(600) - GRID_CARD_H / 2, // center 600
 };
 
 export const gridRowTopFor = (dataset: Dataset): Record<string, number> =>
@@ -1962,25 +1968,25 @@ const GRID_WISHBONE = (cy1: number, cy2: number): string =>
 // row, carrying the Core/Spend bracket + the 1st-goal arm. The 1st-goal arm is
 // tapped by the LOWER spine, which drops and feeds the debt+ef6 pair via a wishbone.
 export const connectorsGrid: Connector[] = [
-  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 280`, arrow: false },
-  { id: 'grid-monthly', d: GRID_BRACKET(120, 200), arrow: false },
-  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 120), arrow: false },
-  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 200), arrow: false },
-  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 280), arrow: false },
-  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 280 L${GRID_LOWER_SPINE_X} 512`, arrow: false },
-  { id: 'grid-goals2', d: GRID_WISHBONE(360, 440), arrow: false }, // debt + ef6
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} ${GC(280)}`, arrow: false },
+  { id: 'grid-monthly', d: GRID_BRACKET(GC(120), GC(200)), arrow: false },
+  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, GC(120)), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, GC(200)), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, GC(280)), arrow: false },
+  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} ${GC(280)} L${GRID_LOWER_SPINE_X} ${GC(512)}`, arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(GC(360), GC(440)), arrow: false }, // debt + ef6
 ];
 // Optimizer (5 goals): same upper spine + Monthly bracket + 1st goal, then the lower
 // spine drops further to feed TWO goal-pair wishbones (debt+ef6, travel+brokerage).
 export const connectorsGridOptimizer: Connector[] = [
-  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} 280`, arrow: false },
-  { id: 'grid-monthly', d: GRID_BRACKET(120, 200), arrow: false },
-  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, 120), arrow: false },
-  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, 200), arrow: false },
-  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, 280), arrow: false },
-  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} 280 L${GRID_LOWER_SPINE_X} 672`, arrow: false },
-  { id: 'grid-goals2', d: GRID_WISHBONE(360, 440), arrow: false }, // debt + ef6
-  { id: 'grid-goals3', d: GRID_WISHBONE(520, 600), arrow: false }, // travel + brokerage
+  { id: 'grid-spine', d: `M${GRID_SPINE_X} ${GRID_INCOME_CY} L${GRID_SPINE_X} ${GC(280)}`, arrow: false },
+  { id: 'grid-monthly', d: GRID_BRACKET(GC(120), GC(200)), arrow: false },
+  { id: 'grid-core', d: GRID_ARM(GRID_PILL_X, GC(120)), arrow: false },
+  { id: 'grid-spend', d: GRID_ARM(GRID_PILL_X, GC(200)), arrow: false },
+  { id: 'grid-ef1', d: GRID_ARM(GRID_SPINE_X, GC(280)), arrow: false },
+  { id: 'grid-lower-spine', d: `M${GRID_LOWER_SPINE_X} ${GC(280)} L${GRID_LOWER_SPINE_X} ${GC(672)}`, arrow: false },
+  { id: 'grid-goals2', d: GRID_WISHBONE(GC(360), GC(440)), arrow: false }, // debt + ef6
+  { id: 'grid-goals3', d: GRID_WISHBONE(GC(520), GC(600)), arrow: false }, // travel + brokerage
 ];
 
 export const connectorsGridFor = (dataset: Dataset): Connector[] =>
