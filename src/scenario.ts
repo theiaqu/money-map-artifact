@@ -142,6 +142,15 @@ export function scrubMonthLabel(now: number): string {
   return `${MONTH_FULL_NAMES[m]} ${y}`;
 }
 
+// Short carousel-pill month label for the "Timeline" carousel mode, e.g. "Aug '26".
+// `monthsElapsed` is whole months from the reference month (July 2026).
+export function scrubMonthShort(monthsElapsed: number): string {
+  const idx = DATE_REF_YEAR * 12 + DATE_REF_MONTH + Math.round(monthsElapsed);
+  const y = Math.floor(idx / 12);
+  const m = ((idx % 12) + 12) % 12;
+  return `${MONTH_FULL_NAMES[m].slice(0, 3)} '${String(y).slice(2)}`;
+}
+
 export const WINDOW_MONTHS = 3; // squeeze -> scroll cutoff
 export const MAX_BARS = 7;
 // NOTE: the animation's total duration is derived PER (dataset, mode) from the

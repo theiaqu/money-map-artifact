@@ -9,7 +9,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
-import type { ChartStyle } from './components/Card';
+import type { ChartStyle, CarouselMode } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
 const MODES: { id: Mode; label: string }[] = [
@@ -23,6 +23,13 @@ const MODES: { id: Mode; label: string }[] = [
 const DATE_OPTS: { id: DateMode; label: string }[] = [
   { id: 'date', label: 'Completion date' },
   { id: 'months', label: 'Months from now' },
+];
+
+// header carousel label mode: "Paychecks" (Income/Paycheck pills) vs "Timeline"
+// (month labels like "Aug '26").
+const CAROUSEL_OPTS: { id: CarouselMode; label: string }[] = [
+  { id: 'paychecks', label: 'Paychecks' },
+  { id: 'timeline', label: 'Timeline' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -297,6 +304,8 @@ export default function App() {
   const [map, setMap] = useState<MapStyle>('money-map');
   const [version, setVersion] = useState<Version>('v2');
   const [dateMode, setDateMode] = useState<DateMode>('date');
+  const [carouselMode, setCarouselMode] = useState<CarouselMode>('paychecks'); // header carousel: Paycheck pills vs. month timeline
+  const [refillVisual, setRefillVisual] = useState(false); // show the Core/Spend monthly refill gradient bars
   const [showOlder, setShowOlder] = useState(false); // reveal the "older ideas" account styles in the picker
   const [selectedConvo, setSelectedConvo] = useState<string | null>(null); // "convo" tapped-card detail modal
   const [selectedRect, setSelectedRect] = useState<DOMRect | null>(null); // resting rect of the tapped convo card (for the FLIP morph)
@@ -599,6 +608,43 @@ export default function App() {
             ))}
           </div>
         </div>
+        <div className="config-row">
+          <span className="config-label">Header carousel</span>
+          <div className="mode-toggle" role="tablist" aria-label="Header carousel">
+            {CAROUSEL_OPTS.map((c) => (
+              <button
+                key={c.id}
+                role="tab"
+                aria-selected={carouselMode === c.id}
+                className={`mode-opt${carouselMode === c.id ? ' active' : ''}`}
+                onClick={() => setCarouselMode(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="config-row">
+          <span className="config-label">Core/Spend refill visual</span>
+          <div className="mode-toggle" role="tablist" aria-label="Core/Spend refill visual">
+            <button
+              role="tab"
+              aria-selected={!refillVisual}
+              className={`mode-opt${!refillVisual ? ' active' : ''}`}
+              onClick={() => setRefillVisual(false)}
+            >
+              Off
+            </button>
+            <button
+              role="tab"
+              aria-selected={refillVisual}
+              className={`mode-opt${refillVisual ? ' active' : ''}`}
+              onClick={() => setRefillVisual(true)}
+            >
+              On
+            </button>
+          </div>
+        </div>
         {!stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && (
         <div className="config-row">
           <span className="config-label">Gate style</span>
@@ -755,7 +801,7 @@ export default function App() {
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
       {usesHeader && (
-        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} />
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
@@ -795,7 +841,7 @@ export default function App() {
         ))}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&

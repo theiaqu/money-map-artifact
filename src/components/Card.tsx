@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -22,6 +22,10 @@ import GridCard from './GridCard';
 // 'progress-bg' = the card itself is the bar (goal bars can run off-page);
 // 'slim' = "super slim" — a name pill · dotted line · colored target pill row.
 export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo' | 'pots' | 'grid';
+
+// Paycheck-carousel label mode: 'paychecks' shows Income/Paycheck pills;
+// 'timeline' replaces them with month labels ("Aug '26").
+export type CarouselMode = 'paychecks' | 'timeline';
 
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
@@ -98,6 +102,7 @@ function PaycheckCarousel({
   onScrub,
   incomeLeft = PBI_INCOME_LEFT,
   onDraggingChange,
+  carouselMode = 'paychecks',
 }: {
   dataset: Dataset;
   mode: Mode;
@@ -105,19 +110,29 @@ function PaycheckCarousel({
   onScrub?: (nowMonths: number) => void;
   incomeLeft?: number;
   onDraggingChange?: (dragging: boolean) => void;
+  carouselMode?: CarouselMode;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const total = animMonths(dataset, mode);
   const frac = total > 0 ? Math.max(0, Math.min(1, now / total)) : 0;
   const scrubbable = !!onScrub;
+  // Drag direction is REVERSED from the pointer axis so the carousel behaves like
+  // a native mobile strip: swipe LEFT (drag left) to bring a FUTURE paycheck into
+  // the yellow slot / advance time; swipe RIGHT to go back.
   const scrubFromClientX = (clientX: number) => {
     const el = rowRef.current;
     if (!el || !onScrub) return;
     const r = el.getBoundingClientRect();
-    const f = r.width > 0 ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0;
+    const raw = r.width > 0 ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0;
+    const f = 1 - raw;
     onScrub(f * total);
   };
+  const isTimeline = carouselMode === 'timeline';
+  // label for slot i (0 = the fixed yellow "now" slot, 1..5 = upcoming): in
+  // timeline mode each slot maps to a month across the full span.
+  const slotLabel = (i: number): string =>
+    isTimeline ? scrubMonthShort((i / 5) * total) : i === 0 ? 'Income' : 'Paycheck';
   const activeIdx = Math.round(frac * 5); // 0 = Income slot, 1..5 = Paychecks
   const PILL_PITCH = 84; // 76px fixed pill width + 8px gap
   const setDrag = (d: boolean) => {
@@ -175,14 +190,14 @@ function PaycheckCarousel({
           <span
             className={`pbi-pill pbi-pill-slot${!scrubbable ? ' pbi-pill-income' : ''}${scrubbable && activeIdx === 0 ? ' pbi-pill-active' : ''}`}
           >
-            Income
+            {slotLabel(0)}
           </span>
           {[0, 1, 2, 3, 4].map((i) => (
             <span
               key={i}
               className={`pbi-pill pbi-pill-slot${scrubbable && activeIdx === i + 1 ? ' pbi-pill-active' : ''}`}
             >
-              Paycheck
+              {slotLabel(i + 1)}
             </span>
           ))}
         </div>
@@ -202,12 +217,14 @@ export function ArtifactHeader({
   now,
   onScrub,
   incomeLeft = PBI_INCOME_LEFT,
+  carouselMode = 'paychecks',
 }: {
   dataset: Dataset;
   mode: Mode;
   now: number;
   onScrub?: (nowMonths: number) => void;
   incomeLeft?: number;
+  carouselMode?: CarouselMode;
 }) {
   const hero = heroHeadline(dataset);
   const [dragging, setDragging] = useState(false);
@@ -228,6 +245,7 @@ export function ArtifactHeader({
         onScrub={onScrub}
         incomeLeft={incomeLeft}
         onDraggingChange={setDragging}
+        carouselMode={carouselMode}
       />
     </>
   );
@@ -322,6 +340,7 @@ export default function Card({
   onConvoTap,
   modalCardId = null,
   hideIncome = false,
+  refillVisual = false,
 }: {
   node: CardNode;
   now: number;
@@ -341,6 +360,7 @@ export default function Card({
   onConvoTap?: (id: string, rect: DOMRect) => void; // "convo": tap a card to open its detail modal (passes rect for the FLIP morph)
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
   hideIncome?: boolean; // styles that carry the shared ArtifactHeader render the carousel AS income, so the per-style income node is suppressed
+  refillVisual?: boolean; // pbi "Core/Spend refill visual": two-tone capacity+balance bar (Figma 907:13009)
 }) {
   // Styles that render the shared board-level ArtifactHeader use its paycheck
   // carousel as the income element, so the per-style income node is suppressed.
@@ -715,6 +735,7 @@ export default function Card({
                 : undefined
             }
             reached={reached}
+            refill={refillVisual}
           />
         </div>
       </div>
