@@ -1396,6 +1396,160 @@ body {
   z-index: 3;
 }
 
+/* ---- "Monthly split" in-prototype view (Figma 907:13144) ---- */
+.msplit {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+.msplit-takehome {
+  position: absolute;
+  left: 50%;
+  top: 356px;
+  transform: translateX(-50%);
+  min-width: 168px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 24px;
+  border-radius: 16px;
+  background: #f7dd6f;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  z-index: 5;
+  animation: msplit-pop-x 360ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}
+.msplit-takehome-lead {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b5d1a;
+}
+.msplit-takehome-amt {
+  font-family: var(--font-family);
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+  color: #3f3a12;
+}
+.msplit-stem {
+  position: absolute;
+  left: 50%;
+  top: 426px;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 20px;
+  border-radius: 5px;
+  background: #f7dd6f;
+  z-index: 4;
+}
+.msplit-circle {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: #2f8f4e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(47, 143, 78, 0.32);
+  z-index: 5;
+  animation: msplit-pop 360ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}
+.msplit-branches {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  pointer-events: none;
+  animation: msplit-fade 520ms ease 120ms both;
+}
+.msplit-branch {
+  fill: none;
+}
+.msplit-branch--blue { stroke: #b0d9ff; }
+.msplit-branch--green { stroke: #7cc48d; }
+.msplit-branch--pink { stroke: #edc0d6; }
+.msplit-bar {
+  position: absolute;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  box-sizing: border-box;
+  transform-origin: bottom center;
+  animation: msplit-grow 460ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.msplit-bar--blue { background: #b0d9ff; }
+.msplit-bar--green { background: #61bc76; }
+.msplit-bar--pink { background: #eebed4; }
+.msplit-bar-amt {
+  font-family: var(--font-family);
+  font-size: 15px;
+  font-weight: 650;
+  color: #1c2b3a;
+}
+.msplit-bar--green .msplit-bar-amt { color: #12351f; }
+.msplit-bar--pink .msplit-bar-amt { color: #5a2740; }
+.msplit-col-label {
+  position: absolute;
+  text-align: center;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  z-index: 3;
+}
+@keyframes msplit-grow {
+  from { transform: scaleY(0); opacity: 0.4; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+@keyframes msplit-pop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes msplit-pop-x {
+  from { transform: translateX(-50%) scale(0.82); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+@keyframes msplit-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* in-prototype view toggle pinned to the bottom of the screen */
+.msplit-toggle {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(238, 239, 241, 0.92);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  z-index: 40;
+}
+.msplit-toggle button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: 14px;
+  font-weight: 550;
+  color: #6b7280;
+  padding: 9px 18px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: background 160ms ease, color 160ms ease;
+}
+.msplit-toggle button.active {
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 /* ---- income pill row (INCOME yellow + white PAYCHECK pills) on the spine top ---- */
 .pbi-income-row {
   position: absolute;

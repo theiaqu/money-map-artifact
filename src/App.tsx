@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import Card, { ArtifactHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
+import MonthlySplit from './components/MonthlySplit';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
@@ -306,6 +307,7 @@ export default function App() {
   const [dateMode, setDateMode] = useState<DateMode>('date');
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('paychecks'); // header carousel: Paycheck pills vs. month timeline
   const [refillVisual, setRefillVisual] = useState(false); // show the Core/Spend monthly refill gradient bars
+  const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const [showOlder, setShowOlder] = useState(false); // reveal the "older ideas" account styles in the picker
   const [selectedConvo, setSelectedConvo] = useState<string | null>(null); // "convo" tapped-card detail modal
   const [selectedRect, setSelectedRect] = useState<DOMRect | null>(null); // resting rect of the tapped convo card (for the FLIP morph)
@@ -795,16 +797,33 @@ export default function App() {
   // the paycheck carousel always spans the full device width (left-anchored at
   // PBI_INCOME_LEFT); no per-gate shift, so it never clips on the Gradient gate.
   const headerIncomeLeft = PBI_INCOME_LEFT;
+  // in-prototype "Monthly split" simplified view (Figma 907:13144) — offered on
+  // the Progress-bar-inside style via the on-screen Full system / Monthly split
+  // toggle. Replaces the tree with a single take-home-pay → Bills/Spend/Goals split.
+  const monthlyView = style === 'progress' && systemView === 'monthly';
+  const MSPLIT_H = 860;
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: boardH + treeShift }}>
+    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
+      {/* in-prototype view toggle (Figma 907:13144): swap the full tree for the
+          simplified Monthly split. Offered on the Progress-bar-inside style. */}
+      {style === 'progress' && (
+        <div className="msplit-toggle">
+          <button className={systemView === 'full' ? 'active' : ''} onClick={() => setSystemView('full')}>Full system</button>
+          <button className={systemView === 'monthly' ? 'active' : ''} onClick={() => setSystemView('monthly')}>Monthly split</button>
+        </div>
+      )}
+
+      {monthlyView && <MonthlySplit dataset={dataset} />}
+
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
-      {usesHeader && (
+      {!monthlyView && usesHeader && (
         <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
+      {!monthlyView && (
       <div className="tree-shift" style={treeShift ? { transform: `translateY(${treeShift}px)` } : undefined}>
         {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
             tree; scoped to this gate so no other gate/style is tinted. */}
@@ -851,6 +870,7 @@ export default function App() {
             </div>
           ))}
       </div>
+      )}
 
       {/* Conversational keeps its bottom "About your {name}" sheet (ConvoModal);
           Illustrated gets its OWN centered card + shared-element illustration
