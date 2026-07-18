@@ -134,6 +134,20 @@ function PaycheckCarousel({
   const slotLabel = (i: number): string =>
     isTimeline ? scrubMonthShort((i / 5) * total) : i === 0 ? 'Income' : 'Paycheck';
   const activeIdx = Math.round(frac * 5); // 0 = Income slot, 1..5 = Paychecks
+
+  // "Pill merge / glob" (Figma 885:11770): whenever the active pill changes (a new
+  // paycheck swipes into the yellow slot), briefly flag `merging` so the active
+  // pill plays the grow-taller-then-settle glob keyframe and the incoming pill
+  // blends its color in. Fires on both playback (now advancing) and scrubbing.
+  const prevIdxRef = useRef(activeIdx);
+  const [merging, setMerging] = useState(false);
+  useEffect(() => {
+    if (prevIdxRef.current === activeIdx) return;
+    prevIdxRef.current = activeIdx;
+    setMerging(true);
+    const id = setTimeout(() => setMerging(false), 360);
+    return () => clearTimeout(id);
+  }, [activeIdx]);
   const PILL_PITCH = 84; // 76px fixed pill width + 8px gap
   const setDrag = (d: boolean) => {
     setDragging(d);
@@ -188,14 +202,14 @@ function PaycheckCarousel({
           style={scrubbable ? { transform: `translateX(${-activeIdx * PILL_PITCH}px)` } : undefined}
         >
           <span
-            className={`pbi-pill pbi-pill-slot${!scrubbable ? ' pbi-pill-income' : ''}${scrubbable && activeIdx === 0 ? ' pbi-pill-active' : ''}`}
+            className={`pbi-pill pbi-pill-slot${!scrubbable ? ' pbi-pill-income' : ''}${scrubbable && activeIdx === 0 ? ' pbi-pill-active' : ''}${scrubbable && activeIdx === 0 && merging ? ' is-merging' : ''}`}
           >
             {slotLabel(0)}
           </span>
           {[0, 1, 2, 3, 4].map((i) => (
             <span
               key={i}
-              className={`pbi-pill pbi-pill-slot${scrubbable && activeIdx === i + 1 ? ' pbi-pill-active' : ''}`}
+              className={`pbi-pill pbi-pill-slot${scrubbable && activeIdx === i + 1 ? ' pbi-pill-active' : ''}${scrubbable && activeIdx === i + 1 && merging ? ' is-merging' : ''}`}
             >
               {slotLabel(i + 1)}
             </span>
@@ -736,6 +750,7 @@ export default function Card({
             }
             reached={reached}
             refill={refillVisual && node.kind === 'account'}
+            now={now}
           />
         </div>
       </div>
