@@ -27,7 +27,7 @@ const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
 // Must match the .msplit-ghost CSS transition duration. The real (hidden) targets
 // are only revealed after this + buffer, so the long deceleration tail fully
 // settles before the ghost→element handoff (no flash / double-settle).
-const MORPH_MS = 820;
+const MORPH_MS = 1200;
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
