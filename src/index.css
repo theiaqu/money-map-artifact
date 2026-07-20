@@ -1417,7 +1417,7 @@ body {
   background: #f7dd6f;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   z-index: 5;
-  animation: msplit-pop-x 360ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+  /* no entrance animation: the income ghost morphs into this rect, then hands off */
 }
 .msplit-takehome-lead {
   font-family: var(--font-family);
@@ -1478,7 +1478,7 @@ body {
   padding-top: 12px;
   box-sizing: border-box;
   transform-origin: bottom center;
-  animation: msplit-grow 460ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  /* no entrance animation: the bills/spend/goals ghosts morph into these bars */
 }
 .msplit-bar--blue { background: #b0d9ff; }
 .msplit-bar--green { background: #61bc76; }
@@ -1516,6 +1516,29 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* ---- shared-element morph between Full system and Monthly split ---- */
+/* while ghosts are flying, hide the real morph targets (ghosts stand in for them) */
+.board.is-morphing [data-morph] {
+  opacity: 0;
+}
+.msplit-morph-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+.msplit-ghost {
+  position: absolute;
+  border-radius: 10px;
+  will-change: left, top, width, height;
+  transition:
+    left 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
+    top 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
+    width 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
+    height 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
+    background-color 480ms cubic-bezier(0.22, 0.7, 0.16, 1);
+}
+
 /* in-prototype view toggle pinned to the bottom of the screen */
 .msplit-toggle {
   position: absolute;

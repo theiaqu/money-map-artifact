@@ -203,6 +203,7 @@ function PaycheckCarousel({
         >
           <span
             className={`pbi-pill pbi-pill-slot${!scrubbable ? ' pbi-pill-income' : ''}${scrubbable && activeIdx === 0 ? ' pbi-pill-active' : ''}${scrubbable && activeIdx === 0 && merging ? ' is-merging' : ''}`}
+            {...(scrubbable && activeIdx === 0 ? { 'data-morph': 'income', 'data-morph-color': '#f6dc72' } : {})}
           >
             {slotLabel(0)}
           </span>
@@ -210,6 +211,7 @@ function PaycheckCarousel({
             <span
               key={i}
               className={`pbi-pill pbi-pill-slot${scrubbable && activeIdx === i + 1 ? ' pbi-pill-active' : ''}${scrubbable && activeIdx === i + 1 && merging ? ' is-merging' : ''}`}
+              {...(scrubbable && activeIdx === i + 1 ? { 'data-morph': 'income', 'data-morph-color': '#f6dc72' } : {})}
             >
               {slotLabel(i + 1)}
             </span>
@@ -751,6 +753,7 @@ export default function Card({
             reached={reached}
             refill={refillVisual && node.kind === 'account'}
             now={now}
+            morphRole={node.kind === 'goal' ? 'goals' : node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : undefined}
           />
         </div>
       </div>

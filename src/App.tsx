@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import Card, { ArtifactHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
 import MonthlySplit from './components/MonthlySplit';
@@ -12,6 +12,40 @@ import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
+
+// ---- "Monthly split" shared-element morph (Figma 907:13144) ----
+// Every morphable element in either view carries data-morph="<role>" (income /
+// bills / spend / goals) + data-morph-color. On toggle we measure the source
+// rects (board-local, scale-normalized), switch views, measure the target rects,
+// then fly a colored ghost per pairing from source→target. Roles fan out cleanly:
+// the many goal bars all map to the single Goals bar (merge), and vice-versa on
+// the way back (split).
+type MorphRect = { left: number; top: number; width: number; height: number; color: string };
+type MorphMap = Record<string, MorphRect[]>;
+type Ghost = { id: string; from: MorphRect; to: MorphRect };
+const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
+const MORPH_MS = 480;
+
+function measureMorph(board: HTMLElement): MorphMap {
+  const br = board.getBoundingClientRect();
+  const scale = board.offsetWidth ? br.width / board.offsetWidth : 1;
+  const map: MorphMap = {};
+  board.querySelectorAll<HTMLElement>('[data-morph]').forEach((el) => {
+    const role = el.getAttribute('data-morph');
+    if (!role) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const rect: MorphRect = {
+      left: (r.left - br.left) / scale,
+      top: (r.top - br.top) / scale,
+      width: r.width / scale,
+      height: r.height / scale,
+      color: el.getAttribute('data-morph-color') || '#cccccc',
+    };
+    (map[role] ||= []).push(rect);
+  });
+  return map;
+}
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'illustrative', label: 'Illustrative' },
@@ -308,6 +342,55 @@ export default function App() {
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('paychecks'); // header carousel: Paycheck pills vs. month timeline
   const [refillVisual, setRefillVisual] = useState(false); // show the Core/Spend monthly refill gradient bars
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
+  const boardRef = useRef<HTMLDivElement>(null);
+  const pendingMorphRef = useRef<{ sources: MorphMap } | null>(null); // source rects captured just before a view switch
+  const [ghosts, setGhosts] = useState<Ghost[] | null>(null); // active morph ghosts (null = idle)
+  const [ghostPhase, setGhostPhase] = useState<'start' | 'end'>('start');
+
+  // Toggle Full system <-> Monthly split with a shared-element morph: capture the
+  // CURRENT view's source rects synchronously (before the DOM swaps), then let the
+  // layout effect below measure the new view and fly the ghosts.
+  const switchView = (to: 'full' | 'monthly') => {
+    if (to === systemView) return;
+    const board = boardRef.current;
+    if (board) pendingMorphRef.current = { sources: measureMorph(board) };
+    setSystemView(to);
+  };
+
+  // After a view switch that captured sources, measure the freshly-rendered target
+  // rects, build one ghost per source→target pairing (goals fan-in/out), and drive
+  // the FLIP: mount ghosts at the source, then next frame animate them to target.
+  useLayoutEffect(() => {
+    const pending = pendingMorphRef.current;
+    if (!pending) return;
+    pendingMorphRef.current = null;
+    const board = boardRef.current;
+    if (!board) return;
+    const targets = measureMorph(board);
+    const gs: Ghost[] = [];
+    for (const role of MORPH_ROLES) {
+      const src = pending.sources[role] ?? [];
+      const dst = targets[role] ?? [];
+      if (!src.length || !dst.length) continue;
+      const n = Math.max(src.length, dst.length);
+      for (let i = 0; i < n; i++) {
+        gs.push({ id: `${role}-${i}`, from: src[Math.min(i, src.length - 1)], to: dst[Math.min(i, dst.length - 1)] });
+      }
+    }
+    if (!gs.length) return;
+    setGhosts(gs);
+    setGhostPhase('start');
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setGhostPhase('end'));
+    });
+    const t = window.setTimeout(() => setGhosts(null), MORPH_MS + 60);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.clearTimeout(t);
+    };
+  }, [systemView]);
   const [showOlder, setShowOlder] = useState(false); // reveal the "older ideas" account styles in the picker
   const [selectedConvo, setSelectedConvo] = useState<string | null>(null); // "convo" tapped-card detail modal
   const [selectedRect, setSelectedRect] = useState<DOMRect | null>(null); // resting rect of the tapped convo card (for the FLIP morph)
@@ -803,13 +886,35 @@ export default function App() {
   const monthlyView = style === 'progress' && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
       {/* in-prototype view toggle (Figma 907:13144): swap the full tree for the
           simplified Monthly split. Offered on the Progress-bar-inside style. */}
       {style === 'progress' && (
         <div className="msplit-toggle">
-          <button className={systemView === 'full' ? 'active' : ''} onClick={() => setSystemView('full')}>Full system</button>
-          <button className={systemView === 'monthly' ? 'active' : ''} onClick={() => setSystemView('monthly')}>Monthly split</button>
+          <button className={systemView === 'full' ? 'active' : ''} onClick={() => switchView('full')}>Full system</button>
+          <button className={systemView === 'monthly' ? 'active' : ''} onClick={() => switchView('monthly')}>Monthly split</button>
+        </div>
+      )}
+
+      {/* shared-element morph ghosts: colored rects flying source→target */}
+      {ghosts && (
+        <div className="msplit-morph-layer">
+          {ghosts.map((g) => {
+            const r = ghostPhase === 'start' ? g.from : g.to;
+            return (
+              <div
+                key={g.id}
+                className="msplit-ghost"
+                style={{
+                  left: r.left,
+                  top: r.top,
+                  width: r.width,
+                  height: r.height,
+                  background: ghostPhase === 'start' ? g.from.color : g.to.color,
+                }}
+              />
+            );
+          })}
         </div>
       )}
 

@@ -55,6 +55,7 @@ export default function ProgressBar({
   reached = false,
   refill = false,
   now = 0,
+  morphRole,
 }: {
   color: GraphColor;
   progress: number;
@@ -63,11 +64,12 @@ export default function ProgressBar({
   reached?: boolean;
   refill?: boolean;
   now?: number;
+  morphRole?: string; // "bills" | "spend" | "goals" — tags the bar for the Monthly-split shared-element morph
 }) {
   const p = Math.max(0, Math.min(1, progress));
   const sweep = refill ? refillSweep(now) : { w: 0, op: 0 };
   return (
-    <div className="pbi-bar">
+    <div className="pbi-bar" {...(morphRole ? { 'data-morph': morphRole, 'data-morph-color': FILL[color] } : {})}>
       {p > 0.001 && (
         <div className="pbi-bar-fill" style={{ width: `${p * 100}%`, background: FILL[color] }} />
       )}

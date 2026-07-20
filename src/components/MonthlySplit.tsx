@@ -35,9 +35,9 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
   const barH = (amt: number) => Math.round((amt / maxAmt) * MAX_BAR_H);
 
   const cols = [
-    { id: 'bills', label: 'Bills', amount: bills, cx: COL_X.bills, cls: 'blue' },
-    { id: 'spend', label: 'Spend', amount: spend, cx: COL_X.spend, cls: 'green' },
-    { id: 'goals', label: 'Goals', amount: goals, cx: COL_X.goals, cls: 'pink' },
+    { id: 'bills', label: 'Bills', amount: bills, cx: COL_X.bills, cls: 'blue', hex: '#b0d9ff' },
+    { id: 'spend', label: 'Spend', amount: spend, cx: COL_X.spend, cls: 'green', hex: '#61bc76' },
+    { id: 'goals', label: 'Goals', amount: goals, cx: COL_X.goals, cls: 'pink', hex: '#eebed4' },
   ] as const;
 
   // curvy branches from the circle bottom to each column's top-center
@@ -61,7 +61,7 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
       <h1 className="pbi-hero-title">{`${hero.pre} ${hero.date}`}</h1>
 
       {/* Take-home pay pill (the active paycheck morphs into this) */}
-      <div className="msplit-takehome">
+      <div className="msplit-takehome" data-morph="income" data-morph-color="#f7dd6f">
         <span className="msplit-takehome-lead">Take-home pay</span>
         <span className="msplit-takehome-amt">{money(takeHome)}</span>
       </div>
@@ -92,6 +92,8 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
           <div key={c.id}>
             <div
               className={`msplit-bar msplit-bar--${c.cls}`}
+              data-morph={c.id}
+              data-morph-color={c.hex}
               style={{ left: c.cx - COL_W / 2, top: BASELINE - h, width: COL_W, height: h, animationDelay: `${140 + i * 90}ms` }}
             >
               <span className="msplit-bar-amt">{money(c.amount)}</span>
