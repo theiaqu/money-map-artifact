@@ -44,32 +44,53 @@ function pillName(node: CardNode): string {
   return node.title.replace(/emergency fund/i, 'Fund');
 }
 
-const ARM_END = PILLS_PILL_LEFT - 6; // arms/braces stop just before the pill left edge
+// Figma 949:10961 connector spec (from the exported vectors):
+//   • stroke #d9d9d9, 2px, round caps/joins
+//   • single pills → a straight horizontal arm off the trunk
+//   • forked pills (Core/Spend, goal pairs) → a short straight STUB off the
+//     trunk then a tight S-curve brace (horizontal tangents both ends)
+//   • DOWNWARD chevron arrowheads sit on the trunk where it crosses into the
+//     next section; per the task we also add a chevron at each arm's pill end.
+const SPINE = PILLS_SPINE_X;
+const ARM_END = PILLS_PILL_LEFT - 7; // arms/braces stop just before the pill; chevron tip lands here
+const STUB = 12; // straight stub off the trunk before a fork brace curves away
 const TRUNK_LEAD = 0.3; // months the trunk leads its gate's pop
 const BRACE_SPAN = 0.34; // months a gate brace takes to draw into its child
 const ROW_WIPE_SPAN = 0.34; // months a row takes to wipe in left→right after the flow arrives
-const BRANCH_STROKE = '#c7cad0';
+const BRANCH_STROKE = '#d9d9d9';
+const STROKE_W = 2;
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 // a single draw-on branch. pathLength=1 normalizes ANY path (straight OR curved
 // brace) so the dashoffset reveal is exact without measuring geometry.
-function Branch({ d, grow, arrow = false }: { d: string; grow: number; arrow?: boolean }) {
+function Branch({ d, grow }: { d: string; grow: number }) {
   if (grow <= 0.0001) return null;
   return (
     <path
       d={d}
       stroke={BRANCH_STROKE}
-      strokeWidth={1.6}
+      strokeWidth={STROKE_W}
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
       pathLength={1}
       strokeDasharray="1 1"
       strokeDashoffset={(1 - grow).toFixed(3)}
-      markerEnd={arrow && grow > 0.96 ? 'url(#pills-arrow)' : undefined}
     />
   );
+}
+
+// a standalone chevron arrowhead matching the Figma vectors. 'down' points into
+// the next section along the trunk; 'right' points into a destination pill.
+function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'right'; show: boolean }) {
+  if (!show) return null;
+  const a = 4.6; // arm reach (Figma chevrons are ~9px wide)
+  const d =
+    dir === 'down'
+      ? `M${x - a} ${y - a} L${x} ${y} L${x + a} ${y - a}` // ⌄ tip at (x,y)
+      : `M${x - a} ${y - a} L${x} ${y} L${x - a} ${y + a}`; // › tip at (x,y)
+  return <path d={d} stroke={BRANCH_STROKE} strokeWidth={STROKE_W} fill="none" strokeLinecap="round" strokeLinejoin="round" />;
 }
 
 // a gate = one trunk junction that braces into 1..n child rows. A single child
@@ -79,7 +100,6 @@ interface PillsGate {
   key: string;
   jy: number; // trunk junction y (center of its children)
   children: { id: string; cy: number }[];
-  arrow: boolean; // draw a downward arrowhead where the trunk drops INTO this gate
 }
 
 export default function PillsBoard({
@@ -110,54 +130,74 @@ export default function PillsBoard({
   const goalGates: string[][] = dataset === 'optimizer' ? [['ef1'], ['debt', 'ef6'], ['travel', 'brokerage']] : [['ef1'], ['debt', 'ef6']];
   const mid = (a: number, b: number) => (a + b) / 2;
   const gates: PillsGate[] = [
-    { key: 'income', jy: cyOf('income'), children: [{ id: 'income', cy: cyOf('income') }], arrow: false },
-    { key: 'monthly', jy: mid(cyOf('core'), cyOf('spend')), children: [{ id: 'core', cy: cyOf('core') }, { id: 'spend', cy: cyOf('spend') }], arrow: true },
-    ...goalGates.map((g, i) => {
+    { key: 'income', jy: cyOf('income'), children: [{ id: 'income', cy: cyOf('income') }] },
+    { key: 'monthly', jy: mid(cyOf('core'), cyOf('spend')), children: [{ id: 'core', cy: cyOf('core') }, { id: 'spend', cy: cyOf('spend') }] },
+    ...goalGates.map((g) => {
       const cys = g.map(cyOf);
-      return { key: `goal-${g.join('-')}`, jy: cys.length > 1 ? mid(cys[0], cys[cys.length - 1]) : cys[0], children: g.map((id) => ({ id, cy: cyOf(id) })), arrow: i === 0 };
+      return { key: `goal-${g.join('-')}`, jy: cys.length > 1 ? mid(cys[0], cys[cys.length - 1]) : cys[0], children: g.map((id) => ({ id, cy: cyOf(id) })) };
     }),
   ];
   const targetOf = (gt: PillsGate) => Math.min(...gt.children.map((c) => rm(c.id)));
 
-  // brace path: single child → straight arm; forked child → mirrored cubic
-  const K = (ARM_END - PILLS_SPINE_X) * 0.62; // control-point reach for horizontal tangents
-  const bracePath = (jy: number, cy: number) =>
-    Math.abs(cy - jy) < 0.5
-      ? `M${PILLS_SPINE_X} ${cy} L${ARM_END} ${cy}`
-      : `M${PILLS_SPINE_X} ${jy} C${PILLS_SPINE_X + K} ${jy}, ${ARM_END - K} ${cy}, ${ARM_END} ${cy}`;
+  // brace path (Figma geometry): single child (jy==cy) → a straight horizontal
+  // arm; a forked child → a short straight STUB off the trunk, then a tight
+  // S-curve with horizontal tangents at both ends into the pill.
+  const bracePath = (jy: number, cy: number) => {
+    if (Math.abs(cy - jy) < 0.5) return `M${SPINE} ${cy} L${ARM_END} ${cy}`;
+    const sx = SPINE + STUB;
+    const k = Math.max(6, (ARM_END - sx) * 0.55);
+    return `M${SPINE} ${jy} L${sx} ${jy} C${sx + k} ${jy}, ${ARM_END - k} ${cy}, ${ARM_END} ${cy}`;
+  };
+
+  // per-child brace growth (causal draw-on), reused for the arm-end chevron reveal
+  const braceGrow = (id: string) => growWin(rm(id) - BRACE_SPAN, rm(id));
+
+  // main-trunk segments between gate junctions, with causal grow
+  const trunkSegs = gates.slice(0, -1).map((g, i) => ({
+    key: g.key,
+    y0: g.jy,
+    y1: gates[i + 1].jy,
+    grow: growWin(targetOf(g) - TRUNK_LEAD, targetOf(gates[i + 1]) - TRUNK_LEAD),
+  }));
+
+  // DOWNWARD trunk chevrons: one where the trunk crosses into Monthly Expenses
+  // (trunk seg 0) and one where it crosses into Goals (trunk seg 1). The tip
+  // sits just above the section label; it reveals once the trunk draw-on tip has
+  // descended past that y (top→bottom reveal).
+  const secBy = (id: 'income' | 'monthly' | 'goals') => layout.sections.find((s) => s.id === id);
+  const trunkChevrons: { y: number; show: boolean }[] = [];
+  ([['monthly', 0] as const, ['goals', 1] as const]).forEach(([sec, segIdx]) => {
+    const s = secBy(sec);
+    const seg = trunkSegs[segIdx];
+    if (!s || !seg) return;
+    const y = s.labelTop - 3; // in the inter-section gap, above the label
+    const frac = seg.y1 > seg.y0 ? (y - seg.y0) / (seg.y1 - seg.y0) : 1;
+    trunkChevrons.push({ y, show: seg.grow >= frac - 0.001 });
+  });
 
   return (
     <div className="pills-board">
       <HeroHeader dataset={dataset} />
 
       {/* proper branching tree: main trunk + section gates that brace into their
-          child rows, drawing on causally as the flow tip descends. */}
+          child rows, drawing on causally as the flow tip descends. Chevron
+          arrowheads mark direction of flow (down the trunk / into each pill). */}
       <svg className="pills-tree" width="402" height={layout.height} viewBox={`0 0 402 ${layout.height}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="pills-arrow" markerWidth="8" markerHeight="8" refX="3.4" refY="4" orient="auto" markerUnits="userSpaceOnUse">
-            <path d="M1 1.6 L5 4 L1 6.4" fill="none" stroke={BRANCH_STROKE} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </marker>
-        </defs>
         {/* main trunk, segment by segment between gate junctions */}
-        {gates.slice(0, -1).map((g, i) => {
-          const next = gates[i + 1];
-          return (
-            <Branch
-              key={`trunk-${g.key}`}
-              d={`M${PILLS_SPINE_X} ${g.jy} L${PILLS_SPINE_X} ${next.jy}`}
-              grow={growWin(targetOf(g) - TRUNK_LEAD, targetOf(next) - TRUNK_LEAD)}
-              arrow={next.arrow}
-            />
-          );
-        })}
-        {/* each gate's braces into its child rows */}
+        {trunkSegs.map((seg) => (
+          <Branch key={`trunk-${seg.key}`} d={`M${SPINE} ${seg.y0} L${SPINE} ${seg.y1}`} grow={seg.grow} />
+        ))}
+        {/* downward chevrons where the trunk enters Monthly / Goals */}
+        {trunkChevrons.map((c, i) => (
+          <Chevron key={`tchev-${i}`} x={SPINE} y={c.y} dir="down" show={c.show} />
+        ))}
+        {/* each gate's braces into its child rows, + a chevron into each pill */}
         {gates.flatMap((g) =>
           g.children.map((c) => (
-            <Branch
-              key={`brace-${c.id}`}
-              d={bracePath(g.jy, c.cy)}
-              grow={growWin(rm(c.id) - BRACE_SPAN, rm(c.id))}
-            />
+            <g key={`arm-${c.id}`}>
+              <Branch d={bracePath(g.jy, c.cy)} grow={braceGrow(c.id)} />
+              <Chevron x={ARM_END} y={c.cy} dir="right" show={braceGrow(c.id) >= 0.82} />
+            </g>
           )),
         )}
       </svg>
