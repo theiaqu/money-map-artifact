@@ -35,16 +35,19 @@ function iconFor(node: CardNode): LucideIcon | null {
   return Umbrella; // emergency funds + default
 }
 
-// short name shown in the colored pill
+// short name shown in the colored pill. Pills-ONLY display transform: goal EF
+// titles are shortened ("1 Month Emergency Fund" → "1 Month Fund") so the pills
+// don't run too wide. Underlying dataset titles are untouched.
 function pillName(node: CardNode): string {
   if (node.kind === 'income') return 'Paycheck';
   if (node.kind === 'account') return node.pill ?? node.title;
-  return node.title;
+  return node.title.replace(/emergency fund/i, 'Fund');
 }
 
 const ARM_END = PILLS_PILL_LEFT - 6; // arms/braces stop just before the pill left edge
 const TRUNK_LEAD = 0.3; // months the trunk leads its gate's pop
 const BRACE_SPAN = 0.34; // months a gate brace takes to draw into its child
+const ROW_WIPE_SPAN = 0.34; // months a row takes to wipe in left→right after the flow arrives
 const BRANCH_STROKE = '#c7cad0';
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -179,20 +182,25 @@ export default function PillsBoard({
         );
       })}
 
-      {/* colored name pills + amount/date text, popping in as the tip arrives */}
+      {/* colored name pills + amount/date text. Each row is REVEALED with a
+          left→right clip wipe (same feel as the "Progress bar, inside" bars
+          filling left→right) the instant the flow tip reaches it — a seamless
+          hand-off from the brace drawing into the pill. Tied to the same causal
+          timing (sheetRevealMonths) so it stays correct when scrubbing/replaying. */}
       {flatRows.map((r) => {
         const node = byId.get(r.id);
         if (!node) return null;
-        const rowRs = sheetRevealStyle(now, rm(r.id));
+        const wipe = clamp01((now - rm(r.id)) / ROW_WIPE_SPAN);
         const Icon = iconFor(node);
         const tint = node.kind === 'goal' ? PILL_TINT.goal : PILL_TINT[node.id] ?? PILL_TINT.goal;
         const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
         const rowStyle = {
           left: PILLS_PILL_LEFT,
           top: r.cy,
-          opacity: rowRs.opacity,
-          transform: `translateY(-50%) scale(${rowRs.scale})`,
-          transformOrigin: 'left center',
+          // -8px top/bottom/left keeps rounded corners + icons from being clipped;
+          // the right inset sweeps 100%→0% to reveal the row left→right.
+          clipPath: `inset(-8px ${((1 - wipe) * 100).toFixed(2)}% -8px -8px)`,
+          transform: 'translateY(-50%)',
           transition: 'none' as const,
         };
         return (
