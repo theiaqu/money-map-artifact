@@ -1142,6 +1142,73 @@ export function sheetRevealStyle(now: number, revealMonth: number): SheetRevealS
 }
 
 /* ============================================================================
+   "Pills" account style (Figma 949:10961) — a minimal, text-forward map. The
+   shared hero sits on top; below it, three white SECTION cards (Income /
+   Monthly Expenses / Goals) each carry a small white section-label pill and a
+   stack of rows. Each row is a COLORED name pill (icon + short name) paired with
+   plain amount/date text. A thin gray left spine forks short wishbone arms into
+   every name pill. Progress is expressed causally (Sheet-style): the spine +
+   arms DRAW ON and each pill/card POPS in as the flow tip reaches it, and goal
+   dates flip gray→black with a pink check when funded. Dataset-aware: Simple has
+   3 goals, Optimizer 5, so the Goals card + board height grow accordingly.
+   Geometry is computed here so App (board height) and PillsBoard agree.
+   ============================================================================ */
+export const PILLS_SPINE_X = 40; // thin gray vertical spine
+export const PILLS_CARD_LEFT = 16; // left edge of the white section cards
+export const PILLS_CARD_W = 370; // -> right edge 386 (device inner width 402)
+export const PILLS_PILL_LEFT = 62; // left edge of the colored name pills (arm lands just before)
+
+const PILLS_SECTIONS_TOP = 330; // first section label top — clears the serif hero
+const PILLS_LABEL_H = 24; // white section-label pill height
+const PILLS_LABEL_GAP = 6; // gap between a section label and its card
+const PILLS_CARD_PAD = 8; // top/bottom padding inside a white section card
+const PILLS_ROW_H = 34; // a name-pill row height
+const PILLS_ROW_GAP = 13; // gap between rows within a card
+const PILLS_SECTION_GAP = 20; // gap between section groups
+
+export interface PillsRow {
+  id: string;
+  cy: number; // absolute center-y of the row's name pill (board coords)
+}
+export interface PillsSection {
+  id: 'income' | 'monthly' | 'goals';
+  label: string;
+  labelTop: number;
+  cardTop: number;
+  cardH: number;
+  rows: PillsRow[];
+}
+export interface PillsLayout {
+  sections: PillsSection[];
+  height: number; // total board height needed
+}
+
+// dataset-aware Pills layout: stacks Income (1 row) · Monthly Expenses (Core +
+// Spend) · Goals (every dataset goal) on a clean vertical rhythm.
+export function pillsLayoutFor(dataset: Dataset): PillsLayout {
+  const layout = layoutFor(dataset);
+  const goalIds = layout.filter((c) => c.kind === 'goal').map((c) => c.id);
+  const groups: { id: 'income' | 'monthly' | 'goals'; label: string; ids: string[] }[] = [
+    { id: 'income', label: 'Income', ids: ['income'] },
+    { id: 'monthly', label: 'Monthly Expenses', ids: ['core', 'spend'] },
+    { id: 'goals', label: 'Goals', ids: goalIds },
+  ];
+  const pitch = PILLS_ROW_H + PILLS_ROW_GAP;
+  const sections: PillsSection[] = [];
+  let y = PILLS_SECTIONS_TOP;
+  for (const g of groups) {
+    const labelTop = y;
+    const cardTop = labelTop + PILLS_LABEL_H + PILLS_LABEL_GAP;
+    const n = g.ids.length;
+    const cardH = PILLS_CARD_PAD * 2 + n * PILLS_ROW_H + (n - 1) * PILLS_ROW_GAP;
+    const rows = g.ids.map((id, i) => ({ id, cy: cardTop + PILLS_CARD_PAD + i * pitch + PILLS_ROW_H / 2 }));
+    sections.push({ id: g.id, label: g.label, labelTop, cardTop, cardH, rows });
+    y = cardTop + cardH + PILLS_SECTION_GAP;
+  }
+  return { sections, height: y - PILLS_SECTION_GAP + 28 };
+}
+
+/* ============================================================================
    "Illustrated" (illo) — a progress-track spine + colorizing illustration
    layout (Figma pre-flow 760:8522 / filled 763:8687). WHITE page. Income is a
    small top-CENTER card (light #f5f5f5, radius 16, 216 wide) with a mini income

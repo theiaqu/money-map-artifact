@@ -3557,3 +3557,96 @@ body.is-scrubbing-noselect * {
 .sp-grid-spine { position: absolute; left: 10px; top: 8px; bottom: 8px; width: 1.5px; background: #c3c6cc; }
 .sp-grid-arm { position: absolute; left: 10px; top: 50%; width: 20px; height: 1.5px; background: #c3c6cc; transform: translateY(-50%); }
 .sp-grid-card { position: absolute; right: 8px; top: 50%; width: 22px; height: 16px; border-radius: 2px; background: #d0d1d4; transform: translateY(-50%); }
+
+/* ============================================================================
+   "Pills" account style (Figma 949:10961) — minimal text-forward map: white
+   section cards on gray, colored name pills + amount/date text, thin gray spine.
+   All classes .pills-* scoped so nothing collides with the other styles.
+   ============================================================================ */
+.board-pills { background: #f3f4f6; }
+.pills-board { position: absolute; inset: 0; }
+.pills-tree { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
+
+.pills-card {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 12px;
+  z-index: 2;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
+}
+.pills-section-label {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: #000;
+  white-space: nowrap;
+}
+
+.pills-row {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.pills-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.pills-pill-name {
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  color: #000;
+}
+.pills-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 450;
+  color: #9ca3af; /* goal dates read muted until the goal is funded */
+}
+.pills-check { flex: none; }
+/* account/income amounts are always solid black; a funded goal date turns black */
+.pills-meta.pills-meta--amt,
+.pills-meta.reached { color: #111; }
+
+/* style-picker mini-mock: white card with two colored pills on a gray field */
+.sp-pills {
+  position: relative;
+  height: 40px;
+  background: #eef0f3;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+}
+.sp-pills-spine { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 1.5px; background: #c9ccd2; }
+.sp-pills-card {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+  background: #fff;
+  border-radius: 6px;
+}
+.sp-pills-pill { position: absolute; height: 8px; border-radius: 3px; }
+.sp-pills-pill-1 { left: 20px; top: 12px; width: 26px; background: #d7ecff; }
+.sp-pills-pill-2 { left: 20px; top: 24px; width: 22px; background: #f7dfe9; }

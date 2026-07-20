@@ -8,8 +8,9 @@ import ConvoModal from './components/ConvoModal';
 import IlloModal from './components/IlloModal';
 import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
+import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -85,6 +86,7 @@ const DATASET_OPTS: { id: Dataset; label: string }[] = [
 // bottom of the account-style picker (kept around but not front-and-center).
 const STYLES: { id: ChartStyle; label: string; older?: boolean }[] = [
   { id: 'progress', label: 'Progress bar, inside' },
+  { id: 'pills', label: 'Pills' },
   { id: 'icons', label: 'Minimalist icons' },
   { id: 'illo', label: 'Illustrated' },
   { id: 'stocks', label: 'Stocks / heart monitor' },
@@ -110,6 +112,15 @@ function StylePreview({ id }: { id: ChartStyle }) {
             <div className="sp-prog-fill" />
           </div>
           <span className="sp-prog-pill">By</span>
+        </div>
+      );
+    case 'pills':
+      return (
+        <div className="sp sp-pills" aria-hidden>
+          <span className="sp-pills-card" />
+          <span className="sp-pills-spine" />
+          <span className="sp-pills-pill sp-pills-pill-1" />
+          <span className="sp-pills-pill sp-pills-pill-2" />
         </div>
       );
     case 'progress-bg':
@@ -541,7 +552,7 @@ export default function App() {
       // sheet + illustrated + grid are self-contained (their own tree): pin a
       // stable, non-compact/non-thin gate so no % badges or foreign tree ever
       // render.
-      if (s === 'sheet' || s === 'illo' || s === 'grid') return 'text-only';
+      if (s === 'sheet' || s === 'illo' || s === 'grid' || s === 'pills') return 'text-only';
       // "Progress bar, inside" offers its own pbi gate set; entering it from any
       // other gate (e.g. 'compact' carried over from stocks) falls back to the
       // default "Text gates".
@@ -745,7 +756,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        {!stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && (
+        {!stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && style !== 'pills' && (
         <div className="config-row">
           <span className="config-label">Gate style</span>
             <div className="mode-toggle" role="tablist" aria-label="Gate style">
@@ -855,7 +866,7 @@ export default function App() {
   // fit its appended goals — but the minimalist "icons" style uses a COMPACT row
   // rhythm whose 8 rows fit the 874px screen, so it stays on the 960px board for
   // both datasets (no tall-board rule).
-  const boardH = dataset === 'optimizer' && style !== 'icons' ? 1200 : 960;
+  const boardH = style === 'pills' ? pillsLayoutFor(dataset).height : dataset === 'optimizer' && style !== 'icons' ? 1200 : 960;
   const openConvo = (id: string, rect: DOMRect) => {
     setSelectedRect(rect);
     setSelectedConvo(id);
@@ -901,7 +912,7 @@ export default function App() {
   const monthlyView = style === 'progress' && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
       {/* in-prototype view toggle (Figma 907:13144): swap the full tree for the
           simplified Monthly split. Offered on the Progress-bar-inside style. */}
       {style === 'progress' && (
@@ -943,7 +954,13 @@ export default function App() {
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
-      {!monthlyView && (
+      {!monthlyView && style === 'pills' && (
+      <div className="tree-shift">
+        <PillsBoard dataset={dataset} now={now} mode={effMode} dateMode={dateMode} />
+      </div>
+      )}
+
+      {!monthlyView && style !== 'pills' && (
       <div className="tree-shift" style={treeShift ? { transform: `translateY(${treeShift}px)` } : undefined}>
         {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
             tree; scoped to this gate so no other gate/style is tinted. */}

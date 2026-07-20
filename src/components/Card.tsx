@@ -21,7 +21,7 @@ import GridCard from './GridCard';
 // 'progress' = "progress bar, inside"; 'progress-pill' = amount-chip-as-bar;
 // 'progress-bg' = the card itself is the bar (goal bars can run off-page);
 // 'slim' = "super slim" — a name pill · dotted line · colored target pill row.
-export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo' | 'pots' | 'grid';
+export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'pills' | 'progress-pill' | 'progress-bg' | 'slim' | 'icons' | 'convo' | 'sheet' | 'illo' | 'pots' | 'grid';
 
 // Paycheck-carousel label mode: 'paychecks' shows Income/Paycheck pills;
 // 'timeline' replaces them with month labels ("Aug '26").
