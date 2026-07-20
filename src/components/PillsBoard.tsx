@@ -3,7 +3,6 @@ import {
   cardsFor,
   pillsLayoutFor,
   sheetRevealMonths,
-  sheetRevealStyle,
   PILLS_SPINE_X,
   PILLS_CARD_LEFT,
   PILLS_CARD_W,
@@ -55,11 +54,18 @@ const SPINE = PILLS_SPINE_X;
 const ARM_END = PILLS_PILL_LEFT - 8; // arms/braces stop just before the pill; chevron tip lands here
 const STUB = 10; // straight stub off the trunk before a fork brace curves away
 const RUN = 12; // straight horizontal run at the arm's end so the arrowhead sits on a clean, level segment
-const TRUNK_LEAD = 0.3; // months the trunk leads its gate's pop
-const BRACE_SPAN = 0.34; // months a gate brace takes to draw into its child
-const ROW_WIPE_SPAN = 0.34; // months a row takes to wipe in left→right after the flow arrives
 const BRANCH_STROKE = '#d9d9d9';
 const STROKE_W = 2;
+
+// ---- causal cascade phase durations (in sim months) ----
+// Each phase draws for its duration, then a small HANDOFF gap, then the next
+// phase begins — so the flow reads as a strict chain (nothing starts before the
+// previous tip arrives). See the timeline built inside the component.
+const D_PILL = 0.3; // left→right pill wipe
+const D_ARM = 0.26; // an arm drawing to/from its pill
+const D_TRUNK = 0.26; // a trunk segment dropping into the next section
+const HANDOFF = 0.045; // deliberate gap between phases
+const SEC_GHOST = 0.1; // resting opacity of a not-yet-reached section card/label
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
@@ -143,8 +149,6 @@ export default function PillsBoard({
       return { key: `goal-${g.join('-')}`, jy: cys.length > 1 ? mid(cys[0], cys[cys.length - 1]) : cys[0], children: g.map((id) => ({ id, cy: cyOf(id) })) };
     }),
   ];
-  const targetOf = (gt: PillsGate) => Math.min(...gt.children.map((c) => rm(c.id)));
-
   // brace path (Figma geometry): single child (jy==cy) → a straight horizontal
   // arm; a forked child → a short straight STUB off the trunk, an S-curve with
   // horizontal tangents at both ends, then a straight RUN into the pill so the
@@ -157,26 +161,78 @@ export default function PillsBoard({
     return `M${SPINE} ${jy} L${sx} ${jy} C${sx + k} ${jy}, ${ex - k} ${cy}, ${ex} ${cy} L${ARM_END} ${cy}`;
   };
 
-  // per-child brace growth (causal draw-on), reused for the arm-end chevron reveal
-  const braceGrow = (id: string) => growWin(rm(id) - BRACE_SPAN, rm(id));
+  // ------------------------------------------------------------------------
+  // EXPLICIT CAUSAL CASCADE TIMELINE (in sim months, anchored at the first
+  // paycheck). Every phase begins only after the previous phase's tip arrives,
+  // so the flow reads as money physically travelling down the map:
+  //   1 Paycheck pill wipes in
+  //   2 the income arm draws OUT of the pill toward the trunk
+  //   3 the trunk drops DOWN into Monthly Expenses (+ its down-chevron)
+  //   4 the Monthly gate fires → Core + Spend arms draw, then their pills wipe
+  //   5 the trunk continues DOWN into Goals (+ its down-chevron)
+  //   6 each Goals gate fires in turn → arm(s) draw, then pill(s) wipe; for
+  //     Optimizer this cascades gate-by-gate (goals1 → goals2 → goals3).
+  // It's a pure function of `now`, so scrubbing/replaying stays exact.
+  // ------------------------------------------------------------------------
+  let tc = rm('income'); // anchor: first paycheck arrival in the sim
+  const step = (dur: number): [number, number] => {
+    const s = tc;
+    tc = s + dur;
+    return [s, tc];
+  };
+  const gap = () => {
+    tc += HANDOFF;
+  };
+  const win = ([s, e]: [number, number]) => growWin(s, e);
 
-  // INCOME is the money SOURCE: the Paycheck pill reveals first, THEN its arm
-  // draws OUT of the pill toward the trunk (arrowhead points away from the pill,
-  // into the spine). So its arm starts a beat AFTER the pill wipe begins.
-  const incomeArmGrow = growWin(rm('income') + 0.2, rm('income') + 0.2 + BRACE_SPAN);
+  const wIncomePill = step(D_PILL);
+  gap();
+  const wIncomeArm = step(D_ARM);
+  gap();
+  const wTrunk0 = step(D_TRUNK); // trunk drops into Monthly Expenses
+  gap();
+  const wMonthlyArms = step(D_ARM); // Core + Spend arms draw together
+  gap();
+  const wMonthlyPills = step(D_PILL); // Core + Spend pills wipe in
+  gap();
+  const wTrunk1 = step(D_TRUNK); // trunk drops into Goals
+  gap();
 
-  // main-trunk segments between gate junctions, with causal grow
-  const trunkSegs = gates.slice(0, -1).map((g, i) => ({
-    key: g.key,
-    y0: g.jy,
-    y1: gates[i + 1].jy,
-    grow: growWin(targetOf(g) - TRUNK_LEAD, targetOf(gates[i + 1]) - TRUNK_LEAD),
-  }));
+  const goalGateCount = gates.length - 2;
+  const wGoalArm: [number, number][] = [];
+  const wGoalPill: [number, number][] = [];
+  const wGoalTrunk: Record<number, [number, number]> = {}; // trunk-seg index → window
+  for (let gi = 0; gi < goalGateCount; gi++) {
+    if (gi > 0) {
+      wGoalTrunk[1 + gi] = step(D_TRUNK); // trunk from the prior goal gate down to this one
+      gap();
+    }
+    wGoalArm[gi] = step(D_ARM);
+    gap();
+    wGoalPill[gi] = step(D_PILL);
+    gap();
+  }
 
-  // DOWNWARD trunk chevrons: one where the trunk crosses into Monthly Expenses
-  // (trunk seg 0) and one where it crosses into Goals (trunk seg 1). The tip
-  // sits just above the section label; it reveals once the trunk draw-on tip has
-  // descended past that y (top→bottom reveal).
+  // per-element window lookups
+  const armWinFor = (gateIdx: number): [number, number] =>
+    gateIdx === 0 ? wIncomeArm : gateIdx === 1 ? wMonthlyArms : wGoalArm[gateIdx - 2];
+  const pillWinFor = (id: string): [number, number] => {
+    if (id === 'income') return wIncomePill;
+    if (id === 'core' || id === 'spend') return wMonthlyPills;
+    const gi = goalGates.findIndex((g) => g.includes(id));
+    return gi >= 0 ? wGoalPill[gi] : wIncomePill;
+  };
+  const secWinFor = (id: 'income' | 'monthly' | 'goals'): [number, number] =>
+    id === 'income' ? wIncomePill : id === 'monthly' ? wTrunk0 : wTrunk1;
+
+  // main-trunk segments between gate junctions, each driven by its phase window
+  const trunkSegs = gates.slice(0, -1).map((g, i) => {
+    const w = i === 0 ? wTrunk0 : i === 1 ? wTrunk1 : wGoalTrunk[i];
+    return { key: g.key, y0: g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
+  });
+
+  // DOWNWARD trunk chevrons where the trunk crosses into Monthly / Goals; each
+  // reveals once its trunk segment's draw-on tip has descended past that y.
   const secBy = (id: 'income' | 'monthly' | 'goals') => layout.sections.find((s) => s.id === id);
   const trunkChevrons: { y: number; show: boolean }[] = [];
   ([['monthly', 0] as const, ['goals', 1] as const]).forEach(([sec, segIdx]) => {
@@ -207,41 +263,42 @@ export default function PillsBoard({
         {/* each gate's braces into its child rows, + a chevron into each pill.
             EXCEPTION: the income arm flows OUT of the Paycheck toward the trunk,
             so it draws from the pill end inward and its chevron points left. */}
-        {gates.flatMap((g) =>
+        {gates.flatMap((g, gateIdx) =>
           g.children.map((c) => {
+            const armGrow = win(armWinFor(gateIdx));
             if (c.id === 'income') {
               return (
                 <g key="arm-income">
-                  <Branch d={`M${ARM_END} ${c.cy} L${SPINE} ${c.cy}`} grow={incomeArmGrow} />
-                  <Chevron x={SPINE + 7} y={c.cy} dir="left" show={incomeArmGrow >= 0.82} />
+                  <Branch d={`M${ARM_END} ${c.cy} L${SPINE} ${c.cy}`} grow={armGrow} />
+                  <Chevron x={SPINE + 7} y={c.cy} dir="left" show={armGrow >= 0.82} />
                 </g>
               );
             }
             return (
               <g key={`arm-${c.id}`}>
-                <Branch d={bracePath(g.jy, c.cy)} grow={braceGrow(c.id)} />
-                <Chevron x={ARM_END} y={c.cy} dir="right" show={braceGrow(c.id) >= 0.82} />
+                <Branch d={bracePath(g.jy, c.cy)} grow={armGrow} />
+                <Chevron x={ARM_END} y={c.cy} dir="right" show={armGrow >= 0.82} />
               </g>
             );
           }),
         )}
       </svg>
 
-      {/* section cards + label pills */}
+      {/* section cards + label pills — a faint ghost until that section's phase
+          arrives (income at its pill, monthly/goals as the trunk drops in). */}
       {layout.sections.map((s) => {
-        const firstId = s.rows[0]?.id ?? '';
-        const rs = sheetRevealStyle(now, rm(firstId));
+        const op = SEC_GHOST + (1 - SEC_GHOST) * win(secWinFor(s.id));
         return (
           <div key={`sec-${s.id}`}>
             <div
               className="pills-section-label"
-              style={{ left: PILLS_CARD_LEFT, top: s.labelTop, opacity: rs.opacity, transition: 'none' }}
+              style={{ left: PILLS_CARD_LEFT, top: s.labelTop, opacity: op, transition: 'none' }}
             >
               {s.label}
             </div>
             <div
               className="pills-card"
-              style={{ left: PILLS_CARD_LEFT, top: s.cardTop, width: PILLS_CARD_W, height: s.cardH, opacity: rs.opacity, transition: 'none' }}
+              style={{ left: PILLS_CARD_LEFT, top: s.cardTop, width: PILLS_CARD_W, height: s.cardH, opacity: op, transition: 'none' }}
             />
           </div>
         );
@@ -255,7 +312,7 @@ export default function PillsBoard({
       {flatRows.map((r) => {
         const node = byId.get(r.id);
         if (!node) return null;
-        const wipe = clamp01((now - rm(r.id)) / ROW_WIPE_SPAN);
+        const wipe = win(pillWinFor(r.id));
         const Icon = iconFor(node);
         const tint = node.kind === 'goal' ? PILL_TINT.goal : PILL_TINT[node.id] ?? PILL_TINT.goal;
         const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
