@@ -3565,7 +3565,10 @@ body.is-scrubbing-noselect * {
    ============================================================================ */
 .board-pills { background: #f3f4f6; }
 .pills-board { position: absolute; inset: 0; }
-.pills-tree { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
+/* the spine + wishbone flow renders ABOVE the white section-card backgrounds
+   (z 2) so the connector reads as overlaying the sections, but stays BELOW the
+   section labels (z 4) + colored name pills/text (z 5) so they remain legible. */
+.pills-tree { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
 
 .pills-card {
   position: absolute;
