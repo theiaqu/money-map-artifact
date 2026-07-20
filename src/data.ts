@@ -1669,9 +1669,13 @@ export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   const lastGoal = dataset === 'optimizer' ? rows.brokerage : rows.ef6;
   const PAD_T = 10; // top/side breathing room above a card
   const PAD_B = 8; // extra below a card (card height = 80)
+  const GAP = 8; // clean, symmetric visible separation between the mint and pink panels
+  // center the 8px gap on the midpoint of the Spend-card-bottom → 1st-goal-card-top
+  // space so the panels split symmetrically and neither clips its card.
+  const mid = (rows.spend + 80 + rows.ef1) / 2;
   const mintTop = rows.core - PAD_T;
-  const mintBottom = rows.spend + 80 + PAD_B;
-  const pinkTop = rows.ef1 - PAD_T;
+  const mintBottom = mid - GAP / 2; // mint ends 4px above the midpoint
+  const pinkTop = mid + GAP / 2; // pink starts 4px below the midpoint
   const pinkBottom = lastGoal + 80 + PAD_B;
   return [
     { id: 'monthly', x: 11, y: mintTop, w: 379, h: mintBottom - mintTop, tint: 'mint', label: '' },
