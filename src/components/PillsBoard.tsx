@@ -87,13 +87,15 @@ function Branch({ d, grow }: { d: string; grow: number }) {
 // Drawn as an absolute-sized path (NOT an SVG <marker>) so it is never scaled by
 // stroke width or distorted by a viewBox — the aspect ratio is always correct.
 const CHEV = 5; // half-extent of each chevron arm (px) → ~10px tall/wide, clean 45°
-function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'right'; show: boolean }) {
+function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'right' | 'left'; show: boolean }) {
   if (!show) return null;
   const a = CHEV;
   const d =
     dir === 'down'
       ? `M${x - a} ${y - a} L${x} ${y} L${x + a} ${y - a}` // ⌄ tip at (x,y)
-      : `M${x - a} ${y - a} L${x} ${y} L${x - a} ${y + a}`; // › tip at (x,y)
+      : dir === 'left'
+        ? `M${x + a} ${y - a} L${x} ${y} L${x + a} ${y + a}` // ‹ tip at (x,y), for income flowing OUT toward the trunk
+        : `M${x - a} ${y - a} L${x} ${y} L${x - a} ${y + a}`; // › tip at (x,y)
   return <path d={d} stroke={BRANCH_STROKE} strokeWidth={STROKE_W} fill="none" strokeLinecap="round" strokeLinejoin="round" />;
 }
 
@@ -158,6 +160,11 @@ export default function PillsBoard({
   // per-child brace growth (causal draw-on), reused for the arm-end chevron reveal
   const braceGrow = (id: string) => growWin(rm(id) - BRACE_SPAN, rm(id));
 
+  // INCOME is the money SOURCE: the Paycheck pill reveals first, THEN its arm
+  // draws OUT of the pill toward the trunk (arrowhead points away from the pill,
+  // into the spine). So its arm starts a beat AFTER the pill wipe begins.
+  const incomeArmGrow = growWin(rm('income') + 0.2, rm('income') + 0.2 + BRACE_SPAN);
+
   // main-trunk segments between gate junctions, with causal grow
   const trunkSegs = gates.slice(0, -1).map((g, i) => ({
     key: g.key,
@@ -197,14 +204,26 @@ export default function PillsBoard({
         {trunkChevrons.map((c, i) => (
           <Chevron key={`tchev-${i}`} x={SPINE} y={c.y} dir="down" show={c.show} />
         ))}
-        {/* each gate's braces into its child rows, + a chevron into each pill */}
+        {/* each gate's braces into its child rows, + a chevron into each pill.
+            EXCEPTION: the income arm flows OUT of the Paycheck toward the trunk,
+            so it draws from the pill end inward and its chevron points left. */}
         {gates.flatMap((g) =>
-          g.children.map((c) => (
-            <g key={`arm-${c.id}`}>
-              <Branch d={bracePath(g.jy, c.cy)} grow={braceGrow(c.id)} />
-              <Chevron x={ARM_END} y={c.cy} dir="right" show={braceGrow(c.id) >= 0.82} />
-            </g>
-          )),
+          g.children.map((c) => {
+            if (c.id === 'income') {
+              return (
+                <g key="arm-income">
+                  <Branch d={`M${ARM_END} ${c.cy} L${SPINE} ${c.cy}`} grow={incomeArmGrow} />
+                  <Chevron x={SPINE + 7} y={c.cy} dir="left" show={incomeArmGrow >= 0.82} />
+                </g>
+              );
+            }
+            return (
+              <g key={`arm-${c.id}`}>
+                <Branch d={bracePath(g.jy, c.cy)} grow={braceGrow(c.id)} />
+                <Chevron x={ARM_END} y={c.cy} dir="right" show={braceGrow(c.id) >= 0.82} />
+              </g>
+            );
+          }),
         )}
       </svg>
 
