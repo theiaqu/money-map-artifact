@@ -52,8 +52,9 @@ function pillName(node: CardNode): string {
 //   • DOWNWARD chevron arrowheads sit on the trunk where it crosses into the
 //     next section; per the task we also add a chevron at each arm's pill end.
 const SPINE = PILLS_SPINE_X;
-const ARM_END = PILLS_PILL_LEFT - 7; // arms/braces stop just before the pill; chevron tip lands here
-const STUB = 12; // straight stub off the trunk before a fork brace curves away
+const ARM_END = PILLS_PILL_LEFT - 8; // arms/braces stop just before the pill; chevron tip lands here
+const STUB = 10; // straight stub off the trunk before a fork brace curves away
+const RUN = 12; // straight horizontal run at the arm's end so the arrowhead sits on a clean, level segment
 const TRUNK_LEAD = 0.3; // months the trunk leads its gate's pop
 const BRACE_SPAN = 0.34; // months a gate brace takes to draw into its child
 const ROW_WIPE_SPAN = 0.34; // months a row takes to wipe in left→right after the flow arrives
@@ -83,9 +84,12 @@ function Branch({ d, grow }: { d: string; grow: number }) {
 
 // a standalone chevron arrowhead matching the Figma vectors. 'down' points into
 // the next section along the trunk; 'right' points into a destination pill.
+// Drawn as an absolute-sized path (NOT an SVG <marker>) so it is never scaled by
+// stroke width or distorted by a viewBox — the aspect ratio is always correct.
+const CHEV = 5; // half-extent of each chevron arm (px) → ~10px tall/wide, clean 45°
 function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'right'; show: boolean }) {
   if (!show) return null;
-  const a = 4.6; // arm reach (Figma chevrons are ~9px wide)
+  const a = CHEV;
   const d =
     dir === 'down'
       ? `M${x - a} ${y - a} L${x} ${y} L${x + a} ${y - a}` // ⌄ tip at (x,y)
@@ -140,13 +144,15 @@ export default function PillsBoard({
   const targetOf = (gt: PillsGate) => Math.min(...gt.children.map((c) => rm(c.id)));
 
   // brace path (Figma geometry): single child (jy==cy) → a straight horizontal
-  // arm; a forked child → a short straight STUB off the trunk, then a tight
-  // S-curve with horizontal tangents at both ends into the pill.
+  // arm; a forked child → a short straight STUB off the trunk, an S-curve with
+  // horizontal tangents at both ends, then a straight RUN into the pill so the
+  // arrowhead lands on a clean, level segment (never mid-curve).
   const bracePath = (jy: number, cy: number) => {
     if (Math.abs(cy - jy) < 0.5) return `M${SPINE} ${cy} L${ARM_END} ${cy}`;
-    const sx = SPINE + STUB;
-    const k = Math.max(6, (ARM_END - sx) * 0.55);
-    return `M${SPINE} ${jy} L${sx} ${jy} C${sx + k} ${jy}, ${ARM_END - k} ${cy}, ${ARM_END} ${cy}`;
+    const sx = SPINE + STUB; // stub end / curve start
+    const ex = ARM_END - RUN; // curve end / straight-run start
+    const k = Math.max(6, (ex - sx) * 0.5);
+    return `M${SPINE} ${jy} L${sx} ${jy} C${sx + k} ${jy}, ${ex - k} ${cy}, ${ex} ${cy} L${ARM_END} ${cy}`;
   };
 
   // per-child brace growth (causal draw-on), reused for the arm-end chevron reveal
