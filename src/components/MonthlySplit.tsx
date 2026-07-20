@@ -10,7 +10,7 @@ import { heroHeadline, DATASETS, type Dataset } from '../scenario';
 // Spend = spendMax, Goals = the monthly surplus (income − core − spend).
 
 const BOARD_W = 402;
-const BASELINE = 792; // bars sit on this y; column labels just below
+const BASELINE = 752; // bars sit on this y; column labels just below (kept clear of the bottom toggle)
 const MAX_BAR_H = 214; // the largest column's height
 
 // column centers + width
