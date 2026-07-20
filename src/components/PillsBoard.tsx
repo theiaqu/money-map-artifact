@@ -316,17 +316,28 @@ export default function PillsBoard({
         const Icon = iconFor(node);
         const tint = node.kind === 'goal' ? PILL_TINT.goal : PILL_TINT[node.id] ?? PILL_TINT.goal;
         const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
+        // "Monthly split" shared-element morph source role: Paycheck → income,
+        // Core → bills, Spend → spend, every goal → goals (fan-in). The ghost
+        // colour is the pill's own tint so the flight starts matching the pill.
+        const morphRole =
+          node.kind === 'goal' ? 'goals' : node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : node.kind === 'income' ? 'income' : undefined;
         const rowStyle = {
           left: PILLS_PILL_LEFT,
           top: r.cy,
           // -8px top/bottom/left keeps rounded corners + icons from being clipped;
-          // the right inset sweeps 100%→0% to reveal the row left→right.
+          // the right inset sweeps 100%→0% to reveal the row left→right. No inline
+          // `transition` so the morph's is-morphing opacity crossfade can drive the
+          // row in/out (an inline transition would override that stylesheet rule).
           clipPath: `inset(-8px ${((1 - wipe) * 100).toFixed(2)}% -8px -8px)`,
           transform: 'translateY(-50%)',
-          transition: 'none' as const,
         };
         return (
-          <div key={`row-${r.id}`} className="pills-row" style={rowStyle}>
+          <div
+            key={`row-${r.id}`}
+            className="pills-row"
+            style={rowStyle}
+            {...(morphRole ? { 'data-morph': morphRole, 'data-morph-color': tint } : {})}
+          >
             <span className="pills-pill" style={{ background: tint }}>
               {Icon && <Icon size={16} strokeWidth={2} color="#111" />}
               <span className="pills-pill-name">{pillName(node)}</span>

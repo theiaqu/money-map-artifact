@@ -909,13 +909,13 @@ export default function App() {
   // in-prototype "Monthly split" simplified view (Figma 907:13144) — offered on
   // the Progress-bar-inside style via the on-screen Full system / Monthly split
   // toggle. Replaces the tree with a single take-home-pay → Bills/Spend/Goals split.
-  const monthlyView = style === 'progress' && systemView === 'monthly';
+  const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
     <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
       {/* in-prototype view toggle (Figma 907:13144): swap the full tree for the
-          simplified Monthly split. Offered on the Progress-bar-inside style. */}
-      {style === 'progress' && (
+          simplified Monthly split. Offered on the Progress-bar-inside + Pills styles. */}
+      {(style === 'progress' || style === 'pills') && (
         <div className="msplit-toggle">
           <button className={systemView === 'full' ? 'active' : ''} onClick={() => switchView('full')}>Full system</button>
           <button className={systemView === 'monthly' ? 'active' : ''} onClick={() => switchView('monthly')}>Monthly split</button>
