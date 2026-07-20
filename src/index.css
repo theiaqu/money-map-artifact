@@ -1472,7 +1472,7 @@ body {
 .msplit-branch--pink { stroke: #edc0d6; }
 .msplit-bar {
   position: absolute;
-  border-radius: 12px 12px 0 0;
+  border-radius: 12px; /* fully rounded top AND bottom */
   display: flex;
   justify-content: center;
   padding-top: 12px;
@@ -1529,14 +1529,16 @@ body {
 }
 .msplit-ghost {
   position: absolute;
-  border-radius: 10px;
+  border-radius: 12px; /* fully rounded so bars never "square off" mid-morph */
   will-change: left, top, width, height;
+  /* slower, quick-to-start motion with a long, gentle deceleration tail
+     (easeOutQuint-like) so the ghosts glide to a soft stop instead of snapping */
   transition:
-    left 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
-    top 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
-    width 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
-    height 480ms cubic-bezier(0.22, 0.7, 0.16, 1),
-    background-color 480ms cubic-bezier(0.22, 0.7, 0.16, 1);
+    left 820ms cubic-bezier(0.16, 1, 0.3, 1),
+    top 820ms cubic-bezier(0.16, 1, 0.3, 1),
+    width 820ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 820ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 820ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* in-prototype view toggle pinned to the bottom of the PHONE SCREEN (not the

@@ -24,7 +24,10 @@ type MorphRect = { left: number; top: number; width: number; height: number; col
 type MorphMap = Record<string, MorphRect[]>;
 type Ghost = { id: string; from: MorphRect; to: MorphRect };
 const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
-const MORPH_MS = 480;
+// Must match the .msplit-ghost CSS transition duration. The real (hidden) targets
+// are only revealed after this + buffer, so the long deceleration tail fully
+// settles before the ghost→element handoff (no flash / double-settle).
+const MORPH_MS = 820;
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
