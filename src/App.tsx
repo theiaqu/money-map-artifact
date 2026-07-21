@@ -147,8 +147,8 @@ const DATE_OPTS: { id: DateMode; label: string }[] = [
 // header carousel label mode: "Paychecks" (Income/Paycheck pills) vs "Timeline"
 // (month labels like "Aug '26").
 const CAROUSEL_OPTS: { id: CarouselMode; label: string }[] = [
+  { id: 'timeline', label: 'Timeline' }, // default first
   { id: 'paychecks', label: 'Paychecks' },
-  { id: 'timeline', label: 'Timeline' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -354,8 +354,8 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
 // pbi-only), so they're offered ONLY for the progress style; "Lines with %" and
 // "Condensed" are intentionally NOT offered here.
 const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
+  { id: 'pbi-grouped', label: 'In sections' }, // default first
   { id: 'text-only', label: 'Text gates' },
-  { id: 'pbi-grouped', label: 'In sections' },
   { id: 'pbi-sectionlabel', label: 'Section plus label' },
   { id: 'pbi-income-section', label: 'Sections incl. income' },
   { id: 'pbi-split', label: 'Section split' },
@@ -435,7 +435,7 @@ export default function App() {
   const [map, setMap] = useState<MapStyle>('money-map');
   const [version, setVersion] = useState<Version>('v2');
   const [dateMode, setDateMode] = useState<DateMode>('date');
-  const [carouselMode, setCarouselMode] = useState<CarouselMode>('paychecks'); // header carousel: Paycheck pills vs. month timeline
+  const [carouselMode, setCarouselMode] = useState<CarouselMode>('timeline'); // header carousel: month timeline (default) vs. Paycheck pills
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
@@ -602,6 +602,20 @@ export default function App() {
   const lastTick = useRef(0); // perf timestamp of the previous frame
   const elapsedRef = useRef(0); // accumulated sim-seconds (speed-scaled); drives t
   const speedRef = useRef(1); // live mirror of `speed` so the RAF loop reads it without restarting
+  const onboardRef = useRef<null | 'home' | 'map'>(null); // live mirror of `onboard` so the RAF loop can bail while onboarding (home/map never auto-play)
+
+  // Onboarding home/map view is STATIC: it must never auto-play (advance the clock
+  // on its own). Scrubbing via the header carousel (scrubTo) still works — that
+  // stops the loop and parks the sim at the dragged frame. Whenever we enter the
+  // home or map view, kill any running loop so a sim that was mid-play in the
+  // standard view doesn't keep ticking under the home page.
+  useEffect(() => {
+    onboardRef.current = onboard;
+    if (onboard !== null) {
+      cancelAnimationFrame(raf.current);
+      setPlaying(false);
+    }
+  }, [onboard]);
 
   // Non-stocks account styles are illustrative-only, so force illustrative timing/
   // animation for them. `mode` stays as the raw Time-model toggle source.
@@ -629,6 +643,12 @@ export default function App() {
   // works for a fresh play AND a resume-from-frozen-frame without a jump.
   const runLoop = useCallback(() => {
     cancelAnimationFrame(raf.current);
+    // Onboarding home/map is static — never auto-advance the clock there (the user
+    // scrubs via the carousel instead). Bail out of the play loop entirely.
+    if (onboardRef.current !== null) {
+      setPlaying(false);
+      return;
+    }
     const end = endSecs(dataset, effMode); // duration is per dataset + time model
     lastTick.current = performance.now();
     const loop = (p: number) => {
@@ -914,19 +934,19 @@ export default function App() {
           <div className="mode-toggle" role="tablist" aria-label="Core/Spend refill visual">
             <button
               role="tab"
-              aria-selected={!refillVisual}
-              className={`mode-opt${!refillVisual ? ' active' : ''}`}
-              onClick={() => setRefillVisual(false)}
-            >
-              Off
-            </button>
-            <button
-              role="tab"
               aria-selected={refillVisual}
               className={`mode-opt${refillVisual ? ' active' : ''}`}
               onClick={() => setRefillVisual(true)}
             >
               On
+            </button>
+            <button
+              role="tab"
+              aria-selected={!refillVisual}
+              className={`mode-opt${!refillVisual ? ' active' : ''}`}
+              onClick={() => setRefillVisual(false)}
+            >
+              Off
             </button>
           </div>
         </div>
@@ -1284,16 +1304,16 @@ export default function App() {
         <div className="mode-toggle" role="tablist" aria-label="Preview view">
           <button
             role="tab"
-            aria-selected={onboard !== 'home'}
-            className={`mode-opt${onboard !== 'home' ? ' active' : ''}`}
+            aria-selected={onboard === null}
+            className={`mode-opt${onboard === null ? ' active' : ''}`}
             onClick={exitOnboarding}
           >
             Onboarding
           </button>
           <button
             role="tab"
-            aria-selected={onboard === 'home'}
-            className={`mode-opt${onboard === 'home' ? ' active' : ''}`}
+            aria-selected={onboard === 'home' || onboard === 'map'}
+            className={`mode-opt${onboard === 'home' || onboard === 'map' ? ' active' : ''}`}
             onClick={enterOnboarding}
           >
             Home page
