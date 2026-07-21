@@ -92,23 +92,29 @@ export default function HomeScreen({
     if (next > SHEET_MAX) next = SHEET_MAX + (next - SHEET_MAX) * 0.35;
     if (next < SHEET_RAISED) next = SHEET_RAISED + (next - SHEET_RAISED) * 0.35;
     setSheetTop(next);
-    // drive the account-card morph proportionally to the downward pull
+    // drive the subtle damped account-card morph preview proportionally to the pull
+    // (this also builds the morph ghosts on the first downward move).
     onDragProgress(pullFraction(next));
+    // AUTO-FIRE: the instant the drag crosses the commit threshold, complete the
+    // full morph to the money map immediately — no pointerup required. Detach the
+    // drag so any further moves / the eventual release are ignored (endDrag no-ops).
+    if (next - SHEET_REST >= COMMIT_PULL) {
+      drag.current = null;
+      setDragging(false);
+      setOpening(true);
+      onDragRelease(true);
+    }
   };
   const endDrag = () => {
+    // if the drag already auto-committed mid-move, drag.current is null → no-op.
     if (!drag.current) return;
     const from = drag.current.startTop;
     const top = sheetTop;
     drag.current = null;
     setDragging(false);
-    // released past the commit threshold → complete the morph to the money map
-    if (top - SHEET_REST >= COMMIT_PULL) {
-      setOpening(true);
-      onDragRelease(true);
-      return;
-    }
-    // otherwise the morph snaps back; settle the sheet at the nearest resting point
-    // (raised = accounts covered, rest = accounts shown)
+    // released BELOW the commit threshold → the morph snaps back; settle the sheet
+    // at the nearest resting point (raised = accounts covered, rest = accounts shown).
+    // (Crossing the threshold is handled live in onPointerMove, not here.)
     onDragRelease(false);
     const raisedDist = Math.abs(top - SHEET_RAISED);
     const restDist = Math.abs(top - SHEET_REST);

@@ -560,7 +560,11 @@ export default function App() {
   // Sheet released. Commit → reset to Full system, swap to the real money map, and
   // let the ghosts finish to 100%. Cancel → animate the ghosts back to the home cards.
   const handleDragRelease = (commit: boolean) => {
-    if (!dragActiveRef.current || !dragGhosts) {
+    // dragActiveRef is a ref set the instant the ghosts are built, so this stays
+    // correct even when a fast flick builds the ghosts and crosses the commit
+    // threshold within the SAME pointermove tick (the dragGhosts *state* would
+    // still read stale/null in this closure, so we must not gate on it here).
+    if (!dragActiveRef.current) {
       // no morph engaged (e.g. a tiny nudge or an upward drag) — nothing to finish
       return;
     }
