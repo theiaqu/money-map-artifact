@@ -780,9 +780,12 @@ export default function Card({
     const top = pbiRowTopFor(dataset)[node.id] ?? node.y;
     const cardLeft = PBI_CARD_LEFT;
     const Glyph = pbiIconFor(node);
+    // account cards (Core → "bills", Spend → "spend") carry data-morph-card so the
+    // onboarding home→map card FLIP can find their resting rect as morph targets.
+    const cardMorph = node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : undefined;
     return (
       <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: cardLeft, top, width: PBI_CARD_W }}>
-        <div className="pbi-card">
+        <div className="pbi-card" {...(cardMorph ? { 'data-morph-card': cardMorph } : {})}>
           <div className="pbi-card-head">
             <Glyph className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
             <span className="pbi-card-name">{node.title}</span>

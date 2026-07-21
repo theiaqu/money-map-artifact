@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { CreditCard, Landmark, MessageCircle, CircleUser, Waypoints } from 'lucide-react';
-import type { Dataset } from '../scenario';
+import { useRef, useState } from 'react';
+import { CreditCard, Receipt, MessageCircle, CircleUser, Waypoints } from 'lucide-react';
+import { DATASETS, type Dataset } from '../scenario';
+
+const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 
 // Mock Fruitful home page (Figma 977:11967) used as the "Onboarding view" for the
 // Progress-bar account style. A gradient header + horizontally-scrolling account
@@ -11,7 +13,6 @@ import type { Dataset } from '../scenario';
 //     off to the money-map screen (onOpenMap).
 // The drag is pointer-driven with iOS-like snap points + a release threshold.
 
-const SCREEN_H = 874;
 const SHEET_REST = 330; // sheet top at rest (account cards visible above)
 const SHEET_RAISED = 150; // dragged up: sheet covers the account cards
 const SHEET_MAX = 560; // dragged down: sheet floor (reveals the money-map affordance)
@@ -26,28 +27,30 @@ export default function HomeScreen({
   dataset,
   onOpenMap,
   onExit,
+  cardsHidden = false,
+  cardsReveal = false,
 }: {
   dataset: Dataset;
   onOpenMap: () => void;
   onExit: () => void;
+  cardsHidden?: boolean; // account cards are being morphed IN from the map (hide the real ones until they land)
+  cardsReveal?: boolean; // tail crossfade: fade the real cards in as the flying ghosts arrive
 }) {
   const [sheetTop, setSheetTop] = useState(SHEET_REST);
   const [dragging, setDragging] = useState(false);
-  const [opening, setOpening] = useState(false); // seamless hand-off to the money map
+  const [opening, setOpening] = useState(false); // hand-off to the money map in progress
   const drag = useRef<{ startY: number; startTop: number } | null>(null);
-  const rafOpen = useRef<number | null>(null);
+  const cfg = DATASETS[dataset];
 
-  useEffect(
-    () => () => {
-      if (rafOpen.current) window.clearTimeout(rafOpen.current);
-    },
-    [],
-  );
+  // account balances shown as the BIG number on each card. Static, home-page mock
+  // values that sit above the same in-card bar the money-map card uses.
+  const balances = { spend: 1820.39, core: 10640 };
 
+  // full drag-release → hand straight off to the money map; the parent runs the
+  // shared-element card morph (measures these cards, then flies them to the map).
   const beginOpen = () => {
     setOpening(true);
-    setSheetTop(SCREEN_H); // slide the sheet fully off as the map rises underneath
-    rafOpen.current = window.setTimeout(onOpenMap, 360);
+    onOpenMap();
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -116,30 +119,30 @@ export default function HomeScreen({
         </div>
       </div>
 
-      {/* top-section account cards (get covered when the sheet rises) */}
-      <div className="home-accounts">
-        <div className="home-acct">
-          <div className="home-acct-head">
-            <CreditCard size={16} strokeWidth={2} color="#2f8f4e" />
-            <span>Spend Account</span>
+      {/* top-section account cards — the SAME pbi card the money map uses (icon +
+          name + in-card bar), plus a BIG balance number above the bar and a touch
+          more padding. Tagged data-morph-card so they FLIP into the map cards. */}
+      <div className={`home-accounts${cardsHidden && !cardsReveal ? ' home-accounts--hidden' : ''}${cardsReveal ? ' home-accounts--reveal' : ''}`}>
+        <div className="pbi-card pbi-card--home" data-morph-card="spend">
+          <div className="pbi-card-head">
+            <CreditCard className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
+            <span className="pbi-card-name">Spend Account</span>
           </div>
-          <div className="home-acct-amt">$1,820.39</div>
-          <div className="home-acct-bar">
-            <div className="home-acct-fill home-acct-fill--green" style={{ width: '50%' }}>
-              50% OF $3,000
-            </div>
+          <div className="pbi-card-balance">{`$${balances.spend.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</div>
+          <div className="pbi-bar">
+            <div className="pbi-bar-fill" style={{ width: '45%', background: '#61bc76' }} />
+            <span className="pbi-bar-amount">{money(cfg.spendMax)}</span>
           </div>
         </div>
-        <div className="home-acct">
-          <div className="home-acct-head">
-            <Landmark size={16} strokeWidth={2} color="#3b82f6" />
-            <span>Core</span>
+        <div className="pbi-card pbi-card--home" data-morph-card="bills">
+          <div className="pbi-card-head">
+            <Receipt className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
+            <span className="pbi-card-name">Core Account</span>
           </div>
-          <div className="home-acct-amt">$10,640.00</div>
-          <div className="home-acct-bar">
-            <div className="home-acct-fill home-acct-fill--blue" style={{ width: '50%' }}>
-              50% OF $21,000
-            </div>
+          <div className="pbi-card-balance">{`$${balances.core.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</div>
+          <div className="pbi-bar">
+            <div className="pbi-bar-fill" style={{ width: '45%', background: '#b0d9ff' }} />
+            <span className="pbi-bar-amount">{money(cfg.coreMax)}</span>
           </div>
         </div>
       </div>

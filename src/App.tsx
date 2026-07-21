@@ -69,6 +69,36 @@ function measureMorph(board: HTMLElement): MorphMap {
   return map;
 }
 
+// ---- Onboarding home ⇄ map account-card FLIP ----
+// A card-level shared-element morph, separate from the bar-level Monthly-split
+// morph. The mock home page's account cards (data-morph-card="spend"/"bills") fly
+// into the money-map's matching pbi cards (and back). We clone the SOURCE card's
+// outerHTML into a viewport-fixed ghost, then FLIP it from its source rect to the
+// target card's rect (non-uniform scale so it lands exactly), crossfading to the
+// real card as it arrives — so the big balance number + padding resolve seamlessly.
+type CardRect = { left: number; top: number; width: number; height: number };
+type CardSrc = { role: string; rect: CardRect; natW: number; natH: number; html: string };
+type CardGhost = { id: string; from: CardRect; to: CardRect; natW: number; natH: number; html: string };
+const CARD_MORPH_MS = 640;
+
+function measureCards(root: ParentNode): CardSrc[] {
+  const out: CardSrc[] = [];
+  root.querySelectorAll<HTMLElement>('[data-morph-card]').forEach((el) => {
+    const role = el.getAttribute('data-morph-card');
+    if (!role) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    out.push({
+      role,
+      rect: { left: r.left, top: r.top, width: r.width, height: r.height },
+      natW: el.offsetWidth,
+      natH: el.offsetHeight,
+      html: el.outerHTML,
+    });
+  });
+  return out;
+}
+
 const MODES: { id: Mode; label: string }[] = [
   { id: 'illustrative', label: 'Illustrative' },
   { id: 'accurate', label: 'Accurate' },
@@ -381,6 +411,12 @@ export default function App() {
   // = mock home with the draggable sheet; 'map' = the money map with a compact
   // home-style header + the Full/Monthly toggle pinned to the TOP.
   const [onboard, setOnboard] = useState<null | 'home' | 'map'>(null);
+  // onboarding home ⇄ map account-card FLIP
+  const [cardGhosts, setCardGhosts] = useState<CardGhost[] | null>(null);
+  const [cardPhase, setCardPhase] = useState<'start' | 'end'>('start');
+  const [cardReveal, setCardReveal] = useState(false);
+  const [cardDir, setCardDir] = useState<'to-map' | 'to-home'>('to-map');
+  const pendingCardRef = useRef<{ sources: CardSrc[]; dir: 'to-map' | 'to-home' } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const pendingMorphRef = useRef<{ sources: MorphMap } | null>(null); // source rects captured just before a view switch
   const [ghosts, setGhosts] = useState<Ghost[] | null>(null); // active morph ghosts (null = idle)
@@ -409,7 +445,61 @@ export default function App() {
     setSystemView('full');
     setOnboard(null);
   };
+  // home → map: measure the home account cards (present now), then swap to the map.
+  // The layout effect below measures the map targets and flies the card ghosts.
+  const openMap = () => {
+    const sources = measureCards(document);
+    pendingCardRef.current = sources.length ? { sources, dir: 'to-map' } : null;
+    setOnboard('map');
+  };
+  // map → home (Back): measure the map cards, then swap back to the home page.
+  const backToHome = () => {
+    const board = boardRef.current;
+    const sources = board ? measureCards(board) : [];
+    pendingCardRef.current = sources.length ? { sources, dir: 'to-home' } : null;
+    setOnboard('home');
+  };
   const onboardMap = onboard === 'map'; // money-map screen (compact header + top toggle)
+
+  // Drive the account-card FLIP after an onboarding home ⇄ map swap.
+  useLayoutEffect(() => {
+    const pending = pendingCardRef.current;
+    if (!pending) return;
+    pendingCardRef.current = null;
+    const targets =
+      pending.dir === 'to-map'
+        ? boardRef.current
+          ? measureCards(boardRef.current)
+          : []
+        : measureCards(document); // to-home: the home cards now live outside the board
+    const tByRole = new Map(targets.map((t) => [t.role, t]));
+    const ghosts: CardGhost[] = [];
+    for (const s of pending.sources) {
+      const t = tByRole.get(s.role);
+      if (!t) continue;
+      ghosts.push({ id: s.role, from: s.rect, to: t.rect, natW: s.natW, natH: s.natH, html: s.html });
+    }
+    if (!ghosts.length) return;
+    setCardDir(pending.dir);
+    setCardGhosts(ghosts);
+    setCardPhase('start');
+    setCardReveal(false);
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setCardPhase('end'));
+    });
+    const revealT = window.setTimeout(() => setCardReveal(true), Math.max(0, CARD_MORPH_MS - 220));
+    const doneT = window.setTimeout(() => {
+      setCardGhosts(null);
+      setCardReveal(false);
+    }, CARD_MORPH_MS + 60);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.clearTimeout(revealT);
+      window.clearTimeout(doneT);
+    };
+  }, [onboard]);
 
   // After a view switch that captured sources, measure the freshly-rendered target
   // rects, build one ghost per source→target pairing (goals fan-in/out), and drive
@@ -953,12 +1043,12 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${onboardMap ? ' board--onboard' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${onboardMap ? ' board--onboard' : ''}${cardGhosts && cardDir === 'to-map' ? ' cards-morphing' : ''}${cardGhosts && cardDir === 'to-map' && cardReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
       {/* Onboarding money-map screen (Figma 977:12246): compact home-style top bar
           — back (→ home) · "Money Map" · Done (→ exit) — replacing the big hero. */}
       {onboardMap && (
         <div className="onboard-topbar">
-          <button className="onboard-back" aria-label="Back" onClick={() => setOnboard('home')}>
+          <button className="onboard-back" aria-label="Back" onClick={backToHome}>
             <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
           <span className="onboard-title">Money Map</span>
@@ -1093,10 +1183,40 @@ export default function App() {
   // normal board is shown untouched.
   const screenEl =
     onboard === 'home' ? (
-      <HomeScreen dataset={dataset} onOpenMap={() => setOnboard('map')} onExit={exitOnboarding} />
+      <HomeScreen
+        dataset={dataset}
+        onOpenMap={openMap}
+        onExit={exitOnboarding}
+        cardsHidden={!!cardGhosts && cardDir === 'to-home'}
+        cardsReveal={cardReveal}
+      />
     ) : (
       boardEl
     );
+
+  // viewport-fixed FLIP ghost layer for the home ⇄ map account-card morph. Each
+  // ghost is a clone of the SOURCE card, flown (non-uniform scale) onto the target
+  // card's rect, then crossfaded out as the real card fades in.
+  const cardMorphLayer = cardGhosts ? (
+    <div
+      className={`cardmorph-layer${cardReveal ? ' is-reveal' : ''}`}
+      style={{ ['--card-ms' as string]: `${CARD_MORPH_MS}ms` } as CSSProperties}
+    >
+      {cardGhosts.map((g) => {
+        const r = cardPhase === 'start' ? g.from : g.to;
+        const sx = r.width / g.natW;
+        const sy = r.height / g.natH;
+        return (
+          <div
+            key={g.id}
+            className="cardmorph-ghost"
+            style={{ width: g.natW, height: g.natH, transform: `translate(${r.left}px, ${r.top}px) scale(${sx}, ${sy})` }}
+            dangerouslySetInnerHTML={{ __html: g.html }}
+          />
+        );
+      })}
+    </div>
+  ) : null;
 
   // "See on home page" — enters the onboarding preview. Progress-bar style only,
   // appended at the BOTTOM of the Play/Restart/Pause action buttons.
@@ -1152,6 +1272,7 @@ export default function App() {
             </div>
           </div>
         </div>
+        {cardMorphLayer}
       </div>
     );
   }
@@ -1168,6 +1289,7 @@ export default function App() {
       </div>
 
       <Device>{screenEl}</Device>
+      {cardMorphLayer}
     </div>
   );
 }
