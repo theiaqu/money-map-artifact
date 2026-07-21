@@ -52,9 +52,9 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
   return (
     <div className="msplit" style={{ width: BOARD_W }}>
       <div className="pbi-hero-logo msplit-hero-logo">
-        <span className="msplit-logo-wave">
-          <FruitfulLogo size={40} color="#2f8f4e" />
-        </span>
+        {/* hero sprout: fade-in + upward pop only (no wave — the wave is reserved
+            for the green circle node in the card below). */}
+        <FruitfulLogo size={40} color="#2f8f4e" />
       </div>
       <p className="pbi-hero-sub">
         Your Money Map is ready!<br />
