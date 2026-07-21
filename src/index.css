@@ -1561,7 +1561,7 @@ body {
    the opacity transition drives the tail crossfade-in (see .morph-reveal). */
 .board.is-morphing [data-morph] {
   opacity: 0;
-  transition: opacity 340ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--reveal-ms, 340ms) cubic-bezier(0.16, 1, 0.3, 1);
 }
 /* tail crossfade: the real text-bearing targets fade IN and the ghosts fade OUT,
    pixel-aligned, so the animation lands on the destination's resting first frame
@@ -1587,13 +1587,13 @@ body {
      (easeOutExpo-like) so the ghosts glide to a soft stop instead of snapping.
      opacity has its own shorter curve for the tail crossfade. */
   transition:
-    left 1200ms cubic-bezier(0.16, 1, 0.3, 1),
-    top 1200ms cubic-bezier(0.16, 1, 0.3, 1),
-    width 1200ms cubic-bezier(0.16, 1, 0.3, 1),
-    height 1200ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-radius 1200ms cubic-bezier(0.16, 1, 0.3, 1),
-    background-color 1200ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 340ms cubic-bezier(0.16, 1, 0.3, 1);
+    left var(--morph-ms, 1200ms) cubic-bezier(0.16, 1, 0.3, 1),
+    top var(--morph-ms, 1200ms) cubic-bezier(0.16, 1, 0.3, 1),
+    width var(--morph-ms, 1200ms) cubic-bezier(0.16, 1, 0.3, 1),
+    height var(--morph-ms, 1200ms) cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius var(--morph-ms, 1200ms) cubic-bezier(0.16, 1, 0.3, 1),
+    background-color var(--morph-ms, 1200ms) cubic-bezier(0.16, 1, 0.3, 1),
+    opacity var(--reveal-ms, 340ms) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* in-prototype view toggle pinned to the bottom of the PHONE SCREEN (not the

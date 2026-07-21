@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import Card, { ArtifactHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
 import MonthlySplit from './components/MonthlySplit';
@@ -25,13 +25,17 @@ type MorphRect = { left: number; top: number; width: number; height: number; col
 type MorphMap = Record<string, MorphRect[]>;
 type Ghost = { id: string; from: MorphRect; to: MorphRect };
 const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
-// Must match the .msplit-ghost CSS transition duration.
-const MORPH_MS = 1200;
-// Near the tail (once the ghosts are essentially at their destinations), crossfade
-// the REAL text-bearing target elements in while the ghosts fade out — pixel
-// aligned — so the morph lands exactly on the destination's resting first frame
-// instead of hard-swapping contentless ghosts for the real (texted) elements.
-const REVEAL_MS = 340;
+// Morph geometry duration, keyed by the TARGET view. Full system → Monthly split
+// stays calm/long; the RETURN (Monthly split → Full system) is noticeably snappier.
+// The active value is fed to the ghost + data-morph CSS via the --morph-ms var so
+// the JS cleanup timers and the CSS transition can never drift apart.
+const MORPH_MS: Record<'full' | 'monthly', number> = { full: 760, monthly: 1200 };
+// Destination crossfade WINDOW, keyed by target view: the real text-bearing target
+// elements fade IN while the ghosts fade OUT, pixel-aligned. The window ENDS as the
+// ghost arrives, so it BEGINS at (duration - window) — i.e. the text/amount is
+// already fading in just BEFORE the pill reaches its resting spot, then settles
+// exactly on arrival (no hard swap / end pop). Fed to CSS via the --reveal-ms var.
+const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 380, monthly: 480 };
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
@@ -374,6 +378,7 @@ export default function App() {
   const [ghosts, setGhosts] = useState<Ghost[] | null>(null); // active morph ghosts (null = idle)
   const [ghostPhase, setGhostPhase] = useState<'start' | 'end'>('start');
   const [morphReveal, setMorphReveal] = useState(false); // tail crossfade: real targets fade in / ghosts fade out
+  const [morphDur, setMorphDur] = useState<{ morph: number; reveal: number }>({ morph: MORPH_MS.monthly, reveal: REVEAL_MS.monthly }); // active (direction-aware) durations, fed to CSS vars
 
   // Toggle Full system <-> Monthly split with a shared-element morph: capture the
   // CURRENT view's source rects synchronously (before the DOM swaps), then let the
@@ -406,6 +411,11 @@ export default function App() {
       }
     }
     if (!gs.length) return;
+    // direction-aware timing: `systemView` is the TARGET view, so full = the snappy
+    // Monthly split → Full system return, monthly = the calm forward morph.
+    const morphMs = MORPH_MS[systemView];
+    const revealMs = REVEAL_MS[systemView];
+    setMorphDur({ morph: morphMs, reveal: revealMs });
     setGhosts(gs);
     setGhostPhase('start');
     setMorphReveal(false);
@@ -413,13 +423,13 @@ export default function App() {
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => setGhostPhase('end'));
     });
-    // start the crossfade once the ghosts have essentially arrived (long tail),
-    // so the real targets fade in over the last REVEAL_MS and settle exactly.
-    const reveal = window.setTimeout(() => setMorphReveal(true), Math.max(0, MORPH_MS - REVEAL_MS));
+    // begin the crossfade (duration - window) in, so the destination text is already
+    // fading in as the pill settles and finishes exactly on arrival — no end pop.
+    const reveal = window.setTimeout(() => setMorphReveal(true), Math.max(0, morphMs - revealMs));
     const done = window.setTimeout(() => {
       setGhosts(null);
       setMorphReveal(false);
-    }, MORPH_MS + 60);
+    }, morphMs + 60);
     return () => {
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
@@ -922,7 +932,7 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift }}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
       {/* in-prototype view toggle (Figma 907:13144): swap the full tree for the
           simplified Monthly split. Offered on the Progress-bar-inside + Pills styles. */}
       {(style === 'progress' || style === 'pills') && (
