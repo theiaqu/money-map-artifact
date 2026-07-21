@@ -1403,6 +1403,15 @@ export const condensedRowTopFor = (dataset: Dataset): Record<string, number> =>
    92px pitch (travel 838, brokerage 930). ==================================== */
 export const PBI_CARD_LEFT = 170;
 export const PBI_CARD_W = 216;
+
+// Onboarding home-page account balances (Figma 977:11967). Shown as the BIG number
+// on the home cards AND re-used as the Core/Spend amounts on the money map reached
+// via the home → map drag hand-off, so the numbers stay continuous through the
+// transition. (The standard/onboarding money map keeps its usual monthly amounts.)
+export const HOME_BALANCES: Record<'core' | 'spend', string> = {
+  spend: '$1,820.39',
+  core: '$10,640.00',
+};
 // cardTop -> the point each branch arm attaches: the card's VERTICAL CENTER
 // (card height = 8 pad + 24 head + 8 gap + 32 bar + 8 pad = 80 -> center 40),
 // matching the Figma "path - bills" branch endpoints (node 792:8522).

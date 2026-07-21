@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { CreditCard, Receipt, MessageCircle, CircleUser, Waypoints } from 'lucide-react';
 import { DATASETS, type Dataset } from '../scenario';
+import { HOME_BALANCES } from '../data';
 
 const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 
@@ -42,9 +43,10 @@ export default function HomeScreen({
   const drag = useRef<{ startY: number; startTop: number } | null>(null);
   const cfg = DATASETS[dataset];
 
-  // account balances shown as the BIG number on each card. Static, home-page mock
-  // values that sit above the same in-card bar the money-map card uses.
-  const balances = { spend: 1820.39, core: 10640 };
+  // account balances shown as the BIG number on each card (Figma 977:11967).
+  // Static home-page mock values that sit above the same in-card bar the money-map
+  // card uses — and are re-used as the map's Core/Spend amounts on the home→map
+  // hand-off so the numbers stay continuous (see HOME_BALANCES in data.ts).
 
   // full drag-release → hand straight off to the money map; the parent runs the
   // shared-element card morph (measures these cards, then flies them to the map).
@@ -128,7 +130,7 @@ export default function HomeScreen({
             <CreditCard className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
             <span className="pbi-card-name">Spend Account</span>
           </div>
-          <div className="pbi-card-balance">{`$${balances.spend.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</div>
+          <div className="pbi-card-balance">{HOME_BALANCES.spend}</div>
           <div className="pbi-bar">
             <div className="pbi-bar-fill" style={{ width: '45%', background: '#61bc76' }} />
             <span className="pbi-bar-amount">{money(cfg.spendMax)}</span>
@@ -139,7 +141,7 @@ export default function HomeScreen({
             <Receipt className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
             <span className="pbi-card-name">Core Account</span>
           </div>
-          <div className="pbi-card-balance">{`$${balances.core.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</div>
+          <div className="pbi-card-balance">{HOME_BALANCES.core}</div>
           <div className="pbi-bar">
             <div className="pbi-bar-fill" style={{ width: '45%', background: '#b0d9ff' }} />
             <span className="pbi-bar-amount">{money(cfg.coreMax)}</span>

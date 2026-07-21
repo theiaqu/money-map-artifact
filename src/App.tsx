@@ -11,7 +11,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -72,27 +72,59 @@ function measureMorph(board: HTMLElement): MorphMap {
 // ---- Onboarding home ⇄ map account-card FLIP ----
 // A card-level shared-element morph, separate from the bar-level Monthly-split
 // morph. The mock home page's account cards (data-morph-card="spend"/"bills") fly
-// into the money-map's matching pbi cards (and back). We clone the SOURCE card's
-// outerHTML into a viewport-fixed ghost, then FLIP it from its source rect to the
-// target card's rect (non-uniform scale so it lands exactly), crossfading to the
-// real card as it arrives — so the big balance number + padding resolve seamlessly.
-type CardRect = { left: number; top: number; width: number; height: number };
-type CardSrc = { role: string; rect: CardRect; natW: number; natH: number; html: string };
-type CardGhost = { id: string; from: CardRect; to: CardRect; natW: number; natH: number; html: string };
+// into the money-map's matching pbi cards (and back).
+//
+// To avoid distorting the card text we DON'T non-uniformly scale a text-bearing
+// ghost. Instead each ghost holds two stacked layers — a clone of the SOURCE card
+// and a clone of the TARGET card, each at its own natural size, pinned top-left —
+// and only the ghost's POSITION (translate) is animated while we crossfade source
+// → target. Text is never squished; the size change reads through the crossfade.
+//
+// Coordinates are captured NATURAL (unscaled) relative to the device screen and
+// the ghost layer renders INSIDE that same scaled/clipped context (Device overlay
+// / .board-scaler), so cards inherit the device scale uniformly and can never
+// extend past the phone's rounded bounds.
+type CardPt = { left: number; top: number };
+type CardSrc = { role: string; pt: CardPt; w: number; h: number; html: string };
+type CardGhost = {
+  id: string;
+  from: CardPt;
+  to: CardPt;
+  srcHtml: string;
+  srcW: number;
+  srcH: number;
+  dstHtml: string;
+  dstW: number;
+  dstH: number;
+};
 const CARD_MORPH_MS = 640;
 
-function measureCards(root: ParentNode): CardSrc[] {
+// The scaled + clipped container the morph layer lives inside: the phone screen on
+// desktop, or the scaled board wrapper on mobile.
+function morphContainer(): HTMLElement | null {
+  return (
+    (document.querySelector('.device-screen') as HTMLElement | null) ||
+    (document.querySelector('.board-scaler') as HTMLElement | null)
+  );
+}
+
+// Measure every [data-morph-card] in NATURAL coordinates relative to `ref`
+// (dividing out the device/board scale) so the ghosts render in the same
+// unscaled space the container itself is scaled from.
+function measureCards(ref: HTMLElement): CardSrc[] {
+  const rr = ref.getBoundingClientRect();
+  const scale = ref.offsetWidth ? rr.width / ref.offsetWidth : 1;
   const out: CardSrc[] = [];
-  root.querySelectorAll<HTMLElement>('[data-morph-card]').forEach((el) => {
+  document.querySelectorAll<HTMLElement>('[data-morph-card]').forEach((el) => {
     const role = el.getAttribute('data-morph-card');
     if (!role) return;
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;
     out.push({
       role,
-      rect: { left: r.left, top: r.top, width: r.width, height: r.height },
-      natW: el.offsetWidth,
-      natH: el.offsetHeight,
+      pt: { left: (r.left - rr.left) / scale, top: (r.top - rr.top) / scale },
+      w: r.width / scale,
+      h: r.height / scale,
       html: el.outerHTML,
     });
   });
@@ -448,36 +480,47 @@ export default function App() {
   // home → map: measure the home account cards (present now), then swap to the map.
   // The layout effect below measures the map targets and flies the card ghosts.
   const openMap = () => {
-    const sources = measureCards(document);
+    const ref = morphContainer();
+    const sources = ref ? measureCards(ref) : [];
     pendingCardRef.current = sources.length ? { sources, dir: 'to-map' } : null;
     setOnboard('map');
   };
   // map → home (Back): measure the map cards, then swap back to the home page.
   const backToHome = () => {
-    const board = boardRef.current;
-    const sources = board ? measureCards(board) : [];
+    const ref = morphContainer();
+    const sources = ref ? measureCards(ref) : [];
     pendingCardRef.current = sources.length ? { sources, dir: 'to-home' } : null;
     setOnboard('home');
   };
   const onboardMap = onboard === 'map'; // money-map screen (compact header + top toggle)
 
-  // Drive the account-card FLIP after an onboarding home ⇄ map swap.
+  // Drive the account-card FLIP after an onboarding home ⇄ map swap. Both the
+  // source and target rects are captured in natural coords relative to the same
+  // (persistent) phone-screen container, so the translate is exact and the ghost
+  // layer lives inside the clipped/scaled device context.
   useLayoutEffect(() => {
     const pending = pendingCardRef.current;
     if (!pending) return;
     pendingCardRef.current = null;
-    const targets =
-      pending.dir === 'to-map'
-        ? boardRef.current
-          ? measureCards(boardRef.current)
-          : []
-        : measureCards(document); // to-home: the home cards now live outside the board
+    const ref = morphContainer();
+    if (!ref) return;
+    const targets = measureCards(ref);
     const tByRole = new Map(targets.map((t) => [t.role, t]));
     const ghosts: CardGhost[] = [];
     for (const s of pending.sources) {
       const t = tByRole.get(s.role);
       if (!t) continue;
-      ghosts.push({ id: s.role, from: s.rect, to: t.rect, natW: s.natW, natH: s.natH, html: s.html });
+      ghosts.push({
+        id: s.role,
+        from: s.pt,
+        to: t.pt,
+        srcHtml: s.html,
+        srcW: s.w,
+        srcH: s.h,
+        dstHtml: t.html,
+        dstW: t.w,
+        dstH: t.h,
+      });
     }
     if (!ghosts.length) return;
     setCardDir(pending.dir);
@@ -488,7 +531,7 @@ export default function App() {
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => setCardPhase('end'));
     });
-    const revealT = window.setTimeout(() => setCardReveal(true), Math.max(0, CARD_MORPH_MS - 220));
+    const revealT = window.setTimeout(() => setCardReveal(true), Math.max(0, CARD_MORPH_MS - 160));
     const doneT = window.setTimeout(() => {
       setCardGhosts(null);
       setCardReveal(false);
@@ -1145,7 +1188,7 @@ export default function App() {
         ))}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={onboardMap ? HOME_BALANCES : undefined} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&
@@ -1194,25 +1237,35 @@ export default function App() {
       boardEl
     );
 
-  // viewport-fixed FLIP ghost layer for the home ⇄ map account-card morph. Each
-  // ghost is a clone of the SOURCE card, flown (non-uniform scale) onto the target
-  // card's rect, then crossfaded out as the real card fades in.
+  // FLIP ghost layer for the home ⇄ map account-card morph — rendered INSIDE the
+  // scaled/clipped device context (so it inherits the phone scale and is clipped to
+  // the phone bounds). Each ghost only TRANSLATES from source→target position; the
+  // size change is conveyed by crossfading a natural-size SOURCE clone into a
+  // natural-size TARGET clone, so the card text is never non-uniformly scaled.
   const cardMorphLayer = cardGhosts ? (
     <div
-      className={`cardmorph-layer${cardReveal ? ' is-reveal' : ''}`}
+      className={`cardmorph-layer${cardPhase === 'end' ? ' is-playing' : ''}${cardReveal ? ' is-reveal' : ''}`}
       style={{ ['--card-ms' as string]: `${CARD_MORPH_MS}ms` } as CSSProperties}
     >
       {cardGhosts.map((g) => {
-        const r = cardPhase === 'start' ? g.from : g.to;
-        const sx = r.width / g.natW;
-        const sy = r.height / g.natH;
+        const p = cardPhase === 'start' ? g.from : g.to;
         return (
           <div
             key={g.id}
             className="cardmorph-ghost"
-            style={{ width: g.natW, height: g.natH, transform: `translate(${r.left}px, ${r.top}px) scale(${sx}, ${sy})` }}
-            dangerouslySetInnerHTML={{ __html: g.html }}
-          />
+            style={{ transform: `translate(${p.left}px, ${p.top}px)` }}
+          >
+            <div
+              className="cardmorph-face cardmorph-face--src"
+              style={{ width: g.srcW, height: g.srcH }}
+              dangerouslySetInnerHTML={{ __html: g.srcHtml }}
+            />
+            <div
+              className="cardmorph-face cardmorph-face--dst"
+              style={{ width: g.dstW, height: g.dstH }}
+              dangerouslySetInnerHTML={{ __html: g.dstHtml }}
+            />
+          </div>
         );
       })}
     </div>
@@ -1223,7 +1276,7 @@ export default function App() {
   // view"). Sits at the bottom of the action buttons. The home page's drag-to-open
   // + card morph still works independently; this toggle is just a direct flip.
   // Note: the drag hand-off opens the compact onboarding map ('map'); the toggle's
-  // "Money map" option is the original standard view (onboard = null).
+  // "Onboarding" option is the original standard money-map view (onboard = null).
   const onboardToggle =
     style === 'progress' ? (
       <div className="config-row onboard-preview-row">
@@ -1235,7 +1288,7 @@ export default function App() {
             className={`mode-opt${onboard !== 'home' ? ' active' : ''}`}
             onClick={exitOnboarding}
           >
-            Money map
+            Onboarding
           </button>
           <button
             role="tab"
@@ -1260,6 +1313,7 @@ export default function App() {
             style={{ width: SCREEN_W, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           >
             {screenEl}
+            {cardMorphLayer}
           </div>
         </div>
 
@@ -1294,7 +1348,6 @@ export default function App() {
             </div>
           </div>
         </div>
-        {cardMorphLayer}
       </div>
     );
   }
@@ -1311,8 +1364,7 @@ export default function App() {
         </div>
       </div>
 
-      <Device>{screenEl}</Device>
-      {cardMorphLayer}
+      <Device overlay={cardMorphLayer}>{screenEl}</Device>
     </div>
   );
 }

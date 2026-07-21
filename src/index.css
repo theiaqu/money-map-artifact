@@ -3968,15 +3968,19 @@ body.is-scrubbing-noselect * {
 /* hide the real map account cards while their ghosts fly in, then crossfade */
 .board.cards-morphing [data-morph-card] { opacity: 0; }
 .board.cards-morphing.cards-reveal [data-morph-card] { opacity: 1; transition: opacity 220ms ease; }
-/* viewport-fixed ghost layer: clones of the source card, flown onto the target */
+/* ghost layer lives INSIDE the phone screen (Device overlay / .board-scaler) so it
+   inherits the device scale and is clipped to the phone's rounded bounds — cards
+   can never extend past the device edge during the morph. */
 .cardmorph-layer {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 90;
   pointer-events: none;
-  transition: opacity 220ms ease;
+  overflow: hidden; /* belt-and-braces clip in case the container itself doesn't */
+  transition: opacity 200ms ease;
 }
 .cardmorph-layer.is-reveal { opacity: 0; }
+/* only the POSITION of the ghost animates (no non-uniform scale → no text distortion) */
 .cardmorph-ghost {
   position: absolute;
   left: 0;
@@ -3985,9 +3989,21 @@ body.is-scrubbing-noselect * {
   transition: transform var(--card-ms, 640ms) cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
-.cardmorph-ghost > * {
+/* two stacked, natural-size clones (source + target) that CROSSFADE; the box-size
+   change reads through the crossfade rather than a distorting scale. */
+.cardmorph-face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transition: opacity var(--card-ms, 640ms) ease;
+}
+.cardmorph-face > * {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
   margin: 0;
 }
+.cardmorph-face--src { opacity: 1; }
+.cardmorph-face--dst { opacity: 0; }
+.cardmorph-layer.is-playing .cardmorph-face--src { opacity: 0; }
+.cardmorph-layer.is-playing .cardmorph-face--dst { opacity: 1; }

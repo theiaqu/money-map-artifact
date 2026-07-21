@@ -32,7 +32,7 @@ function useFitScale() {
   return scale;
 }
 
-export default function Device({ children }: { children: ReactNode }) {
+export default function Device({ children, overlay }: { children: ReactNode; overlay?: ReactNode }) {
   const scale = useFitScale();
   // outer box takes the *scaled* footprint so flex layout reserves the real
   // visual size (transform alone would keep the full 430×902 layout box)
@@ -45,6 +45,10 @@ export default function Device({ children }: { children: ReactNode }) {
         <span className="btn btn-power" />
         <div className="device-screen">
           <div className="screen-scroll">{children}</div>
+          {/* overlay lives INSIDE the screen (clipped to its rounded bounds, in the
+              same scaled space) — used by the onboarding home⇄map card morph so the
+              flying cards never extend past the phone and inherit the device scale. */}
+          {overlay}
           <StatusBar />
           <div className="dynamic-island" />
         </div>

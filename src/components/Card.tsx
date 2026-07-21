@@ -405,6 +405,7 @@ export default function Card({
   modalCardId = null,
   hideIncome = false,
   refillVisual = false,
+  amountOverride,
 }: {
   node: CardNode;
   now: number;
@@ -425,6 +426,7 @@ export default function Card({
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
   hideIncome?: boolean; // styles that carry the shared ArtifactHeader render the carousel AS income, so the per-style income node is suppressed
   refillVisual?: boolean; // pbi "Core/Spend refill visual": two-tone capacity+balance bar (Figma 907:13009)
+  amountOverride?: Record<string, string>; // per-node id → amount string override (onboarding home→map: Core/Spend show the home balances for number continuity)
 }) {
   // Styles that render the shared board-level ArtifactHeader use its paycheck
   // carousel as the income element, so the per-style income node is suppressed.
@@ -793,7 +795,7 @@ export default function Card({
           <ProgressBar
             color={node.graph}
             progress={p}
-            amount={node.amount}
+            amount={amountOverride?.[node.id] ?? node.amount}
             date={
               node.kind === 'goal'
                 ? dateMode === 'months'
