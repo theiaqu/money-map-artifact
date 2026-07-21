@@ -1,9 +1,26 @@
 import { useRef, useState } from 'react';
-import { CreditCard, Receipt, MessageCircle, CircleUser, Waypoints } from 'lucide-react';
+import { CreditCard, Receipt, MessageCircle, CircleUser } from 'lucide-react';
 import { DATASETS, type Dataset } from '../scenario';
 import { HOME_BALANCES } from '../data';
 
 const money = (n: number) => `$${n.toLocaleString('en-US')}`;
+
+// "Money Map" glyph — the exact icon used next to the "View Money Map" label in
+// the Figma home screen (node 977:12237): three rounded account "bars" branching
+// up to a single point. Reproduced as an inline stroke SVG (24×24, 1.5 stroke)
+// so it matches the design pixel-for-pixel instead of the old lucide stand-in.
+function MoneyMapIcon({ size = 22, color = '#111827' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M6 15H4C3.44772 15 3 15.4477 3 16V20C3 20.5523 3.44772 21 4 21H6C6.55228 21 7 20.5523 7 20V16C7 15.4477 6.55228 15 6 15Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 15H18C17.4477 15 17 15.4477 17 16V20C17 20.5523 17.4477 21 18 21H20C20.5523 21 21 20.5523 21 20V16C21 15.4477 20.5523 15 20 15Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12.002 3C12.002 8 18.9609 6.625 18.9609 12" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 3C12 8 12 4.625 12 10" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 3.0332C12 8.0332 5 6.62427 5 11.9993" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13 13H11C10.4477 13 10 13.4477 10 14V20C10 20.5523 10.4477 21 11 21H13C13.5523 21 14 20.5523 14 20V14C14 13.4477 13.5523 13 13 13Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 // Mock Fruitful home page (Figma 977:11967) used as the "Onboarding view" for the
 // Progress-bar account style. A gradient header + horizontally-scrolling account
@@ -161,7 +178,7 @@ export default function HomeScreen({
         className={`home-map-cue${armed ? ' is-armed' : ''}`}
         style={{ opacity: revealOpacity, top: clamp(sheetTop, SHEET_REST, SHEET_MAX) - 70 }}
       >
-        <Waypoints size={22} strokeWidth={2} color="#111827" />
+        <MoneyMapIcon size={22} color="#111827" />
         <span>View Money Map</span>
       </div>
 

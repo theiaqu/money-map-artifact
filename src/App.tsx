@@ -692,6 +692,7 @@ export default function App() {
     };
   }, [systemView]);
   const [showOlder, setShowOlder] = useState(false); // reveal the "older ideas" account styles in the picker
+  const [showAccountStyles, setShowAccountStyles] = useState(false); // collapse the account-style picker section by default
   const [selectedConvo, setSelectedConvo] = useState<string | null>(null); // "convo" tapped-card detail modal
   const [selectedRect, setSelectedRect] = useState<DOMRect | null>(null); // resting rect of the tapped convo card (for the FLIP morph)
   const [speed, setSpeed] = useState(1); // global pace multiplier (layered on mode pacing)
@@ -940,44 +941,56 @@ export default function App() {
           </div>
         </div>
         <div className="config-row">
-          <span className="config-label">Account style</span>
-          <div className="style-picker" role="radiogroup" aria-label="Account style">
-            {STYLES.filter((s) => !s.older || showOlder).map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                role="radio"
-                aria-checked={style === s.id}
-                className={`style-tile${style === s.id ? ' active' : ''}`}
-                onClick={() => pickStyle(s.id)}
-              >
-                <span className="style-preview">
-                  <StylePreview id={s.id} />
-                </span>
-                <span className="style-tile-label">{s.label}</span>
-              </button>
-            ))}
-          </div>
           <button
             type="button"
-            className="view-older-link"
-            aria-expanded={showOlder}
-            onClick={() => setShowOlder((v) => !v)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '8px 0 0',
-              margin: 0,
-              color: '#7d7d7d',
-              font: 'inherit',
-              fontSize: 12,
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              alignSelf: 'flex-start',
-            }}
+            className="config-collapse-btn"
+            aria-expanded={showAccountStyles}
+            onClick={() => setShowAccountStyles((v) => !v)}
           >
-            {showOlder ? 'Hide older ideas' : 'View older ideas'}
+            <span className="config-label">Account style</span>
+            <span className="config-collapse-cta">{showAccountStyles ? 'Hide account styles' : 'Show account styles'}</span>
           </button>
+          {showAccountStyles && (
+            <>
+              <div className="style-picker" role="radiogroup" aria-label="Account style">
+                {STYLES.filter((s) => !s.older || showOlder).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={style === s.id}
+                    className={`style-tile${style === s.id ? ' active' : ''}`}
+                    onClick={() => pickStyle(s.id)}
+                  >
+                    <span className="style-preview">
+                      <StylePreview id={s.id} />
+                    </span>
+                    <span className="style-tile-label">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="view-older-link"
+                aria-expanded={showOlder}
+                onClick={() => setShowOlder((v) => !v)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '8px 0 0',
+                  margin: 0,
+                  color: '#7d7d7d',
+                  font: 'inherit',
+                  fontSize: 12,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                {showOlder ? 'Hide older ideas' : 'View older ideas'}
+              </button>
+            </>
+          )}
         </div>
         {style === 'stocks' && (
           <div className="config-row">

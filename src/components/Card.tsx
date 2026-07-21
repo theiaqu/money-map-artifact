@@ -103,6 +103,7 @@ function PaycheckCarousel({
   incomeLeft = PBI_INCOME_LEFT,
   onDraggingChange,
   carouselMode = 'paychecks',
+  onboarding = false,
 }: {
   dataset: Dataset;
   mode: Mode;
@@ -111,6 +112,7 @@ function PaycheckCarousel({
   incomeLeft?: number;
   onDraggingChange?: (dragging: boolean) => void;
   carouselMode?: CarouselMode;
+  onboarding?: boolean; // home-page flow (onboard 'home'/'map'): the scrubber pills already show month/paycheck names, so suppress the "Paycheck in {date}" banner overlay (kept for the standard onboarding header)
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -165,7 +167,7 @@ function PaycheckCarousel({
 
   return (
     <>
-      {dragging && (
+      {dragging && !onboarding && (
         <div className="pbi-scrub-banner">
           <span className="pbi-scrub-lead">Paycheck in</span>
           <span className="pbi-scrub-date">{scrubMonthLabel(now)}</span>
@@ -268,6 +270,7 @@ export function ArtifactHeader({
         incomeLeft={incomeLeft}
         onDraggingChange={setDragging}
         carouselMode={carouselMode}
+        onboarding={onboarding}
       />
     </>
   );

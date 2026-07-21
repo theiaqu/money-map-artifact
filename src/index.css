@@ -299,6 +299,29 @@ body {
   text-transform: uppercase;
   color: #8a8d93;
 }
+/* collapsible section header (e.g. "Account style") — the whole row toggles */
+.config-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+.config-collapse-cta {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  color: #7d7d7d;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.config-collapse-btn:hover .config-collapse-cta { color: #35383d; }
 .mode-toggle {
   display: inline-flex;
   flex-wrap: wrap;
