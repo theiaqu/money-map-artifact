@@ -111,11 +111,11 @@ function morphContainer(): HTMLElement | null {
 // Measure every [data-morph-card] in NATURAL coordinates relative to `ref`
 // (dividing out the device/board scale) so the ghosts render in the same
 // unscaled space the container itself is scaled from.
-function measureCards(ref: HTMLElement): CardSrc[] {
+function measureCards(ref: HTMLElement, queryRoot: ParentNode = document): CardSrc[] {
   const rr = ref.getBoundingClientRect();
   const scale = ref.offsetWidth ? rr.width / ref.offsetWidth : 1;
   const out: CardSrc[] = [];
-  document.querySelectorAll<HTMLElement>('[data-morph-card]').forEach((el) => {
+  queryRoot.querySelectorAll<HTMLElement>('[data-morph-card]').forEach((el) => {
     const role = el.getAttribute('data-morph-card');
     if (!role) return;
     const r = el.getBoundingClientRect();
@@ -449,6 +449,17 @@ export default function App() {
   const [cardReveal, setCardReveal] = useState(false);
   const [cardDir, setCardDir] = useState<'to-map' | 'to-home'>('to-map');
   const pendingCardRef = useRef<{ sources: CardSrc[]; dir: 'to-map' | 'to-home' } | null>(null);
+  // ---- drag-driven home→map card morph ----
+  // The home page sheet drag reports a 0..1 pull fraction; the account-card ghosts
+  // interpolate their position + src→dst crossfade by that fraction (no timer). On
+  // release: 'commit' animates the rest of the way to the money map, 'cancel' snaps
+  // the ghosts back to the home cards. Targets come from a hidden money-map board
+  // (`.morph-measure`) rendered behind the home page while onboarding.
+  const [dragGhosts, setDragGhosts] = useState<CardGhost[] | null>(null);
+  const [dragProgress, setDragProgress] = useState(0); // 0 = home, 1 = money map
+  const [dragRelease, setDragRelease] = useState<null | 'commit' | 'cancel'>(null); // null = tracking the finger (no CSS transition)
+  const [dragReveal, setDragReveal] = useState(false); // commit tail: fade the real map cards in / ghosts out
+  const dragActiveRef = useRef(false); // guards against rebuilding ghosts on every pointermove
   const boardRef = useRef<HTMLDivElement>(null);
   const pendingMorphRef = useRef<{ sources: MorphMap } | null>(null); // source rects captured just before a view switch
   const [ghosts, setGhosts] = useState<Ghost[] | null>(null); // active morph ghosts (null = idle)
@@ -477,22 +488,101 @@ export default function App() {
     setSystemView('full');
     setOnboard(null);
   };
-  // home → map: measure the home account cards (present now), then swap to the map.
-  // The layout effect below measures the map targets and flies the card ghosts.
-  const openMap = () => {
-    const ref = morphContainer();
-    const sources = ref ? measureCards(ref) : [];
-    pendingCardRef.current = sources.length ? { sources, dir: 'to-map' } : null;
-    setOnboard('map');
-  };
   // map → home (Back): measure the map cards, then swap back to the home page.
+  // Always reset to Full system so a later drag-back re-enters on the full-system map.
   const backToHome = () => {
     const ref = morphContainer();
     const sources = ref ? measureCards(ref) : [];
     pendingCardRef.current = sources.length ? { sources, dir: 'to-home' } : null;
+    setSystemView('full');
     setOnboard('home');
   };
   const onboardMap = onboard === 'map'; // money-map screen (compact header + top toggle)
+  // the money-map board renders in its compact onboarding form during the whole
+  // home flow — both while it sits behind the home page (as the hidden morph-target
+  // measurement board) and once the drag hands off to the real map.
+  const boardOnboard = onboard !== null;
+
+  // Build the home→map card ghosts from the CURRENT home cards (sources) and the
+  // hidden measurement board (targets). Scoped queries so the two card sets never
+  // cross-contaminate. Returns null if either side isn't measurable yet.
+  const buildDragGhosts = (): CardGhost[] | null => {
+    const ref = morphContainer();
+    const homeEl = document.querySelector('.home-screen');
+    const measEl = document.querySelector('.morph-measure');
+    if (!ref || !homeEl || !measEl) return null;
+    const sources = measureCards(ref, homeEl);
+    const targets = measureCards(ref, measEl);
+    const tByRole = new Map(targets.map((t) => [t.role, t]));
+    const ghosts: CardGhost[] = [];
+    for (const s of sources) {
+      const t = tByRole.get(s.role);
+      if (!t) continue;
+      ghosts.push({ id: s.role, from: s.pt, to: t.pt, srcHtml: s.html, srcW: s.w, srcH: s.h, dstHtml: t.html, dstW: t.w, dstH: t.h });
+    }
+    return ghosts.length ? ghosts : null;
+  };
+
+  // Sheet drag → morph progress. First downward movement builds the ghosts (once);
+  // subsequent moves just update the fraction. Dragging back to the top clears it.
+  const handleDragProgress = (fraction: number) => {
+    if (dragRelease) return; // release animation owns the progress now
+    if (fraction <= 0) {
+      if (dragActiveRef.current) {
+        dragActiveRef.current = false;
+        setDragGhosts(null);
+        setDragProgress(0);
+      }
+      return;
+    }
+    if (!dragActiveRef.current) {
+      const g = buildDragGhosts();
+      if (!g) return;
+      dragActiveRef.current = true;
+      setDragGhosts(g);
+    }
+    setDragProgress(Math.min(1, fraction));
+  };
+
+  // Sheet released. Commit → reset to Full system, swap to the real money map, and
+  // let the ghosts finish to 100%. Cancel → animate the ghosts back to the home cards.
+  const handleDragRelease = (commit: boolean) => {
+    if (!dragActiveRef.current || !dragGhosts) {
+      // no morph engaged (e.g. a tiny nudge or an upward drag) — nothing to finish
+      return;
+    }
+    if (commit) {
+      setSystemView('full');
+      setOnboard('map');
+      setDragRelease('commit');
+    } else {
+      setDragRelease('cancel');
+    }
+  };
+
+  // Drive the release animation: enable CSS transitions (dragRelease != null removes
+  // the no-transition class), then next frame push progress to its target. Commit
+  // reveals the real map cards near arrival; both directions clean up at the end.
+  useEffect(() => {
+    if (!dragRelease) return;
+    const commit = dragRelease === 'commit';
+    const raf1 = requestAnimationFrame(() => setDragProgress(commit ? 1 : 0));
+    const revealT = commit
+      ? window.setTimeout(() => setDragReveal(true), Math.max(0, CARD_MORPH_MS - 160))
+      : 0;
+    const doneT = window.setTimeout(() => {
+      setDragGhosts(null);
+      setDragRelease(null);
+      setDragReveal(false);
+      setDragProgress(0);
+      dragActiveRef.current = false;
+    }, CARD_MORPH_MS + 60);
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (revealT) window.clearTimeout(revealT);
+      window.clearTimeout(doneT);
+    };
+  }, [dragRelease]);
 
   // Drive the account-card FLIP after an onboarding home ⇄ map swap. Both the
   // source and target rects are captured in natural coords relative to the same
@@ -504,7 +594,10 @@ export default function App() {
     pendingCardRef.current = null;
     const ref = morphContainer();
     if (!ref) return;
-    const targets = measureCards(ref);
+    // to-home lands on the mock home page's account cards; scope the target query to
+    // the home screen so the hidden measurement board's cards are never picked up.
+    const targetRoot = (document.querySelector('.home-screen') as ParentNode | null) ?? document;
+    const targets = measureCards(ref, targetRoot);
     const tByRole = new Map(targets.map((t) => [t.role, t]));
     const ghosts: CardGhost[] = [];
     for (const s of pending.sources) {
@@ -549,7 +642,14 @@ export default function App() {
   // the FLIP: mount ghosts at the source, then next frame animate them to target.
   useLayoutEffect(() => {
     const pending = pendingMorphRef.current;
-    if (!pending) return;
+    if (!pending) {
+      // systemView changed WITHOUT a captured source (a programmatic reset, e.g.
+      // onboarding navigation resetting to Full system) — drop any split morph
+      // still in flight so no stale ghosts linger on the freshly-shown view.
+      setGhosts(null);
+      setMorphReveal(false);
+      return;
+    }
     pendingMorphRef.current = null;
     const board = boardRef.current;
     if (!board) return;
@@ -1106,7 +1206,7 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${onboardMap ? ' board--onboard' : ''}${cardGhosts && cardDir === 'to-map' ? ' cards-morphing' : ''}${cardGhosts && cardDir === 'to-map' && cardReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
       {/* Onboarding money-map screen (Figma 977:12246): compact home-style top bar
           — back (→ home) · "Money Map" · Done (→ exit) — replacing the big hero. */}
       {onboardMap && (
@@ -1122,7 +1222,7 @@ export default function App() {
           simplified Monthly split. Offered on the Progress-bar-inside + Pills styles.
           In the onboarding money map it is pinned to the TOP (977:12246/12773). */}
       {(style === 'progress' || style === 'pills') && (
-        <div className={`msplit-toggle${onboardMap ? ' msplit-toggle--top' : ''}`}>
+        <div className={`msplit-toggle${boardOnboard ? ' msplit-toggle--top' : ''}`}>
           <button className={systemView === 'full' ? 'active' : ''} onClick={() => switchView('full')}>Full system</button>
           <button className={systemView === 'monthly' ? 'active' : ''} onClick={() => switchView('monthly')}>Monthly split</button>
         </div>
@@ -1157,7 +1257,7 @@ export default function App() {
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
       {!monthlyView && usesHeader && (
-        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} onboarding={onboardMap} />
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} onboarding={boardOnboard} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
@@ -1208,7 +1308,7 @@ export default function App() {
         ))}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={onboardMap ? HOME_BALANCES : undefined} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? HOME_BALANCES : undefined} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&
@@ -1246,13 +1346,20 @@ export default function App() {
   // normal board is shown untouched.
   const screenEl =
     onboard === 'home' ? (
-      <HomeScreen
-        dataset={dataset}
-        onOpenMap={openMap}
-        onExit={exitOnboarding}
-        cardsHidden={!!cardGhosts && cardDir === 'to-home'}
-        cardsReveal={cardReveal}
-      />
+      <>
+        <HomeScreen
+          dataset={dataset}
+          onDragProgress={handleDragProgress}
+          onDragRelease={handleDragRelease}
+          onExit={exitOnboarding}
+          cardsHidden={dragGhosts !== null || (!!cardGhosts && cardDir === 'to-home')}
+          cardsReveal={cardReveal}
+        />
+        {/* hidden money-map board behind the home page: its account cards are the
+            live morph TARGETS while the sheet is dragged. Never shown (visibility:
+            hidden); the real map mounts only once the drag commits. */}
+        <div className="morph-measure" aria-hidden>{boardEl}</div>
+      </>
     ) : (
       boardEl
     );
@@ -1283,6 +1390,37 @@ export default function App() {
             <div
               className="cardmorph-face cardmorph-face--dst"
               style={{ width: g.dstW, height: g.dstH }}
+              dangerouslySetInnerHTML={{ __html: g.dstHtml }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
+
+  // Drag-driven home→map ghost layer. Same clone-crossfade ghosts as the timer
+  // morph, but position + crossfade are interpolated by `dragProgress` (the sheet
+  // pull). While tracking the finger (dragRelease === null) transitions are OFF so
+  // it follows exactly; on release the class flips and the ghosts ease to 0 or 1.
+  const dragMorphLayer = dragGhosts ? (
+    <div
+      className={`cardmorph-layer${dragRelease === null ? ' cardmorph-layer--drag' : ''}${dragReveal ? ' is-reveal' : ''}`}
+      style={{ ['--card-ms' as string]: `${CARD_MORPH_MS}ms` } as CSSProperties}
+    >
+      {dragGhosts.map((g) => {
+        const left = g.from.left + (g.to.left - g.from.left) * dragProgress;
+        const top = g.from.top + (g.to.top - g.from.top) * dragProgress;
+        const c = dragProgress; // src (home look) → dst (map look) crossfade tracks the pull
+        return (
+          <div key={g.id} className="cardmorph-ghost" style={{ transform: `translate(${left}px, ${top}px)` }}>
+            <div
+              className="cardmorph-face cardmorph-face--src"
+              style={{ width: g.srcW, height: g.srcH, opacity: 1 - c }}
+              dangerouslySetInnerHTML={{ __html: g.srcHtml }}
+            />
+            <div
+              className="cardmorph-face cardmorph-face--dst"
+              style={{ width: g.dstW, height: g.dstH, opacity: c }}
               dangerouslySetInnerHTML={{ __html: g.dstHtml }}
             />
           </div>
@@ -1334,6 +1472,7 @@ export default function App() {
           >
             {screenEl}
             {cardMorphLayer}
+            {dragMorphLayer}
           </div>
         </div>
 
@@ -1384,7 +1523,7 @@ export default function App() {
         </div>
       </div>
 
-      <Device overlay={cardMorphLayer}>{screenEl}</Device>
+      <Device overlay={<>{cardMorphLayer}{dragMorphLayer}</>}>{screenEl}</Device>
     </div>
   );
 }

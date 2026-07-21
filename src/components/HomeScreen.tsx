@@ -17,7 +17,8 @@ const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 const SHEET_REST = 330; // sheet top at rest (account cards visible above)
 const SHEET_RAISED = 150; // dragged up: sheet covers the account cards
 const SHEET_MAX = 560; // dragged down: sheet floor (reveals the money-map affordance)
-const OPEN_PULL = 96; // pull the sheet this far below rest to trigger the money-map handoff
+const OPEN_PULL = 96; // full downward pull: the card→map morph reaches 100% here
+const COMMIT_PULL = OPEN_PULL * 0.55; // release past this → complete to the money map; before → snap back
 const REVEAL_PULL = 18; // affordance starts fading in after this much downward pull
 
 function clamp(n: number, lo: number, hi: number) {
@@ -26,13 +27,18 @@ function clamp(n: number, lo: number, hi: number) {
 
 export default function HomeScreen({
   dataset,
-  onOpenMap,
+  onDragProgress,
+  onDragRelease,
   onExit,
   cardsHidden = false,
   cardsReveal = false,
 }: {
   dataset: Dataset;
-  onOpenMap: () => void;
+  // drag-driven home→map morph: report how far (0..1) the sheet is pulled down so
+  // the parent can interpolate the account-card morph, then whether the release
+  // crossed the commit threshold (true = complete to the money map, false = snap back).
+  onDragProgress: (fraction: number) => void;
+  onDragRelease: (commit: boolean) => void;
   onExit: () => void;
   cardsHidden?: boolean; // account cards are being morphed IN from the map (hide the real ones until they land)
   cardsReveal?: boolean; // tail crossfade: fade the real cards in as the flying ghosts arrive
@@ -48,12 +54,8 @@ export default function HomeScreen({
   // card uses — and are re-used as the map's Core/Spend amounts on the home→map
   // hand-off so the numbers stay continuous (see HOME_BALANCES in data.ts).
 
-  // full drag-release → hand straight off to the money map; the parent runs the
-  // shared-element card morph (measures these cards, then flies them to the map).
-  const beginOpen = () => {
-    setOpening(true);
-    onOpenMap();
-  };
+  // downward-pull fraction (0 at rest → 1 at OPEN_PULL) that drives the card morph.
+  const pullFraction = (top: number) => clamp((top - SHEET_REST) / OPEN_PULL, 0, 1);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (opening) return;
@@ -73,6 +75,8 @@ export default function HomeScreen({
     if (next > SHEET_MAX) next = SHEET_MAX + (next - SHEET_MAX) * 0.35;
     if (next < SHEET_RAISED) next = SHEET_RAISED + (next - SHEET_RAISED) * 0.35;
     setSheetTop(next);
+    // drive the account-card morph proportionally to the downward pull
+    onDragProgress(pullFraction(next));
   };
   const endDrag = () => {
     if (!drag.current) return;
@@ -80,12 +84,15 @@ export default function HomeScreen({
     const top = sheetTop;
     drag.current = null;
     setDragging(false);
-    // full downward pull past the threshold → hand off to the money map
-    if (top - SHEET_REST > OPEN_PULL) {
-      beginOpen();
+    // released past the commit threshold → complete the morph to the money map
+    if (top - SHEET_REST >= COMMIT_PULL) {
+      setOpening(true);
+      onDragRelease(true);
       return;
     }
-    // otherwise snap to the nearest resting point (raised = accounts covered, rest = accounts shown)
+    // otherwise the morph snaps back; settle the sheet at the nearest resting point
+    // (raised = accounts covered, rest = accounts shown)
+    onDragRelease(false);
     const raisedDist = Math.abs(top - SHEET_RAISED);
     const restDist = Math.abs(top - SHEET_REST);
     // bias toward the direction of travel so a small nudge still settles naturally
@@ -96,7 +103,7 @@ export default function HomeScreen({
 
   const pull = clamp(sheetTop - SHEET_REST, 0, OPEN_PULL);
   const revealOpacity = clamp((pull - REVEAL_PULL) / (OPEN_PULL - REVEAL_PULL), 0, 1);
-  const armed = sheetTop - SHEET_REST > OPEN_PULL; // affordance is "primed" to open on release
+  const armed = sheetTop - SHEET_REST >= COMMIT_PULL; // affordance is "primed" to open on release
 
   const sheetTransition = dragging ? 'none' : 'top 420ms cubic-bezier(0.22, 1, 0.36, 1)';
 

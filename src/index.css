@@ -4007,3 +4007,23 @@ body.is-scrubbing-noselect * {
 .cardmorph-face--dst { opacity: 0; }
 .cardmorph-layer.is-playing .cardmorph-face--src { opacity: 0; }
 .cardmorph-layer.is-playing .cardmorph-face--dst { opacity: 1; }
+
+/* while the sheet is being dragged the ghosts must track the finger EXACTLY, so
+   kill every transition; on release the class is removed and the ghosts ease to
+   their committed / snapped-back position + crossfade over --card-ms. During the
+   drag the src/dst face opacities are set inline (they follow the pull fraction). */
+.cardmorph-layer--drag,
+.cardmorph-layer--drag .cardmorph-ghost,
+.cardmorph-layer--drag .cardmorph-face { transition: none; }
+
+/* hidden money-map board rendered behind the home page purely so the drag morph
+   can measure the real map card TARGET rects live. Laid out identically to the
+   committed map (same .board / .board--onboard), but never painted. */
+.morph-measure {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
