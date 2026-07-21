@@ -1454,7 +1454,7 @@ export const connectorsProgress: Connector[] = [
   // vertical spine hops, broken by a gap centered on each gate label
   { id: 'c-monthly-goals1', d: 'M50 480 L 50 591', arrow: false },
   { id: 'c-goals1-goals2', d: 'M50 613 L 50 724', arrow: false },
-  { id: 'c-goals2-down', d: 'M50 756 L 50 946', arrow: false },
+  // spine STOPS at the last gate (goals2) — no trailing trunk below the final section
   // monthly wishbone -> core(418) / spend(510), junction at their midpoint 464
   { id: 'c-monthly-core', d: PBI_ARM(464, 418), arrow: false },
   { id: 'c-monthly-spend', d: PBI_ARM(464, 510), arrow: false },
@@ -1480,7 +1480,7 @@ export const connectorsProgressOptimizer: Connector[] = [
   { id: 'c-goals2-goals3', d: 'M50 751 L 50 908', arrow: false },
   { id: 'c-goals3-travel', d: PBI_ARM(924, 878), arrow: false },
   { id: 'c-goals3-brokerage', d: PBI_ARM(924, 970), arrow: false },
-  { id: 'c-goals3-down', d: 'M50 940 L 50 1186', arrow: false },
+  // spine STOPS at the last gate (goals3) — no trailing trunk below the final section
 ];
 
 // pbi gate-label pills (white, on the spine). Simple has two goal gates (1st Goal
@@ -1529,11 +1529,10 @@ export const PBI_LOCK_INCOME_LEFT = PBI_LOCK_SPINE_X - 34; // 50
 // bold-white organic wishbone arm — identical control handles to PBI_ARM (which
 // already departs x=84), so it leaves the spine flush and lands into the card.
 export const connectorsProgressLocked: Connector[] = [
-  // continuous spine (x=84): income drop → monthly → goals1 → goals2 → off bottom
+  // continuous spine (x=84): income drop → monthly → goals1 → ENDS at goals2 (last gate)
   { id: 'c-income-monthly', d: 'M84 360 L 84 464', arrow: false },
   { id: 'c-monthly-goals1', d: 'M84 464 L 84 602', arrow: false },
   { id: 'c-goals1-goals2', d: 'M84 602 L 84 740', arrow: false },
-  { id: 'c-goals2-down', d: 'M84 740 L 84 946', arrow: false },
   // monthly wishbone -> core(418) / spend(510), junction at their midpoint 464
   { id: 'c-monthly-core', d: PBI_ARM(464, 418), arrow: false },
   { id: 'c-monthly-spend', d: PBI_ARM(464, 510), arrow: false },
@@ -1558,7 +1557,7 @@ export const connectorsProgressLockedOptimizer: Connector[] = [
   { id: 'c-goals2-goals3', d: 'M84 740 L 84 924', arrow: false },
   { id: 'c-goals3-travel', d: PBI_ARM(924, 878), arrow: false },
   { id: 'c-goals3-brokerage', d: PBI_ARM(924, 970), arrow: false },
-  { id: 'c-goals3-down', d: 'M84 924 L 84 1186', arrow: false },
+  // spine STOPS at the last gate (goals3) — no trailing trunk below the final section
 ];
 export const connectorsProgressLockedFor = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsProgressLockedOptimizer : connectorsProgressLocked;
@@ -1792,8 +1791,7 @@ export const connectorsProgressGrouped2: Connector[] = [
   // financial-health wishbone forks off the riser (97) at 759 -> debt(713)/ef6(805)
   { id: 'c-goals2-debt', d: PBI_GRP2_ARM(759, 713), arrow: false },
   { id: 'c-goals2-ef6', d: PBI_GRP2_ARM(759, 805), arrow: false },
-  // riser tail continuing below the last fork (off the panel bottom)
-  { id: 'c-goals2-down', d: 'M97 759 L 97 880', arrow: false },
+  // riser STOPS at the last gate (goals2) — no trailing riser below the final fork
 ];
 // Optimizer: shared rows verbatim, then the 3rd gate appended — riser hop
 // goals2 -> goals3 (junction 943), then a symmetric wishbone off the riser.
@@ -1809,7 +1807,7 @@ export const connectorsProgressGrouped2Optimizer: Connector[] = [
   { id: 'c-goals2-goals3', d: 'M97 759 L 97 943', arrow: false },
   { id: 'c-goals3-travel', d: PBI_GRP2_ARM(943, 897), arrow: false },
   { id: 'c-goals3-brokerage', d: PBI_GRP2_ARM(943, 989), arrow: false },
-  { id: 'c-goals3-down', d: 'M97 943 L 97 1120', arrow: false },
+  // riser STOPS at the last gate (goals3) — no trailing riser below the final fork
 ];
 export const connectorsProgressGrouped2For = (dataset: Dataset): Connector[] =>
   dataset === 'optimizer' ? connectorsProgressGrouped2Optimizer : connectorsProgressGrouped2;
