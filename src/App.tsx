@@ -98,6 +98,17 @@ type CardGhost = {
   dstH: number;
 };
 const CARD_MORPH_MS = 640;
+// While the sheet is being dragged, the home→map card morph is only allowed to
+// show a SUBTLE preview (a small hint that the cards are starting to move toward
+// the money map) — it must NOT visibly complete mid-drag. The full pull fraction
+// (0..1) is squashed through DRAG_PREVIEW_MAX so even a full drag only nudges the
+// morph a little; the remaining ~90% plays out as the release-completion tween.
+const DRAG_PREVIEW_MAX = 0.12; // max morph fraction reachable by dragging (rest completes on release)
+const dampDragProgress = (fraction: number) => {
+  const f = Math.max(0, Math.min(1, fraction));
+  // easeOut so the hint is responsive at the very start, then quickly plateaus
+  return DRAG_PREVIEW_MAX * (1 - Math.pow(1 - f, 2));
+};
 
 // The scaled + clipped container the morph layer lives inside: the phone screen on
 // desktop, or the scaled board wrapper on mobile.
@@ -541,7 +552,9 @@ export default function App() {
       dragActiveRef.current = true;
       setDragGhosts(g);
     }
-    setDragProgress(Math.min(1, fraction));
+    // subtle preview only — the drag never completes the morph (see DRAG_PREVIEW_MAX);
+    // releasing past the threshold runs the rest of the way in the effect below.
+    setDragProgress(dampDragProgress(fraction));
   };
 
   // Sheet released. Commit → reset to Full system, swap to the real money map, and
