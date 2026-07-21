@@ -55,38 +55,38 @@ function pillName(node: CardNode): string {
 //   • DOWNWARD chevron arrowheads sit on the trunk where it crosses into the
 //     next section; a chevron also lands on each arm's clean straight run.
 const SPINE = PILLS_SPINE_X;
-const ARM_END = PILLS_PILL_LEFT - 8; // arms stop just before the pill; chevron tip lands here
-const RUN = 12; // straight horizontal run at the arm's end so the arrowhead sits on a clean, level segment
-const ARM_R = 20; // quarter-turn radius where an arm peels off the trunk / the income arm dives in
-const FORK_V = 16; // vertical-tangent handle length at a fork junction (keeps the split cornerless)
+const ARM_END = PILLS_PILL_LEFT - 2; // arms end right at the pill's left edge (Figma arm end ≈ pill left)
 const KAPPA = 0.5523; // cubic-Bézier circle constant → a true-looking quarter arc
+const OFFRAMP_R = 23; // single-arm quarter-circle radius — Figma Vector 875/876 (R=23, exact)
+const INCOME_R = 18; // income elbow radius diving into the trunk — Figma Vector 864 (~16)
+const FORK_H1 = 0.79; // trunk-side horizontal handle, as a fraction of span — Figma path-bills (27.6/35)
+const FORK_H2 = 0.76; // pill-side horizontal handle, as a fraction of span — Figma path-bills (26.5/35)
 const BRANCH_STROKE = '#d9d9d9';
 const STROKE_W = 2;
 
-// ---- curved connector geometry (all cornerless) -------------------------
-// A single-child arm: come DOWN the trunk, quarter-turn RIGHT with radius
-// ARM_R, then a straight run into the pill. Leaves the trunk with a vertical
-// tangent so it merges seamlessly (no tee).
+// ---- curved connector geometry (matched to Figma 959:15504 vectors) -----
+// SINGLE-child arm = Figma "Vector 875/876": come DOWN the trunk, a TRUE
+// quarter-circle (radius OFFRAMP_R) turning right, then a straight run into the
+// pill. Leaves the trunk with a vertical tangent → merges seamlessly.
 const offrampPath = (cy: number) => {
-  const ty = cy - ARM_R; // peel off the trunk this far above the row
-  const hx = SPINE + ARM_R; // x where the curve has fully turned horizontal
-  return `M${SPINE} ${ty} C${SPINE} ${ty + ARM_R * KAPPA}, ${hx - ARM_R * KAPPA} ${cy}, ${hx} ${cy} L${ARM_END} ${cy}`;
+  const ty = cy - OFFRAMP_R; // peel off the trunk this far above the row
+  const hx = SPINE + OFFRAMP_R; // x where the curve has fully turned horizontal
+  return `M${SPINE} ${ty} C${SPINE} ${ty + OFFRAMP_R * KAPPA}, ${hx - OFFRAMP_R * KAPPA} ${cy}, ${hx} ${cy} L${ARM_END} ${cy}`;
 };
-// A forked child: leave the trunk junction with a VERTICAL tangent (toward the
-// child), sweep out to a horizontal tangent at the pill, then a straight run.
+// FORKED child = Figma "path - bills": an elongated S-brace with HORIZONTAL
+// tangents at BOTH ends (long handles ~0.79/0.76 of the span that cross over),
+// so a pair reads as a smooth wishbone off the trunk. No straight run needed —
+// the curve already arrives horizontal at the pill.
 const forkPath = (jy: number, cy: number) => {
-  const ex = ARM_END - RUN; // curve end / straight-run start
-  const dir = cy > jy ? 1 : -1;
-  const v = Math.min(FORK_V, Math.abs(cy - jy) * 0.9 + 2);
-  const k = (ex - SPINE) * 0.5;
-  return `M${SPINE} ${jy} C${SPINE} ${jy + dir * v}, ${ex - k} ${cy}, ${ex} ${cy} L${ARM_END} ${cy}`;
+  const span = ARM_END - SPINE;
+  return `M${SPINE} ${jy} C${SPINE + FORK_H1 * span} ${jy}, ${ARM_END - FORK_H2 * span} ${cy}, ${ARM_END} ${cy}`;
 };
-// The income arm (reverse flow): leave the pill horizontally, quarter-turn DOWN
-// into the top of the trunk (vertical tangent) with radius ARM_R.
+// INCOME arm = Figma "Vector 864" (reverse flow): leave the pill horizontally,
+// quarter-turn DOWN into the top of the trunk (radius INCOME_R, vertical tangent).
 const incomeArmPath = (cy: number) => {
-  const hx = SPINE + ARM_R; // where the straight run meets the curve
-  const ty = cy + ARM_R; // joins the trunk this far below the row
-  return `M${ARM_END} ${cy} L${hx} ${cy} C${hx - ARM_R * KAPPA} ${cy}, ${SPINE} ${ty - ARM_R * KAPPA}, ${SPINE} ${ty}`;
+  const hx = SPINE + INCOME_R; // where the straight run meets the curve
+  const ty = cy + INCOME_R; // joins the trunk this far below the row
+  return `M${ARM_END} ${cy} L${hx} ${cy} C${hx - INCOME_R * KAPPA} ${cy}, ${SPINE} ${ty - INCOME_R * KAPPA}, ${SPINE} ${ty}`;
 };
 
 // ---- causal cascade phase durations (in sim months) ----
@@ -120,20 +120,21 @@ function Branch({ d, grow }: { d: string; grow: number }) {
   );
 }
 
-// a standalone chevron arrowhead matching the Figma vectors. 'down' points into
-// the next section along the trunk; 'right' points into a destination pill.
-// Drawn as an absolute-sized path (NOT an SVG <marker>) so it is never scaled by
-// stroke width or distorted by a viewBox — the aspect ratio is always correct.
-const CHEV = 5; // half-extent of each chevron arm (px) → ~10px tall/wide, clean 45°
-function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'right' | 'left'; show: boolean }) {
+// a standalone chevron arrowhead matching the Figma arrowhead vectors. 'down'
+// points into the next section along the trunk (Figma Vector 864/865: ~11px wide,
+// ~8px tall, round joins); 'right' points into a destination pill (kept smaller
+// & subtle). Drawn as an absolute-sized path so it is never scaled by stroke
+// width or distorted by a viewBox — the aspect ratio is always correct.
+const CHEV_DOWN_W = 5.6; // half-width of the trunk down-arrow (Figma ≈ 5.66)
+const CHEV_DOWN_H = 7.6; // height of the trunk down-arrow (Figma ≈ 7.78)
+const CHEV_IN_W = 5; // width of the into-pill arrowhead
+const CHEV_IN_H = 4.5; // half-height of the into-pill arrowhead
+function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'right'; show: boolean }) {
   if (!show) return null;
-  const a = CHEV;
   const d =
     dir === 'down'
-      ? `M${x - a} ${y - a} L${x} ${y} L${x + a} ${y - a}` // ⌄ tip at (x,y)
-      : dir === 'left'
-        ? `M${x + a} ${y - a} L${x} ${y} L${x + a} ${y + a}` // ‹ tip at (x,y), for income flowing OUT toward the trunk
-        : `M${x - a} ${y - a} L${x} ${y} L${x - a} ${y + a}`; // › tip at (x,y)
+      ? `M${x - CHEV_DOWN_W} ${y - CHEV_DOWN_H} L${x} ${y} L${x + CHEV_DOWN_W} ${y - CHEV_DOWN_H}` // ⌄ tip at (x,y)
+      : `M${x - CHEV_IN_W} ${y - CHEV_IN_H} L${x} ${y} L${x - CHEV_IN_W} ${y + CHEV_IN_H}`; // › tip at (x,y)
   return <path d={d} stroke={BRANCH_STROKE} strokeWidth={STROKE_W} fill="none" strokeLinecap="round" strokeLinejoin="round" />;
 }
 
@@ -246,11 +247,11 @@ export default function PillsBoard({
     id === 'income' ? wIncomePill : id === 'monthly' ? wTrunk0 : wTrunk1;
 
   // main-trunk segments between gate junctions, each driven by its phase window.
-  // The first segment starts where the income arm dives into the trunk (jy+ARM_R)
+  // The first segment starts where the income arm dives into the trunk (jy+INCOME_R)
   // so the curve and the trunk join seamlessly.
   const trunkSegs = gates.slice(0, -1).map((g, i) => {
     const w = i === 0 ? wTrunk0 : i === 1 ? wTrunk1 : wGoalTrunk[i];
-    return { key: g.key, y0: i === 0 ? g.jy + ARM_R : g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
+    return { key: g.key, y0: i === 0 ? g.jy + INCOME_R : g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
   });
 
   // DOWNWARD trunk chevrons where the trunk crosses into Monthly / Goals; each
@@ -282,11 +283,12 @@ export default function PillsBoard({
         {trunkChevrons.map((c, i) => (
           <Chevron key={`tchev-${i}`} x={SPINE} y={c.y} dir="down" show={c.show} />
         ))}
-        {/* each gate's curved arms into its child rows, + a chevron into each
-            pill. EXCEPTION: the income arm flows OUT of the Paycheck — it draws
-            from the pill end and curves DOWN into the trunk, with a down-chevron
-            marking the outflow. Single children use a quarter-turn offramp;
-            forks fan out with vertical tangents. No 90° corners anywhere. */}
+        {/* each gate's curved arms into its child rows, + a subtle chevron into
+            each pill. EXCEPTION: the income arm flows OUT of the Paycheck — it
+            draws from the pill end and curves DOWN into the trunk (its outflow
+            down-arrow is the trunk chevron at the Monthly boundary, matching the
+            Figma). Single children use a quarter-circle offramp (Vector 875);
+            forks fan out via the S-brace (path-bills). No hard 90° elbows. */}
         {gates.flatMap((g, gateIdx) =>
           g.children.map((c) => {
             const armGrow = win(armWinFor(gateIdx));
@@ -294,7 +296,6 @@ export default function PillsBoard({
               return (
                 <g key="arm-income">
                   <Branch d={incomeArmPath(c.cy)} grow={armGrow} />
-                  <Chevron x={SPINE} y={c.cy + ARM_R + 2} dir="down" show={armGrow >= 0.82} />
                 </g>
               );
             }

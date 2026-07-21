@@ -1153,7 +1153,7 @@ export function sheetRevealStyle(now: number, revealMonth: number): SheetRevealS
    3 goals, Optimizer 5, so the Goals card + board height grow accordingly.
    Geometry is computed here so App (board height) and PillsBoard agree.
    ============================================================================ */
-export const PILLS_SPINE_X = 40; // thin gray vertical spine (main trunk) — ~24px inside the card, matching Figma
+export const PILLS_SPINE_X = 46; // thin gray vertical spine (main trunk) — matches Figma 959:15504 trunk x≈46 (abs)
 export const PILLS_CARD_LEFT = 16; // left edge of the white section cards
 export const PILLS_CARD_W = 372; // -> right edge 388 (device inner width 402)
 export const PILLS_PILL_LEFT = 96; // left edge of the colored name pills — long secondary arms (~50px) so arrowheads sit on a clean straight run (Figma trunk 46 → pill 93)
