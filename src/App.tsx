@@ -1218,13 +1218,35 @@ export default function App() {
     </div>
   ) : null;
 
-  // "See on home page" — enters the onboarding preview. Progress-bar style only,
-  // appended at the BOTTOM of the Play/Restart/Pause action buttons.
-  const onboardEnterBtn =
-    style === 'progress' && !onboard ? (
-      <button className="ctrl-btn onboard-enter" onClick={enterOnboarding}>
-        See on home page
-      </button>
+  // "Preview" toggle (Progress-bar style only) — a direct segmented switch between
+  // the mock Fruitful HOME PAGE and the standard/original MONEY MAP view (the "OG
+  // view"). Sits at the bottom of the action buttons. The home page's drag-to-open
+  // + card morph still works independently; this toggle is just a direct flip.
+  // Note: the drag hand-off opens the compact onboarding map ('map'); the toggle's
+  // "Money map" option is the original standard view (onboard = null).
+  const onboardToggle =
+    style === 'progress' ? (
+      <div className="config-row onboard-preview-row">
+        <span className="config-label">Preview</span>
+        <div className="mode-toggle" role="tablist" aria-label="Preview view">
+          <button
+            role="tab"
+            aria-selected={onboard !== 'home'}
+            className={`mode-opt${onboard !== 'home' ? ' active' : ''}`}
+            onClick={exitOnboarding}
+          >
+            Money map
+          </button>
+          <button
+            role="tab"
+            aria-selected={onboard === 'home'}
+            className={`mode-opt${onboard === 'home' ? ' active' : ''}`}
+            onClick={enterOnboarding}
+          >
+            Home page
+          </button>
+        </div>
+      </div>
     ) : null;
 
   // ---- MOBILE: full-screen board + floating controls + config drawer ----
@@ -1242,7 +1264,7 @@ export default function App() {
         </div>
 
         <div className="mobile-controls">
-          <div className="mobile-pills">{renderControls()}{onboardEnterBtn}</div>
+          <div className="mobile-pills">{renderControls()}</div>
           <button
             type="button"
             className="mobile-menu-btn"
@@ -1268,7 +1290,7 @@ export default function App() {
             </button>
             <div className="drawer-body">
               {configFields}
-              <div className="config-extras">{speedField}</div>
+              <div className="config-extras">{speedField}{onboardToggle}</div>
             </div>
           </div>
         </div>
@@ -1284,7 +1306,8 @@ export default function App() {
         {configFields}
         <div className="config-extras">
           {speedField}
-          <div className="controls">{renderControls()}{onboardEnterBtn}</div>
+          <div className="controls">{renderControls()}</div>
+          {onboardToggle}
         </div>
       </div>
 

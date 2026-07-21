@@ -3709,13 +3709,8 @@ body.is-scrubbing-noselect * {
    never collide with the normal configurator board.
    ===================================================================== */
 
-/* "See on home page" — full-width action button at the bottom of the controls */
-.ctrl-btn.onboard-enter {
-  flex-basis: 100%;
-  background: #2f8f4e;
-  color: #ffffff;
-}
-.mobile-controls .mobile-pills .ctrl-btn.onboard-enter { flex-basis: auto; }
+/* "Preview" segmented toggle (Home page ⇄ Money map) at the bottom of the controls */
+.onboard-preview-row { margin-top: 12px; }
 
 /* ---- mock home page ---- */
 .home-screen {
