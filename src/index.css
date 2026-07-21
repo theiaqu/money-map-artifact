@@ -1454,7 +1454,47 @@ body {
   justify-content: center;
   box-shadow: 0 2px 6px rgba(47, 143, 78, 0.32);
   z-index: 5;
-  animation: msplit-pop 360ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+  /* cuter entrance: fade in from 0 + a little upward reveal "pop" (overshoot then
+     settle). Delayed slightly so it lands as the morph settles, not fighting it. */
+  transform-origin: 50% 100%;
+  animation: msplit-logo-pop 560ms cubic-bezier(0.34, 1.45, 0.5, 1) 140ms both;
+}
+
+/* the Fruitful sprout entrance: fade in + upward pop with a soft overshoot.
+   scoped to the Monthly-split view so the full-system header logo is untouched. */
+.msplit-hero-logo {
+  animation: msplit-hero-pop 560ms cubic-bezier(0.34, 1.45, 0.5, 1) 90ms both;
+}
+/* the sprout itself does a gentle wave (a couple of small rotation oscillations),
+   hinged near its base, starting just after the pop finishes. */
+.msplit-logo-wave {
+  display: inline-flex;
+  transform-origin: 50% 82%;
+  animation: msplit-logo-wave 1000ms cubic-bezier(0.36, 0.66, 0.35, 1) 620ms both;
+}
+.msplit-logo-wave--circle {
+  animation-delay: 700ms;
+}
+@keyframes msplit-logo-pop {
+  0% { opacity: 0; transform: translateY(16px) scale(0.5); }
+  55% { opacity: 1; transform: translateY(-5px) scale(1.12); }
+  75% { transform: translateY(1px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* hero variant keeps the -50% horizontal centering through every keyframe */
+@keyframes msplit-hero-pop {
+  0% { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.5); }
+  55% { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1.12); }
+  75% { transform: translateX(-50%) translateY(1px) scale(0.97); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes msplit-logo-wave {
+  0% { transform: rotate(0deg); }
+  18% { transform: rotate(-14deg); }
+  40% { transform: rotate(11deg); }
+  62% { transform: rotate(-7deg); }
+  82% { transform: rotate(4deg); }
+  100% { transform: rotate(0deg); }
 }
 .msplit-branches {
   position: absolute;
@@ -1541,7 +1581,7 @@ body {
 .msplit-ghost {
   position: absolute;
   opacity: 1;
-  border-radius: 12px; /* fully rounded so bars never "square off" mid-morph */
+  border-radius: 12px; /* fallback; the actual radius is set inline per phase (pill 6px ↔ bar 12px) */
   will-change: left, top, width, height, opacity;
   /* slower, quick-to-start motion with a long, gentle deceleration tail
      (easeOutExpo-like) so the ghosts glide to a soft stop instead of snapping.
@@ -1551,6 +1591,7 @@ body {
     top 1200ms cubic-bezier(0.16, 1, 0.3, 1),
     width 1200ms cubic-bezier(0.16, 1, 0.3, 1),
     height 1200ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 1200ms cubic-bezier(0.16, 1, 0.3, 1),
     background-color 1200ms cubic-bezier(0.16, 1, 0.3, 1),
     opacity 340ms cubic-bezier(0.16, 1, 0.3, 1);
 }

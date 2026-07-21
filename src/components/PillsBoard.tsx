@@ -364,7 +364,10 @@ export default function PillsBoard({
             style={rowStyle}
             {...(morphRole ? { 'data-morph': morphRole, 'data-morph-color': tint } : {})}
           >
-            <span className="pills-pill" style={{ background: tint }}>
+            {/* data-morph-rect: the colored pill is the geometry the Monthly-split
+                ghost flies to/from, so the morph matches the real pill width (not
+                the wider pill+meta row). */}
+            <span className="pills-pill" data-morph-rect style={{ background: tint }}>
               {Icon && <Icon size={16} strokeWidth={2} color="#111" />}
               <span className="pills-pill-name">{pillName(node)}</span>
             </span>

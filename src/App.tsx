@@ -21,7 +21,7 @@ import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, t
 // then fly a colored ghost per pairing from source→target. Roles fan out cleanly:
 // the many goal bars all map to the single Goals bar (merge), and vice-versa on
 // the way back (split).
-type MorphRect = { left: number; top: number; width: number; height: number; color: string };
+type MorphRect = { left: number; top: number; width: number; height: number; color: string; radius: string };
 type MorphMap = Record<string, MorphRect[]>;
 type Ghost = { id: string; from: MorphRect; to: MorphRect };
 const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
@@ -40,7 +40,14 @@ function measureMorph(board: HTMLElement): MorphMap {
   board.querySelectorAll<HTMLElement>('[data-morph]').forEach((el) => {
     const role = el.getAttribute('data-morph');
     if (!role) return;
-    const r = el.getBoundingClientRect();
+    // Measure the GEOMETRY element for the flying ghost. When a morph target
+    // wraps text alongside the colored chip (e.g. a Pills row = colored pill +
+    // "$8,000 a month" meta), the row's box is far wider than the pill, so a
+    // solid ghost of the row width wouldn't match the real pill. If the element
+    // marks an inner `[data-morph-rect]` (the colored pill itself), measure THAT
+    // so the ghost starts/ends exactly on the pill's bounding box.
+    const geo = (el.querySelector<HTMLElement>('[data-morph-rect]') ?? el);
+    const r = geo.getBoundingClientRect();
     if (!r.width || !r.height) return;
     const rect: MorphRect = {
       left: (r.left - br.left) / scale,
@@ -48,6 +55,9 @@ function measureMorph(board: HTMLElement): MorphMap {
       width: r.width / scale,
       height: r.height / scale,
       color: el.getAttribute('data-morph-color') || '#cccccc',
+      // carry the geometry element's own corner radius so the ghost rounds to the
+      // pill's 6px at the pill end and the bar's 12px at the bar end (seamless).
+      radius: getComputedStyle(geo).borderTopLeftRadius || '12px',
     };
     (map[role] ||= []).push(rect);
   });
@@ -936,6 +946,7 @@ export default function App() {
                   top: r.top,
                   width: r.width,
                   height: r.height,
+                  borderRadius: r.radius,
                   background: ghostPhase === 'start' ? g.from.color : g.to.color,
                 }}
               />

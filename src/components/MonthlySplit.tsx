@@ -51,8 +51,10 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
 
   return (
     <div className="msplit" style={{ width: BOARD_W }}>
-      <div className="pbi-hero-logo">
-        <FruitfulLogo size={40} color="#2f8f4e" />
+      <div className="pbi-hero-logo msplit-hero-logo">
+        <span className="msplit-logo-wave">
+          <FruitfulLogo size={40} color="#2f8f4e" />
+        </span>
       </div>
       <p className="pbi-hero-sub">
         Your Money Map is ready!<br />
@@ -69,7 +71,9 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
       <div className="msplit-stem" />
       {/* green Fruitful node */}
       <div className="msplit-circle" style={{ left: CIRCLE_CX - 22, top: CIRCLE_CY - 22 }}>
-        <FruitfulLogo size={24} color="#ffffff" />
+        <span className="msplit-logo-wave msplit-logo-wave--circle">
+          <FruitfulLogo size={24} color="#ffffff" />
+        </span>
       </div>
 
       {/* curvy fan-out branches */}
