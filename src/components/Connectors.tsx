@@ -521,14 +521,8 @@ export default function Connectors({
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* bold rounded WHITE spine + branches (Figma 4px vectors, drawn a touch
-            heavier so they read as a bold track); a soft shadow lifts them off the
-            gradient */}
-        <defs>
-          <filter id="lock-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
-            <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#111" floodOpacity="0.14" />
-          </filter>
-        </defs>
-        <g filter="url(#lock-branch-shadow)">
+            heavier so they read as a bold track) — no drop shadow */}
+        <g>
           {conns.map((c) => (
             <path key={c.id} d={c.d} stroke="#ffffff" strokeWidth={5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           ))}
@@ -576,13 +570,8 @@ export default function Connectors({
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* uniform white tree — spine + stems + wishbone arms, one color + weight
-            (soft shadow so it reads on the tinted section panels) */}
-        <defs>
-          <filter id="grp-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
-            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.1" />
-          </filter>
-        </defs>
-        <g filter="url(#grp-branch-shadow)">
+            (no drop shadow) */}
+        <g>
           {conns.map((c) => (
             <path key={`grp-tree-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           ))}
@@ -640,12 +629,7 @@ export default function Connectors({
     });
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="grp2-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
-            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.12" />
-          </filter>
-        </defs>
-        <g filter="url(#grp2-branch-shadow)">
+        <g>
           {conns.map((c) => (
             <path key={`grp2-tree-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           ))}
@@ -770,12 +754,7 @@ export default function Connectors({
     });
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="sl-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
-            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.1" />
-          </filter>
-        </defs>
-        <g filter="url(#sl-branch-shadow)">
+        <g>
           {conns.map((c) => (
             <path key={`sl-tree-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           ))}
@@ -833,14 +812,9 @@ export default function Connectors({
     });
     return (
       <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="pbi-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
-            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.12" />
-          </filter>
-        </defs>
-        {/* static WHITE raised tree (Figma 804:8385) — soft drop shadow lifts it off
-            the light-gray board, matching the "1.5, bold" white branches. */}
-        <g filter="url(#pbi-branch-shadow)">
+        {/* static WHITE raised tree (Figma 804:8385) — flat white branches, no
+            drop shadow. */}
+        <g>
           {conns.map((c) => (
             <path key={c.id} d={c.d} stroke={pbiTreeStroke} strokeWidth={pbiTreeW} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           ))}

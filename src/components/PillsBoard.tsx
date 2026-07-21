@@ -93,15 +93,17 @@ const incomeArmPath = (cy: number) => {
   return `M${ARM_END} ${cy} C${mx} ${cy}, ${SPINE} ${my}, ${SPINE} ${ty}`;
 };
 
-// ---- FAST, section-grouped reveal (a zoomed-out system snapshot) ----
-// The whole map assembles QUICKLY: each SECTION (Income → Monthly → Goals gate(s))
-// pops in as a unit one small beat after the previous, and WITHIN a section the
-// trunk drop / arms / pills draw in quick succession with a tiny stagger — rather
-// than one slow serialized money-flow. All durations are in sim months, so the
-// reveal stays a pure function of `now` (scrub/replay exact).
-const D_DRAW = 0.1; // fast per-element draw/wipe (arm · trunk segment · pill)
-const IN_STAGGER = 0.028; // tiny stagger between interior elements of one section
-const SEC_GAP = 0.06; // brief beat between consecutive sections
+// ---- OVERLAPPING, section-grouped reveal (smooth waves) ----
+// Each SECTION (Income → Monthly → Goals gate(s)) animates as a unit, but the
+// sections OVERLAP: a section's interior (trunk drop · arms · pills) draws slowly
+// and smoothly, while the NEXT section starts only a short beat later (SEC_START),
+// well before the previous one finishes. Net effect: overlapping, flowing waves
+// rather than crisp one-at-a-time pops — still causal-ish top→down (Income →
+// Monthly → Goals begin in order). All durations are in sim months, so the reveal
+// stays a pure function of `now` (scrub/replay exact).
+const D_DRAW = 0.22; // slower, smoother per-element draw/wipe (arm · trunk segment · pill)
+const IN_STAGGER = 0.05; // gentle stagger between interior elements of one section
+const SEC_START = 0.13; // delay between consecutive section START times (small → sections overlap)
 const SEC_GHOST = 0.1; // resting opacity of a not-yet-reached section card/label
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -208,17 +210,17 @@ export default function PillsBoard({
   const base = rm('income'); // anchor: first paycheck arrival in the sim
   const wIncomePill = w(base);
   const wIncomeArm = w(base + IN_STAGGER);
-  const incomeEnd = base + IN_STAGGER + D_DRAW;
 
-  // Monthly Expenses section
-  const ms = incomeEnd + SEC_GAP;
+  // Monthly Expenses section — STARTS a short beat after Income begins (not after
+  // it finishes), so the two waves overlap.
+  const ms = base + SEC_START;
   const wTrunk0 = w(ms); // trunk drops into Monthly Expenses (card pops with it)
   const wMonthlyArms = w(ms + IN_STAGGER); // Core + Spend arms draw together
   const wMonthlyPills = w(ms + 2 * IN_STAGGER); // Core + Spend pills wipe in
-  const monthlyEnd = ms + 2 * IN_STAGGER + D_DRAW;
 
-  // Goals section — trunk drop, then each goal gate in quick succession
-  const gs = monthlyEnd + SEC_GAP;
+  // Goals section — STARTS a short beat after Monthly begins (overlapping), then
+  // each goal gate loads in gentle succession.
+  const gs = ms + SEC_START;
   const wTrunk1 = w(gs); // trunk drops into Goals (card pops with it)
   const goalGateCount = gates.length - 2;
   const wGoalArm: [number, number][] = [];
