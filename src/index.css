@@ -3912,7 +3912,10 @@ body.is-scrubbing-noselect * {
 .home-row span:last-child { color: #101418; font-weight: 600; }
 
 /* ---- onboarding money-map screen: compact top bar + top toggle + shifted tree ---- */
-.board--onboard { --onboard-shift: -185px; background: #f3f4f6; }
+/* --onboard-shift pulls the content up under the compact bar + top toggle; it is
+   deliberately ~20px shy of the toggle so there's a comfortable gap beneath the
+   Full system / Monthly split toggle and the page content. */
+.board--onboard { --onboard-shift: -165px; background: #f3f4f6; }
 .onboard-topbar {
   position: absolute;
   top: 0;
@@ -3962,8 +3965,9 @@ body.is-scrubbing-noselect * {
 /* pull the carousel + whole tree up to sit under the compact bar + top toggle */
 .board--onboard .pbi-income-row { transform: translateY(var(--onboard-shift)); }
 .board--onboard .tree-shift { transform: translateY(var(--onboard-shift)); }
-/* the Monthly-split view has no carousel; nudge its content up under the top toggle */
-.board--onboard .msplit--onboard { transform: translateY(-118px); }
+/* the Monthly-split view has no carousel; nudge its content up under the top toggle
+   (matching the ~20px gap the Full-system content keeps beneath the toggle) */
+.board--onboard .msplit--onboard { transform: translateY(-98px); }
 
 /* ---- home ⇄ map account-card FLIP ---- */
 /* hide the real map account cards while their ghosts fly in, then crossfade */
