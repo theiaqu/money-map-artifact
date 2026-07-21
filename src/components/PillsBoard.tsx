@@ -43,19 +43,51 @@ function pillName(node: CardNode): string {
   return node.title.replace(/emergency fund/i, 'Fund');
 }
 
-// Figma 949:10961 connector spec (from the exported vectors):
+// Figma 959:15504 connector spec (from the exported vectors):
 //   • stroke #d9d9d9, 2px, round caps/joins
-//   • single pills → a straight horizontal arm off the trunk
-//   • forked pills (Core/Spend, goal pairs) → a short straight STUB off the
-//     trunk then a tight S-curve brace (horizontal tangents both ends)
+//   • EVERY turn is a smooth curve — there are NO 90° right-angle elbows.
+//     The trunk is a straight vertical line; each arm PEELS OFF it via a
+//     quarter-turn (vertical tangent where it leaves the trunk → horizontal
+//     tangent where it reaches the pill), then a short straight run so the
+//     arrowhead sits level. Forks leave the trunk vertically and fan out.
+//   • the income arm flows OUT of the Paycheck: it leaves the pill horizontally
+//     and curves DOWN into the top of the trunk (again, no corner).
 //   • DOWNWARD chevron arrowheads sit on the trunk where it crosses into the
-//     next section; per the task we also add a chevron at each arm's pill end.
+//     next section; a chevron also lands on each arm's clean straight run.
 const SPINE = PILLS_SPINE_X;
-const ARM_END = PILLS_PILL_LEFT - 8; // arms/braces stop just before the pill; chevron tip lands here
-const STUB = 10; // straight stub off the trunk before a fork brace curves away
+const ARM_END = PILLS_PILL_LEFT - 8; // arms stop just before the pill; chevron tip lands here
 const RUN = 12; // straight horizontal run at the arm's end so the arrowhead sits on a clean, level segment
+const ARM_R = 20; // quarter-turn radius where an arm peels off the trunk / the income arm dives in
+const FORK_V = 16; // vertical-tangent handle length at a fork junction (keeps the split cornerless)
+const KAPPA = 0.5523; // cubic-Bézier circle constant → a true-looking quarter arc
 const BRANCH_STROKE = '#d9d9d9';
 const STROKE_W = 2;
+
+// ---- curved connector geometry (all cornerless) -------------------------
+// A single-child arm: come DOWN the trunk, quarter-turn RIGHT with radius
+// ARM_R, then a straight run into the pill. Leaves the trunk with a vertical
+// tangent so it merges seamlessly (no tee).
+const offrampPath = (cy: number) => {
+  const ty = cy - ARM_R; // peel off the trunk this far above the row
+  const hx = SPINE + ARM_R; // x where the curve has fully turned horizontal
+  return `M${SPINE} ${ty} C${SPINE} ${ty + ARM_R * KAPPA}, ${hx - ARM_R * KAPPA} ${cy}, ${hx} ${cy} L${ARM_END} ${cy}`;
+};
+// A forked child: leave the trunk junction with a VERTICAL tangent (toward the
+// child), sweep out to a horizontal tangent at the pill, then a straight run.
+const forkPath = (jy: number, cy: number) => {
+  const ex = ARM_END - RUN; // curve end / straight-run start
+  const dir = cy > jy ? 1 : -1;
+  const v = Math.min(FORK_V, Math.abs(cy - jy) * 0.9 + 2);
+  const k = (ex - SPINE) * 0.5;
+  return `M${SPINE} ${jy} C${SPINE} ${jy + dir * v}, ${ex - k} ${cy}, ${ex} ${cy} L${ARM_END} ${cy}`;
+};
+// The income arm (reverse flow): leave the pill horizontally, quarter-turn DOWN
+// into the top of the trunk (vertical tangent) with radius ARM_R.
+const incomeArmPath = (cy: number) => {
+  const hx = SPINE + ARM_R; // where the straight run meets the curve
+  const ty = cy + ARM_R; // joins the trunk this far below the row
+  return `M${ARM_END} ${cy} L${hx} ${cy} C${hx - ARM_R * KAPPA} ${cy}, ${SPINE} ${ty - ARM_R * KAPPA}, ${SPINE} ${ty}`;
+};
 
 // ---- causal cascade phase durations (in sim months) ----
 // Each phase draws for its duration, then a small HANDOFF gap, then the next
@@ -105,9 +137,9 @@ function Chevron({ x, y, dir, show }: { x: number; y: number; dir: 'down' | 'rig
   return <path d={d} stroke={BRANCH_STROKE} strokeWidth={STROKE_W} fill="none" strokeLinecap="round" strokeLinejoin="round" />;
 }
 
-// a gate = one trunk junction that braces into 1..n child rows. A single child
-// gets a straight arm; 2+ children fork via mirrored horizontal-tangent cubics
-// (the wishbone/brace geometry used across the money-map styles).
+// a gate = one trunk junction that curves into 1..n child rows. A single child
+// gets a quarter-turn offramp; 2+ children fan out via vertical-tangent cubics
+// (all cornerless — see the geometry helpers above).
 interface PillsGate {
   key: string;
   jy: number; // trunk junction y (center of its children)
@@ -149,18 +181,6 @@ export default function PillsBoard({
       return { key: `goal-${g.join('-')}`, jy: cys.length > 1 ? mid(cys[0], cys[cys.length - 1]) : cys[0], children: g.map((id) => ({ id, cy: cyOf(id) })) };
     }),
   ];
-  // brace path (Figma geometry): single child (jy==cy) → a straight horizontal
-  // arm; a forked child → a short straight STUB off the trunk, an S-curve with
-  // horizontal tangents at both ends, then a straight RUN into the pill so the
-  // arrowhead lands on a clean, level segment (never mid-curve).
-  const bracePath = (jy: number, cy: number) => {
-    if (Math.abs(cy - jy) < 0.5) return `M${SPINE} ${cy} L${ARM_END} ${cy}`;
-    const sx = SPINE + STUB; // stub end / curve start
-    const ex = ARM_END - RUN; // curve end / straight-run start
-    const k = Math.max(6, (ex - sx) * 0.5);
-    return `M${SPINE} ${jy} L${sx} ${jy} C${sx + k} ${jy}, ${ex - k} ${cy}, ${ex} ${cy} L${ARM_END} ${cy}`;
-  };
-
   // ------------------------------------------------------------------------
   // EXPLICIT CAUSAL CASCADE TIMELINE (in sim months, anchored at the first
   // paycheck). Every phase begins only after the previous phase's tip arrives,
@@ -225,10 +245,12 @@ export default function PillsBoard({
   const secWinFor = (id: 'income' | 'monthly' | 'goals'): [number, number] =>
     id === 'income' ? wIncomePill : id === 'monthly' ? wTrunk0 : wTrunk1;
 
-  // main-trunk segments between gate junctions, each driven by its phase window
+  // main-trunk segments between gate junctions, each driven by its phase window.
+  // The first segment starts where the income arm dives into the trunk (jy+ARM_R)
+  // so the curve and the trunk join seamlessly.
   const trunkSegs = gates.slice(0, -1).map((g, i) => {
     const w = i === 0 ? wTrunk0 : i === 1 ? wTrunk1 : wGoalTrunk[i];
-    return { key: g.key, y0: g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
+    return { key: g.key, y0: i === 0 ? g.jy + ARM_R : g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
   });
 
   // DOWNWARD trunk chevrons where the trunk crosses into Monthly / Goals; each
@@ -260,23 +282,26 @@ export default function PillsBoard({
         {trunkChevrons.map((c, i) => (
           <Chevron key={`tchev-${i}`} x={SPINE} y={c.y} dir="down" show={c.show} />
         ))}
-        {/* each gate's braces into its child rows, + a chevron into each pill.
-            EXCEPTION: the income arm flows OUT of the Paycheck toward the trunk,
-            so it draws from the pill end inward and its chevron points left. */}
+        {/* each gate's curved arms into its child rows, + a chevron into each
+            pill. EXCEPTION: the income arm flows OUT of the Paycheck — it draws
+            from the pill end and curves DOWN into the trunk, with a down-chevron
+            marking the outflow. Single children use a quarter-turn offramp;
+            forks fan out with vertical tangents. No 90° corners anywhere. */}
         {gates.flatMap((g, gateIdx) =>
           g.children.map((c) => {
             const armGrow = win(armWinFor(gateIdx));
             if (c.id === 'income') {
               return (
                 <g key="arm-income">
-                  <Branch d={`M${ARM_END} ${c.cy} L${SPINE} ${c.cy}`} grow={armGrow} />
-                  <Chevron x={SPINE + 7} y={c.cy} dir="left" show={armGrow >= 0.82} />
+                  <Branch d={incomeArmPath(c.cy)} grow={armGrow} />
+                  <Chevron x={SPINE} y={c.cy + ARM_R + 2} dir="down" show={armGrow >= 0.82} />
                 </g>
               );
             }
+            const d = g.children.length === 1 ? offrampPath(c.cy) : forkPath(g.jy, c.cy);
             return (
               <g key={`arm-${c.id}`}>
-                <Branch d={bracePath(g.jy, c.cy)} grow={armGrow} />
+                <Branch d={d} grow={armGrow} />
                 <Chevron x={ARM_END} y={c.cy} dir="right" show={armGrow >= 0.82} />
               </g>
             );
