@@ -288,6 +288,29 @@ export function PbiGroupedPanels({ dataset }: { dataset: Dataset }) {
   );
 }
 
+// "Section plus label" pbi gate (Figma 977:10830): the SAME teal/mint + pink section
+// panels as "In sections" (pbi-grouped), but each panel carries a small section
+// label in its top-left corner ("Monthly expenses" / "Goals"). The Monthly gate
+// itself renders as a spine circle (SectionNodeView) and the % pills ride the arms
+// (Connectors), so the panel label is the section's only text here.
+export function PbiSectionLabelPanels({ dataset }: { dataset: Dataset }) {
+  const panels = pbiGroupedPanelsFor(dataset);
+  const LABELS: Record<string, string> = { monthly: 'Monthly expenses', goals: 'Goals' };
+  return (
+    <>
+      {panels.map((p) => (
+        <div
+          key={p.id}
+          className={`pbi-grouped-panel pbi-grouped-panel--${p.tint}`}
+          style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
+        >
+          <span className="pbi-grouped-label">{LABELS[p.id] ?? ''}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
 // "Grouped 2" pbi gate (Figma 802:10838): SAME section panels as Grouped but tinted
 // GRAY (both Monthly Expenses + Goals), with gray section labels. Board-level chrome
 // rendered once behind the connectors + cards when the Grouped 2 gate is active. Own

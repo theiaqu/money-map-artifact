@@ -175,6 +175,10 @@ export default function Connectors({
   const isPbiGrouped = pbiTree && branch === 'pbi-grouped';
   // "Grouped 2": gray section panels + offset-riser branch routing (Figma 802:10838).
   const isPbiGrouped2 = pbiTree && branch === 'pbi-grouped2';
+  // "Section plus label" (Figma 977:10830): the "In sections" teal/pink panels + white
+  // tree, PLUS the % allocation pills on the arms and a circle (not a text pill) for
+  // the Monthly gate. Uses the DEFAULT pbi connector geometry (like In sections).
+  const isPbiSectionLabel = pbiTree && branch === 'pbi-sectionlabel';
   // "Indented" (Figma 886:12513): far-left spine + indented risers + amount pills.
   const isPbiIndented = pbiTree && branch === 'pbi-indented';
   const baseConns: Connector[] = gridTree
@@ -728,6 +732,77 @@ export default function Connectors({
             </text>
           </g>
         ))}
+      </svg>
+    );
+  }
+
+  // ---------- pbi "Section plus label": In-sections panels + % pills + monthly circle ----------
+  // (Figma 977:10830) The same WHITE raised tree over the teal/pink section panels as
+  // "In sections", but each arm carries its % allocation pill (reusing badgesFor, like
+  // the compact "Lines with %" gate) and the Monthly gate is a spine circle instead of
+  // a text pill (rendered by SectionNodeView). Goal gates keep their text pills.
+  if (isPbiSectionLabel) {
+    const slById = (id: string) => conns.find((c) => c.id === id)?.d;
+    // arm -> % badge id (same pairing the pots "Lines with %" gate uses), text from badgesFor
+    const SL_PCT_BADGE: Record<string, string> = {
+      'c-monthly-core': 'p70a',
+      'c-monthly-spend': 'p30a',
+      'c-goals1-ef1': 'p100',
+      'c-goals2-debt': 'p70b',
+      'c-goals2-ef6': 'p30b',
+      'c-goals3-travel': 'p100c',
+      'c-goals3-brokerage': 'p100d',
+    };
+    const pctText: Record<string, string> = Object.fromEntries(badgesFor(dataset).map((b) => [b.id, b.text]));
+    const pctPills = Object.entries(SL_PCT_BADGE).map(([armId, badgeId]) => {
+      const m = mids[armId];
+      const txt = pctText[badgeId];
+      if (!m || !txt) return null;
+      return (
+        <foreignObject key={`sl-pct-${armId}`} x={m.x - 26} y={m.y - 11} width={52} height={22} style={{ overflow: 'visible' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <span className="pct-badge" style={{ color: '#111' }}>{txt}</span>
+          </div>
+        </foreignObject>
+      );
+    });
+    return (
+      <svg className="connectors" width="402" height={boardH} viewBox={`0 0 402 ${boardH}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="sl-branch-shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="402" height={boardH}>
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#111" floodOpacity="0.1" />
+          </filter>
+        </defs>
+        <g filter="url(#sl-branch-shadow)">
+          {conns.map((c) => (
+            <path key={`sl-tree-${c.id}`} d={c.d} stroke="#ffffff" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+        </g>
+        {probes}
+        {FLOW_META.map((m) => {
+          const d = slById(m.id);
+          const len = lens[m.id];
+          if (!d || !len || len <= 0) return null;
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          return flows.map((f, j) => {
+            const { dashArray, dashOffset } = pulseDash(len, f.p);
+            return (
+              <path
+                key={`sl-${m.id}-${j}`}
+                d={d}
+                stroke={m.color}
+                strokeWidth={2.5}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={f.alpha}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          });
+        })}
+        {pctPills}
       </svg>
     );
   }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import Card, { ArtifactHeader, PbiGroupedPanels, PbiGrouped2Panels } from './components/Card';
+import Card, { ArtifactHeader, PbiGroupedPanels, PbiSectionLabelPanels, PbiGrouped2Panels } from './components/Card';
 import MonthlySplit from './components/MonthlySplit';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
@@ -292,7 +292,8 @@ const BRANCHES: { id: BranchStyle; label: string }[] = [
 // "Condensed" are intentionally NOT offered here.
 const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'text-only', label: 'Text gates' },
-  { id: 'pbi-grouped', label: 'Text gates + backgrounds' },
+  { id: 'pbi-grouped', label: 'In sections' },
+  { id: 'pbi-sectionlabel', label: 'Section plus label' },
   { id: 'pbi-split', label: 'Section split' },
   { id: 'pbi-indented', label: 'Indented' },
   { id: 'pbi-locked', label: 'Gradient background' },
@@ -366,12 +367,12 @@ export default function App() {
   const [mode, setMode] = useState<Mode>('illustrative');
   const [dataset, setDataset] = useState<Dataset>('simple');
   const [style, setStyle] = useState<ChartStyle>('progress');
-  const [branch, setBranch] = useState<BranchStyle>('text-only');
+  const [branch, setBranch] = useState<BranchStyle>('pbi-grouped');
   const [map, setMap] = useState<MapStyle>('money-map');
   const [version, setVersion] = useState<Version>('v2');
   const [dateMode, setDateMode] = useState<DateMode>('date');
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('paychecks'); // header carousel: Paycheck pills vs. month timeline
-  const [refillVisual, setRefillVisual] = useState(false); // show the Core/Spend monthly refill gradient bars
+  const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const boardRef = useRef<HTMLDivElement>(null);
   const pendingMorphRef = useRef<{ sources: MorphMap } | null>(null); // source rects captured just before a view switch
@@ -576,10 +577,10 @@ export default function App() {
       // "Progress bar, inside" offers its own pbi gate set; entering it from any
       // other gate (e.g. 'compact' carried over from stocks) falls back to the
       // default "Text gates".
-      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-split' || prev === 'pbi-indented' || prev === 'pbi-locked' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'text-only';
+      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-sectionlabel' || prev === 'pbi-split' || prev === 'pbi-indented' || prev === 'pbi-locked' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'pbi-grouped';
       // the pbi-scoped gates are pbi-only: leaving pbi for any other style resets to
       // a valid shared gate so no non-pbi style renders pbi-scoped geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-grouped2' || prev === 'pbi-split' || prev === 'pbi-indented' ? 'text-only' : prev;
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-sectionlabel' || prev === 'pbi-grouped2' || prev === 'pbi-split' || prev === 'pbi-indented' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -988,6 +989,8 @@ export default function App() {
         {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
         {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
         {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
+        {/* Section plus label (pbi-only): same teal/pink panels, WITH top-left section labels. */}
+        {style === 'progress' && branch === 'pbi-sectionlabel' && <PbiSectionLabelPanels dataset={dataset} />}
         {/* Grouped 2 (pbi-only) GRAY section panels behind the cards/branches. */}
         {style === 'progress' && branch === 'pbi-grouped2' && <PbiGrouped2Panels dataset={dataset} />}
         {/* "Indented" (pbi-only) faint graph-paper the square tree rides on. */}

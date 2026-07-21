@@ -1784,6 +1784,19 @@ body.is-scrubbing-noselect * {
 }
 .pbi-gate.two-line { white-space: normal; }
 
+/* "Section plus label" (Figma 977:10830): the Monthly gate renders as a small
+   junction circle on the spine instead of a text pill. Centered on (x=50, junction). */
+.pbi-sectionlabel-dot {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid rgba(56, 195, 203, 0.6);
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.12);
+  transform: translate(-50%, -50%);
+}
+
 /* ---- white rounded card: standalone icon glyph + name over the filling bar ---- */
 .pbi-card {
   display: flex;

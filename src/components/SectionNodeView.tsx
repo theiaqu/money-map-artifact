@@ -188,6 +188,29 @@ export default function SectionNodeView({
       </div>
     );
   }
+  // "Section plus label" pbi gate (Figma 977:10830): the MONTHLY gate is a small
+  // circle node on the spine (a junction dot) instead of a text pill; the GOAL gates
+  // keep the standard pbi on-spine text pills. (Section names live in the panel
+  // labels; the % pills ride the arms in Connectors.)
+  if (pbi && branch === 'pbi-sectionlabel') {
+    if (node.id === 'monthly') {
+      // centered on the monthly fork junction (x=50, y=464 in the default pbi geometry)
+      return (
+        <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: 50, top: 464 }}>
+          <span className="pbi-sectionlabel-dot" />
+        </div>
+      );
+    }
+    const info = pbiLabels[dataset][node.id];
+    if (!info) return null;
+    return (
+      <div className={`node section-pill-node${dimmed ? ' dimmed' : ''}`} style={{ left: 50, top: info.top }}>
+        <div className={`pbi-gate${info.twoLine ? ' two-line' : ''}`} style={info.twoLine ? { width: info.width } : undefined}>
+          {info.label}
+        </div>
+      </div>
+    );
+  }
   // "Progress bar, inside" (Figma 792:8522): white gate-label pills centered ON
   // the thin left spine (x=50). Two-line pills wrap within `width`.
   if (pbi) {

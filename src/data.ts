@@ -36,7 +36,7 @@ export type CardKind = 'income' | 'account' | 'goal';
 // gate: the SAME text-gate tree (thin spine, on-spine text pills, white wishbones)
 // as 'text-only', plus a full-width dashed DIVIDER line between each section
 // (Monthly | Goals | …) — no colored panels, just the dividers.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-grouped2' | 'pbi-split' | 'pbi-indented';
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-sectionlabel' | 'pbi-grouped2' | 'pbi-split' | 'pbi-indented';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
