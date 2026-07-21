@@ -1460,11 +1460,9 @@ body {
   animation: msplit-logo-pop 560ms cubic-bezier(0.34, 1.45, 0.5, 1) 140ms both;
 }
 
-/* the Fruitful sprout entrance: fade in + upward pop with a soft overshoot.
-   scoped to the Monthly-split view so the full-system header logo is untouched. */
-.msplit-hero-logo {
-  animation: msplit-hero-pop 560ms cubic-bezier(0.34, 1.45, 0.5, 1) 90ms both;
-}
+/* the top hero sprout is intentionally NOT animated on the Full system ↔ Monthly
+   split toggle — it stays identical/static across both views (see MonthlySplit.tsx).
+   The green circle node in the card is the only logo that pops + waves. */
 /* the sprout itself does a gentle wave (a couple of small rotation oscillations),
    hinged near its base, starting just after the pop finishes. */
 .msplit-logo-wave {
@@ -1480,13 +1478,6 @@ body {
   55% { opacity: 1; transform: translateY(-5px) scale(1.12); }
   75% { transform: translateY(1px) scale(0.97); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-/* hero variant keeps the -50% horizontal centering through every keyframe */
-@keyframes msplit-hero-pop {
-  0% { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.5); }
-  55% { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1.12); }
-  75% { transform: translateX(-50%) translateY(1px) scale(0.97); }
-  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 @keyframes msplit-logo-wave {
   0% { transform: rotate(0deg); }

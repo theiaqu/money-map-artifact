@@ -51,9 +51,10 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
 
   return (
     <div className="msplit" style={{ width: BOARD_W }}>
-      <div className="pbi-hero-logo msplit-hero-logo">
-        {/* hero sprout: fade-in + upward pop only (no wave — the wave is reserved
-            for the green circle node in the card below). */}
+      <div className="pbi-hero-logo">
+        {/* top hero sprout is STATIC across Full system ↔ Monthly split — it renders
+            identically to the full-system header (no entrance animation). The only
+            animated logo is the green circle node in the card below. */}
         <FruitfulLogo size={40} color="#2f8f4e" />
       </div>
       <p className="pbi-hero-sub">

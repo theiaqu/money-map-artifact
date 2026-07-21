@@ -101,9 +101,9 @@ const DATASET_OPTS: { id: Dataset; label: string }[] = [
 const STYLES: { id: ChartStyle; label: string; older?: boolean }[] = [
   { id: 'progress', label: 'Progress bar, inside' },
   { id: 'pills', label: 'Pills' },
-  { id: 'icons', label: 'Minimalist icons' },
   { id: 'illo', label: 'Illustrated' },
   { id: 'stocks', label: 'Stocks / heart monitor' },
+  { id: 'icons', label: 'Minimalist icons', older: true },
   { id: 'pots', label: 'Pots', older: true },
   { id: 'grid', label: 'Grid', older: true },
   { id: 'sheet', label: 'Sheet', older: true },

@@ -89,14 +89,15 @@ const incomeArmPath = (cy: number) => {
   return `M${ARM_END} ${cy} L${hx} ${cy} C${hx - INCOME_R * KAPPA} ${cy}, ${SPINE} ${ty - INCOME_R * KAPPA}, ${SPINE} ${ty}`;
 };
 
-// ---- causal cascade phase durations (in sim months) ----
-// Each phase draws for its duration, then a small HANDOFF gap, then the next
-// phase begins — so the flow reads as a strict chain (nothing starts before the
-// previous tip arrives). See the timeline built inside the component.
-const D_PILL = 0.3; // left→right pill wipe
-const D_ARM = 0.26; // an arm drawing to/from its pill
-const D_TRUNK = 0.26; // a trunk segment dropping into the next section
-const HANDOFF = 0.045; // deliberate gap between phases
+// ---- FAST, section-grouped reveal (a zoomed-out system snapshot) ----
+// The whole map assembles QUICKLY: each SECTION (Income → Monthly → Goals gate(s))
+// pops in as a unit one small beat after the previous, and WITHIN a section the
+// trunk drop / arms / pills draw in quick succession with a tiny stagger — rather
+// than one slow serialized money-flow. All durations are in sim months, so the
+// reveal stays a pure function of `now` (scrub/replay exact).
+const D_DRAW = 0.1; // fast per-element draw/wipe (arm · trunk segment · pill)
+const IN_STAGGER = 0.028; // tiny stagger between interior elements of one section
+const SEC_GAP = 0.06; // brief beat between consecutive sections
 const SEC_GHOST = 0.1; // resting opacity of a not-yet-reached section card/label
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -183,55 +184,51 @@ export default function PillsBoard({
     }),
   ];
   // ------------------------------------------------------------------------
-  // EXPLICIT CAUSAL CASCADE TIMELINE (in sim months, anchored at the first
-  // paycheck). Every phase begins only after the previous phase's tip arrives,
-  // so the flow reads as money physically travelling down the map:
-  //   1 Paycheck pill wipes in
-  //   2 the income arm draws OUT of the pill toward the trunk
-  //   3 the trunk drops DOWN into Monthly Expenses (+ its down-chevron)
-  //   4 the Monthly gate fires → Core + Spend arms draw, then their pills wipe
-  //   5 the trunk continues DOWN into Goals (+ its down-chevron)
-  //   6 each Goals gate fires in turn → arm(s) draw, then pill(s) wipe; for
-  //     Optimizer this cascades gate-by-gate (goals1 → goals2 → goals3).
-  // It's a pure function of `now`, so scrubbing/replaying stays exact.
+  // FAST, SECTION-GROUPED REVEAL TIMELINE (sim months, anchored at the first
+  // paycheck). Rather than a slow serialized money-flow, the map assembles as a
+  // zoomed-out SNAPSHOT: each SECTION loads as a unit one small beat after the
+  // previous, and WITHIN a section the trunk drop / arms / pills draw in quick
+  // succession (tiny stagger):
+  //   • Income  — Paycheck pill wipes; its outflow arm draws a hair later.
+  //   • Monthly — trunk drops in (card pops), then Core+Spend arms, then pills.
+  //   • Goals   — trunk drops in (card pops), then each goal gate loads in quick
+  //     succession (arm → pill, with a short trunk hop between gates); Optimizer's
+  //     extra gate just extends the same quick run.
+  // Still causal-ish top→down by section, just fast + grouped. Pure function of
+  // `now`, so scrubbing/replaying stays exact.
   // ------------------------------------------------------------------------
-  let tc = rm('income'); // anchor: first paycheck arrival in the sim
-  const step = (dur: number): [number, number] => {
-    const s = tc;
-    tc = s + dur;
-    return [s, tc];
-  };
-  const gap = () => {
-    tc += HANDOFF;
-  };
   const win = ([s, e]: [number, number]) => growWin(s, e);
+  const w = (s: number, d: number = D_DRAW): [number, number] => [s, s + d];
 
-  const wIncomePill = step(D_PILL);
-  gap();
-  const wIncomeArm = step(D_ARM);
-  gap();
-  const wTrunk0 = step(D_TRUNK); // trunk drops into Monthly Expenses
-  gap();
-  const wMonthlyArms = step(D_ARM); // Core + Spend arms draw together
-  gap();
-  const wMonthlyPills = step(D_PILL); // Core + Spend pills wipe in
-  gap();
-  const wTrunk1 = step(D_TRUNK); // trunk drops into Goals
-  gap();
+  // Income section
+  const base = rm('income'); // anchor: first paycheck arrival in the sim
+  const wIncomePill = w(base);
+  const wIncomeArm = w(base + IN_STAGGER);
+  const incomeEnd = base + IN_STAGGER + D_DRAW;
 
+  // Monthly Expenses section
+  const ms = incomeEnd + SEC_GAP;
+  const wTrunk0 = w(ms); // trunk drops into Monthly Expenses (card pops with it)
+  const wMonthlyArms = w(ms + IN_STAGGER); // Core + Spend arms draw together
+  const wMonthlyPills = w(ms + 2 * IN_STAGGER); // Core + Spend pills wipe in
+  const monthlyEnd = ms + 2 * IN_STAGGER + D_DRAW;
+
+  // Goals section — trunk drop, then each goal gate in quick succession
+  const gs = monthlyEnd + SEC_GAP;
+  const wTrunk1 = w(gs); // trunk drops into Goals (card pops with it)
   const goalGateCount = gates.length - 2;
   const wGoalArm: [number, number][] = [];
   const wGoalPill: [number, number][] = [];
   const wGoalTrunk: Record<number, [number, number]> = {}; // trunk-seg index → window
+  let gt = gs + IN_STAGGER;
   for (let gi = 0; gi < goalGateCount; gi++) {
     if (gi > 0) {
-      wGoalTrunk[1 + gi] = step(D_TRUNK); // trunk from the prior goal gate down to this one
-      gap();
+      wGoalTrunk[1 + gi] = w(gt); // short trunk hop from the prior goal gate to this one
+      gt += IN_STAGGER;
     }
-    wGoalArm[gi] = step(D_ARM);
-    gap();
-    wGoalPill[gi] = step(D_PILL);
-    gap();
+    wGoalArm[gi] = w(gt);
+    wGoalPill[gi] = w(gt + IN_STAGGER);
+    gt += 2 * IN_STAGGER;
   }
 
   // per-element window lookups
