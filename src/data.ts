@@ -36,7 +36,7 @@ export type CardKind = 'income' | 'account' | 'goal';
 // gate: the SAME text-gate tree (thin spine, on-spine text pills, white wishbones)
 // as 'text-only', plus a full-width dashed DIVIDER line between each section
 // (Monthly | Goals | …) — no colored panels, just the dividers.
-export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-sectionlabel' | 'pbi-grouped2' | 'pbi-split' | 'pbi-indented';
+export type BranchStyle = 'standard' | 'compact' | 'text-only' | 'skinny-line' | 'icon-labeled' | 'pbi-locked' | 'pbi-grouped' | 'pbi-sectionlabel' | 'pbi-income-section' | 'pbi-grouped2' | 'pbi-split' | 'pbi-indented';
 
 // overall visual style: the current flow canvas vs. the "Today's money map" look
 export type MapStyle = 'flow' | 'money-map';
@@ -1729,7 +1729,7 @@ export const pbiGroupedLockDiscsFor = (dataset: Dataset): PbiLockDisc[] =>
    span nearly the whole device (x=11 → w=379) so the spine + pills read as
    sitting inside the colored band, exactly like the Figma. No corner labels —
    the on-spine gate pills carry the section names. */
-export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink' | 'gray'; label: string }
+export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; h: number; tint: 'mint' | 'pink' | 'gray' | 'yellow'; label: string }
 export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   const rows = dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
   const lastGoal = dataset === 'optimizer' ? rows.brokerage : rows.ef6;
@@ -1747,6 +1747,20 @@ export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
     { id: 'monthly', x: 11, y: mintTop, w: 379, h: mintBottom - mintTop, tint: 'mint', label: '' },
     { id: 'goals', x: 11, y: pinkTop, w: 379, h: pinkBottom - pinkTop, tint: 'pink', label: '' },
   ];
+}
+
+/* "Sections incl. income" gate (pbi-scoped, BranchStyle 'pbi-income-section') —
+   Figma 977:10048. IDENTICAL to "In sections" (mint Monthly + pink Goals panels,
+   default white pbi tree, on-spine gate pills) but adds a YELLOW section panel
+   behind the INCOME area (the paycheck carousel), so Income reads as its own titled
+   section like Monthly and Goals. The income panel wraps the carousel (top ~324,
+   just above the mint panel which starts at core-10=368). x/w match the other
+   panels so the three bands align. Dataset-aware via the reused mint/pink geometry. */
+export function pbiIncomeSectionPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
+  const incomeTop = 324; // wraps the paycheck carousel (top 335) with a little breathing room
+  const incomeH = 40; // ends ~364, a 4px gap above the mint panel (core-10=368)
+  const income: PbiGroupedPanel = { id: 'income', x: 11, y: incomeTop, w: 379, h: incomeH, tint: 'yellow', label: '' };
+  return [income, ...pbiGroupedPanelsFor(dataset)];
 }
 
 /* ---- "Grouped 2" gate (pbi-scoped, BranchStyle 'pbi-grouped2') — Figma 802:10838 ----

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import Card, { ArtifactHeader, PbiGroupedPanels, PbiSectionLabelPanels, PbiGrouped2Panels } from './components/Card';
+import Card, { ArtifactHeader, PbiGroupedPanels, PbiSectionLabelPanels, PbiIncomeSectionPanels, PbiGrouped2Panels } from './components/Card';
 import MonthlySplit from './components/MonthlySplit';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
@@ -294,6 +294,7 @@ const PBI_BRANCHES: { id: BranchStyle; label: string }[] = [
   { id: 'text-only', label: 'Text gates' },
   { id: 'pbi-grouped', label: 'In sections' },
   { id: 'pbi-sectionlabel', label: 'Section plus label' },
+  { id: 'pbi-income-section', label: 'Sections incl. income' },
   { id: 'pbi-split', label: 'Section split' },
   { id: 'pbi-indented', label: 'Indented' },
   { id: 'pbi-locked', label: 'Gradient background' },
@@ -577,10 +578,10 @@ export default function App() {
       // "Progress bar, inside" offers its own pbi gate set; entering it from any
       // other gate (e.g. 'compact' carried over from stocks) falls back to the
       // default "Text gates".
-      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-sectionlabel' || prev === 'pbi-split' || prev === 'pbi-indented' || prev === 'pbi-locked' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'pbi-grouped';
+      if (s === 'progress') return prev === 'pbi-grouped' || prev === 'pbi-sectionlabel' || prev === 'pbi-income-section' || prev === 'pbi-split' || prev === 'pbi-indented' || prev === 'pbi-locked' || prev === 'pbi-grouped2' || prev === 'text-only' ? prev : 'pbi-grouped';
       // the pbi-scoped gates are pbi-only: leaving pbi for any other style resets to
       // a valid shared gate so no non-pbi style renders pbi-scoped geometry.
-      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-sectionlabel' || prev === 'pbi-grouped2' || prev === 'pbi-split' || prev === 'pbi-indented' ? 'text-only' : prev;
+      return prev === 'skinny-line' || prev === 'icon-labeled' || prev === 'pbi-locked' || prev === 'pbi-grouped' || prev === 'pbi-sectionlabel' || prev === 'pbi-income-section' || prev === 'pbi-grouped2' || prev === 'pbi-split' || prev === 'pbi-indented' ? 'text-only' : prev;
     });
     // entering the stocks style auto-selects the V1 sub-variant
     if (s === 'stocks') setVersion('v1');
@@ -991,6 +992,8 @@ export default function App() {
         {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
         {/* Section plus label (pbi-only): same teal/pink panels, WITH top-left section labels. */}
         {style === 'progress' && branch === 'pbi-sectionlabel' && <PbiSectionLabelPanels dataset={dataset} />}
+        {/* Sections incl. income (pbi-only): In-sections panels PLUS a yellow Income band. */}
+        {style === 'progress' && branch === 'pbi-income-section' && <PbiIncomeSectionPanels dataset={dataset} />}
         {/* Grouped 2 (pbi-only) GRAY section panels behind the cards/branches. */}
         {style === 'progress' && branch === 'pbi-grouped2' && <PbiGrouped2Panels dataset={dataset} />}
         {/* "Indented" (pbi-only) faint graph-paper the square tree rides on. */}

@@ -43,50 +43,54 @@ function pillName(node: CardNode): string {
   return node.title.replace(/emergency fund/i, 'Fund');
 }
 
-// Figma 959:15504 connector spec (from the exported vectors):
-//   • stroke #d9d9d9, 2px, round caps/joins
-//   • EVERY turn is a smooth curve — there are NO 90° right-angle elbows.
-//     The trunk is a straight vertical line; each arm PEELS OFF it via a
-//     quarter-turn (vertical tangent where it leaves the trunk → horizontal
-//     tangent where it reaches the pill), then a short straight run so the
-//     arrowhead sits level. Forks leave the trunk vertically and fan out.
+// Pills connector curve language (Figma 959:15504 + user direction):
+//   • stroke #d9d9d9, 2px, round caps/joins.
+//   • NO 90° right-angle corners ANYWHERE — EXCEPT the Monthly Expenses fork
+//     (Core/Spend), which intentionally KEEPS its right-angle bracket character
+//     (a horizontal stub off the trunk, then the arms bend to the pills).
+//   • the income arm and ALL goals arms/forks are smooth flowing curves: they
+//     leave the trunk with a VERTICAL tangent and arrive at the pill with a
+//     HORIZONTAL tangent, distributing the turn across the whole span (no elbow).
 //   • the income arm flows OUT of the Paycheck: it leaves the pill horizontally
-//     and curves DOWN into the top of the trunk (again, no corner).
+//     and sweeps DOWN into the top of the trunk.
 //   • DOWNWARD chevron arrowheads sit on the trunk where it crosses into the
-//     next section; a chevron also lands on each arm's clean straight run.
+//     next section; a chevron also lands on each arm where it reaches the pill.
 const SPINE = PILLS_SPINE_X;
 const ARM_END = PILLS_PILL_LEFT - 2; // arms end right at the pill's left edge (Figma arm end ≈ pill left)
-const KAPPA = 0.5523; // cubic-Bézier circle constant → a true-looking quarter arc
-const OFFRAMP_R = 23; // single-arm quarter-circle radius — Figma Vector 875/876 (R=23, exact)
-const INCOME_R = 18; // income elbow radius diving into the trunk — Figma Vector 864 (~16)
-const FORK_H1 = 0.79; // trunk-side horizontal handle, as a fraction of span — Figma path-bills (27.6/35)
-const FORK_H2 = 0.76; // pill-side horizontal handle, as a fraction of span — Figma path-bills (26.5/35)
+const FORK_H1 = 0.79; // Monthly bracket: trunk-side horizontal handle (fraction of span) — Figma path-bills
+const FORK_H2 = 0.76; // Monthly bracket: pill-side horizontal handle (fraction of span) — Figma path-bills
+const GOAL_PEEL = 30; // a single-arm goal peels off the trunk this far above its row
+const INCOME_DROP = 30; // the income sweep merges into the trunk this far below the income row
 const BRANCH_STROKE = '#d9d9d9';
 const STROKE_W = 2;
 
-// ---- curved connector geometry (matched to Figma 959:15504 vectors) -----
-// SINGLE-child arm = Figma "Vector 875/876": come DOWN the trunk, a TRUE
-// quarter-circle (radius OFFRAMP_R) turning right, then a straight run into the
-// pill. Leaves the trunk with a vertical tangent → merges seamlessly.
-const offrampPath = (cy: number) => {
-  const ty = cy - OFFRAMP_R; // peel off the trunk this far above the row
-  const hx = SPINE + OFFRAMP_R; // x where the curve has fully turned horizontal
-  return `M${SPINE} ${ty} C${SPINE} ${ty + OFFRAMP_R * KAPPA}, ${hx - OFFRAMP_R * KAPPA} ${cy}, ${hx} ${cy} L${ARM_END} ${cy}`;
-};
-// FORKED child = Figma "path - bills": an elongated S-brace with HORIZONTAL
-// tangents at BOTH ends (long handles ~0.79/0.76 of the span that cross over),
-// so a pair reads as a smooth wishbone off the trunk. No straight run needed —
-// the curve already arrives horizontal at the pill.
+// MONTHLY EXPENSES fork = the ONLY right-angle branch (Figma "path - bills"): an
+// elongated bracket with HORIZONTAL tangents at BOTH ends (long ~0.79/0.76 handles
+// that cross over) — a short horizontal stub off the trunk, then the arms bend to
+// Core / Spend. This is the "right-angle character" the design keeps.
 const forkPath = (jy: number, cy: number) => {
   const span = ARM_END - SPINE;
   return `M${SPINE} ${jy} C${SPINE + FORK_H1 * span} ${jy}, ${ARM_END - FORK_H2 * span} ${cy}, ${ARM_END} ${cy}`;
 };
-// INCOME arm = Figma "Vector 864" (reverse flow): leave the pill horizontally,
-// quarter-turn DOWN into the top of the trunk (radius INCOME_R, vertical tangent).
+// GOALS arms/forks = fully smooth SWEEP (no right angle): leave the trunk with a
+// VERTICAL tangent, arrive at the pill with a HORIZONTAL tangent, with the turn
+// spread across the full span so it flows rather than corners. A fork pair shares
+// the junction (jy) and sweeps up/down to its pills.
+const sweepPath = (jy: number, cy: number) => {
+  const mx = (SPINE + ARM_END) / 2;
+  const my = (jy + cy) / 2;
+  return `M${SPINE} ${jy} C${SPINE} ${my}, ${mx} ${cy}, ${ARM_END} ${cy}`;
+};
+// single goal arm: peel off the trunk a little ABOVE the row and sweep in, so even
+// a lone child reads as a smooth curve (never a flat T or a quarter-circle elbow).
+const sweepSingle = (cy: number) => sweepPath(cy - GOAL_PEEL, cy);
+// INCOME arm (reverse flow): leave the pill horizontally and sweep smoothly DOWN
+// into the top of the trunk — a flowing curve, not an elbow.
 const incomeArmPath = (cy: number) => {
-  const hx = SPINE + INCOME_R; // where the straight run meets the curve
-  const ty = cy + INCOME_R; // joins the trunk this far below the row
-  return `M${ARM_END} ${cy} L${hx} ${cy} C${hx - INCOME_R * KAPPA} ${cy}, ${SPINE} ${ty - INCOME_R * KAPPA}, ${SPINE} ${ty}`;
+  const ty = cy + INCOME_DROP;
+  const mx = (SPINE + ARM_END) / 2;
+  const my = (cy + ty) / 2;
+  return `M${ARM_END} ${cy} C${mx} ${cy}, ${SPINE} ${my}, ${SPINE} ${ty}`;
 };
 
 // ---- FAST, section-grouped reveal (a zoomed-out system snapshot) ----
@@ -248,7 +252,7 @@ export default function PillsBoard({
   // so the curve and the trunk join seamlessly.
   const trunkSegs = gates.slice(0, -1).map((g, i) => {
     const w = i === 0 ? wTrunk0 : i === 1 ? wTrunk1 : wGoalTrunk[i];
-    return { key: g.key, y0: i === 0 ? g.jy + INCOME_R : g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
+    return { key: g.key, y0: i === 0 ? g.jy + INCOME_DROP : g.jy, y1: gates[i + 1].jy, grow: w ? win(w) : 0 };
   });
 
   // DOWNWARD trunk chevrons where the trunk crosses into Monthly / Goals; each
@@ -296,7 +300,14 @@ export default function PillsBoard({
                 </g>
               );
             }
-            const d = g.children.length === 1 ? offrampPath(c.cy) : forkPath(g.jy, c.cy);
+            // Monthly Expenses (Core/Spend) KEEPS its right-angle bracket; every
+            // goals arm/fork is a smooth sweep with no 90° corner.
+            const d =
+              g.key === 'monthly'
+                ? forkPath(g.jy, c.cy)
+                : g.children.length === 1
+                  ? sweepSingle(c.cy)
+                  : sweepPath(g.jy, c.cy);
             return (
               <g key={`arm-${c.id}`}>
                 <Branch d={d} grow={armGrow} />

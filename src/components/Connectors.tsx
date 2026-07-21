@@ -172,7 +172,9 @@ export default function Connectors({
   const isPbiLocked = pbiTree && branch === 'pbi-locked';
   // "Grouped": thin light spine + white curvy branches + padlock discs + colored
   // section panels behind the cards (Figma 802:10601). pbi-scoped.
-  const isPbiGrouped = pbiTree && branch === 'pbi-grouped';
+  // "Sections incl. income" (Figma 977:10048) renders the SAME white tree as "In
+  // sections" — it only adds a yellow Income panel (drawn by PbiIncomeSectionPanels).
+  const isPbiGrouped = pbiTree && (branch === 'pbi-grouped' || branch === 'pbi-income-section');
   // "Grouped 2": gray section panels + offset-riser branch routing (Figma 802:10838).
   const isPbiGrouped2 = pbiTree && branch === 'pbi-grouped2';
   // "Section plus label" (Figma 977:10830): the "In sections" teal/pink panels + white

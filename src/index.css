@@ -1937,6 +1937,9 @@ body.is-scrubbing-noselect * {
 }
 .pbi-grouped-panel--mint { background: rgba(56, 195, 203, 0.15); }
 .pbi-grouped-panel--pink { background: #f1e1ea; }
+/* "Sections incl. income" (Figma 977:10048): soft yellow band behind the income
+   carousel, echoing the yellow Paycheck pills. */
+.pbi-grouped-panel--yellow { background: rgba(255, 224, 117, 0.5); }
 .pbi-grouped-label {
   position: absolute;
   left: 14px;
