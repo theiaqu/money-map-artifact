@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, ArrowLeft } from 'lucide-react';
 import Card, { ArtifactHeader, PbiGroupedPanels, PbiSectionLabelPanels, PbiIncomeSectionPanels, PbiGrouped2Panels } from './components/Card';
 import MonthlySplit from './components/MonthlySplit';
+import HomeScreen from './components/HomeScreen';
 import SectionNodeView from './components/SectionNodeView';
 import Connectors from './components/Connectors';
 import ConvoModal from './components/ConvoModal';
@@ -375,6 +376,11 @@ export default function App() {
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('paychecks'); // header carousel: Paycheck pills vs. month timeline
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
+  // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
+  // money map inside a mock Fruitful home page. null = normal configurator; 'home'
+  // = mock home with the draggable sheet; 'map' = the money map with a compact
+  // home-style header + the Full/Monthly toggle pinned to the TOP.
+  const [onboard, setOnboard] = useState<null | 'home' | 'map'>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const pendingMorphRef = useRef<{ sources: MorphMap } | null>(null); // source rects captured just before a view switch
   const [ghosts, setGhosts] = useState<Ghost[] | null>(null); // active morph ghosts (null = idle)
@@ -391,6 +397,19 @@ export default function App() {
     if (board) pendingMorphRef.current = { sources: measureMorph(board) };
     setSystemView(to);
   };
+
+  // Onboarding view entry/exit. Entering always starts from the Full-system money
+  // map so the home → map hand-off lands on the familiar tree; exiting restores the
+  // normal configurator untouched.
+  const enterOnboarding = () => {
+    setSystemView('full');
+    setOnboard('home');
+  };
+  const exitOnboarding = () => {
+    setSystemView('full');
+    setOnboard(null);
+  };
+  const onboardMap = onboard === 'map'; // money-map screen (compact header + top toggle)
 
   // After a view switch that captured sources, measure the freshly-rendered target
   // rects, build one ghost per source→target pairing (goals fan-in/out), and drive
@@ -934,11 +953,23 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${onboardMap ? ' board--onboard' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+      {/* Onboarding money-map screen (Figma 977:12246): compact home-style top bar
+          — back (→ home) · "Money Map" · Done (→ exit) — replacing the big hero. */}
+      {onboardMap && (
+        <div className="onboard-topbar">
+          <button className="onboard-back" aria-label="Back" onClick={() => setOnboard('home')}>
+            <ArrowLeft size={20} strokeWidth={2.2} />
+          </button>
+          <span className="onboard-title">Money Map</span>
+          <button className="onboard-done" onClick={exitOnboarding}>Done</button>
+        </div>
+      )}
       {/* in-prototype view toggle (Figma 907:13144): swap the full tree for the
-          simplified Monthly split. Offered on the Progress-bar-inside + Pills styles. */}
+          simplified Monthly split. Offered on the Progress-bar-inside + Pills styles.
+          In the onboarding money map it is pinned to the TOP (977:12246/12773). */}
       {(style === 'progress' || style === 'pills') && (
-        <div className="msplit-toggle">
+        <div className={`msplit-toggle${onboardMap ? ' msplit-toggle--top' : ''}`}>
           <button className={systemView === 'full' ? 'active' : ''} onClick={() => switchView('full')}>Full system</button>
           <button className={systemView === 'monthly' ? 'active' : ''} onClick={() => switchView('monthly')}>Monthly split</button>
         </div>
@@ -967,13 +998,13 @@ export default function App() {
         </div>
       )}
 
-      {monthlyView && <MonthlySplit dataset={dataset} />}
+      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} />}
 
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
       {!monthlyView && usesHeader && (
-        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} />
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} onboarding={onboardMap} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
@@ -1057,6 +1088,25 @@ export default function App() {
     </div>
   );
 
+  // Onboarding renders the mock Fruitful home page ('home') or the money-map screen
+  // ('map', which is just the boardEl in its board--onboard variant). Otherwise the
+  // normal board is shown untouched.
+  const screenEl =
+    onboard === 'home' ? (
+      <HomeScreen dataset={dataset} onOpenMap={() => setOnboard('map')} onExit={exitOnboarding} />
+    ) : (
+      boardEl
+    );
+
+  // "See on home page" — enters the onboarding preview. Progress-bar style only,
+  // appended at the BOTTOM of the Play/Restart/Pause action buttons.
+  const onboardEnterBtn =
+    style === 'progress' && !onboard ? (
+      <button className="ctrl-btn onboard-enter" onClick={enterOnboarding}>
+        See on home page
+      </button>
+    ) : null;
+
   // ---- MOBILE: full-screen board + floating controls + config drawer ----
   if (isMobile) {
     const scale = viewportW / SCREEN_W;
@@ -1067,12 +1117,12 @@ export default function App() {
             className="board-scaler"
             style={{ width: SCREEN_W, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           >
-            {boardEl}
+            {screenEl}
           </div>
         </div>
 
         <div className="mobile-controls">
-          <div className="mobile-pills">{renderControls()}</div>
+          <div className="mobile-pills">{renderControls()}{onboardEnterBtn}</div>
           <button
             type="button"
             className="mobile-menu-btn"
@@ -1113,11 +1163,11 @@ export default function App() {
         {configFields}
         <div className="config-extras">
           {speedField}
-          <div className="controls">{renderControls()}</div>
+          <div className="controls">{renderControls()}{onboardEnterBtn}</div>
         </div>
       </div>
 
-      <Device>{boardEl}</Device>
+      <Device>{screenEl}</Device>
     </div>
   );
 }

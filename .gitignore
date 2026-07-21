@@ -31,3 +31,8 @@ pnpm-debug.log*
 
 # Worker/debug figma reference captures
 .figma-ref/
+
+# Scratch / temp verification dirs (never commit)
+tmp_figma/
+tmp_v/
+tmp_*/

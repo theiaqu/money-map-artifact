@@ -234,6 +234,7 @@ export function ArtifactHeader({
   onScrub,
   incomeLeft = PBI_INCOME_LEFT,
   carouselMode = 'paychecks',
+  onboarding = false,
 }: {
   dataset: Dataset;
   mode: Mode;
@@ -241,19 +242,24 @@ export function ArtifactHeader({
   onScrub?: (nowMonths: number) => void;
   incomeLeft?: number;
   carouselMode?: CarouselMode;
+  onboarding?: boolean; // in the onboarding home-screen money map the big hero is replaced by a compact top bar, so suppress it and keep only the carousel
 }) {
   const hero = heroHeadline(dataset);
   const [dragging, setDragging] = useState(false);
   return (
     <>
-      <div className="pbi-hero-logo">
-        <FruitfulLogo size={40} color="#2f8f4e" />
-      </div>
-      <p className="pbi-hero-sub">
-        Your Money Map is ready!<br />
-        Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
-      </p>
-      <h1 className={`pbi-hero-title${dragging ? ' is-scrub-hidden' : ''}`}>{`${hero.pre} ${hero.date}`}</h1>
+      {!onboarding && (
+        <>
+          <div className="pbi-hero-logo">
+            <FruitfulLogo size={40} color="#2f8f4e" />
+          </div>
+          <p className="pbi-hero-sub">
+            Your Money Map is ready!<br />
+            Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+          </p>
+          <h1 className={`pbi-hero-title${dragging ? ' is-scrub-hidden' : ''}`}>{`${hero.pre} ${hero.date}`}</h1>
+        </>
+      )}
       <PaycheckCarousel
         dataset={dataset}
         mode={mode}

@@ -24,7 +24,7 @@ function money(n: number): string {
   return `$${n.toLocaleString('en-US')}`;
 }
 
-export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
+export default function MonthlySplit({ dataset, onboarding = false }: { dataset: Dataset; onboarding?: boolean }) {
   const cfg = DATASETS[dataset];
   const hero = heroHeadline(dataset);
   const bills = cfg.coreMax;
@@ -50,18 +50,22 @@ export default function MonthlySplit({ dataset }: { dataset: Dataset }) {
   };
 
   return (
-    <div className="msplit" style={{ width: BOARD_W }}>
-      <div className="pbi-hero-logo">
-        {/* top hero sprout is STATIC across Full system ↔ Monthly split — it renders
-            identically to the full-system header (no entrance animation). The only
-            animated logo is the green circle node in the card below. */}
-        <FruitfulLogo size={40} color="#2f8f4e" />
-      </div>
-      <p className="pbi-hero-sub">
-        Your Money Map is ready!<br />
-        Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
-      </p>
-      <h1 className="pbi-hero-title">{`${hero.pre} ${hero.date}`}</h1>
+    <div className={`msplit${onboarding ? ' msplit--onboard' : ''}`} style={{ width: BOARD_W }}>
+      {!onboarding && (
+        <>
+          <div className="pbi-hero-logo">
+            {/* top hero sprout is STATIC across Full system ↔ Monthly split — it renders
+                identically to the full-system header (no entrance animation). The only
+                animated logo is the green circle node in the card below. */}
+            <FruitfulLogo size={40} color="#2f8f4e" />
+          </div>
+          <p className="pbi-hero-sub">
+            Your Money Map is ready!<br />
+            Based on everything you&rsquo;ve told us, we estimate you could be&hellip;
+          </p>
+          <h1 className="pbi-hero-title">{`${hero.pre} ${hero.date}`}</h1>
+        </>
+      )}
 
       {/* Take-home pay pill (the active paycheck morphs into this) */}
       <div className="msplit-takehome" data-morph="income" data-morph-color="#f7dd6f">

@@ -3701,3 +3701,286 @@ body.is-scrubbing-noselect * {
 .sp-pills-pill { position: absolute; height: 8px; border-radius: 3px; }
 .sp-pills-pill-1 { left: 20px; top: 12px; width: 26px; background: #d7ecff; }
 .sp-pills-pill-2 { left: 20px; top: 24px; width: 22px; background: #f7dfe9; }
+
+/* =====================================================================
+   ONBOARDING VIEW (Figma 977:11967 · 12099 · 12246 · 12773)
+   A mock Fruitful home page whose draggable sheet hands off to the pbi
+   money map. All classes are namespaced .home-* / .onboard-* so they
+   never collide with the normal configurator board.
+   ===================================================================== */
+
+/* "See on home page" — full-width action button at the bottom of the controls */
+.ctrl-btn.onboard-enter {
+  flex-basis: 100%;
+  background: #2f8f4e;
+  color: #ffffff;
+}
+.mobile-controls .mobile-pills .ctrl-btn.onboard-enter { flex-basis: auto; }
+
+/* ---- mock home page ---- */
+.home-screen {
+  position: relative;
+  width: 402px;
+  height: 874px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #eef1ef;
+  font-family: var(--font-family);
+  user-select: none;
+  transition: opacity 300ms ease;
+}
+.home-screen--opening { opacity: 0.001; } /* fade out as the map rises underneath (seamless hand-off) */
+.home-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #cfe9d6 0%, #dcecdd 26%, #eef1ef 46%);
+  z-index: 0;
+}
+
+.home-top {
+  position: absolute;
+  top: 74px;
+  left: 24px;
+  right: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  z-index: 2;
+}
+.home-hello {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+  color: #16241b;
+}
+.home-date {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 450;
+  color: #7d8a80;
+}
+.home-top-icons { display: flex; align-items: center; gap: 12px; }
+.home-icon-btn {
+  position: relative;
+  border: none;
+  background: transparent;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+.home-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #2f8f4e;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* horizontally-scrolling account cards (get covered as the sheet rises) */
+.home-accounts {
+  position: absolute;
+  top: 148px;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 14px;
+  padding: 0 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  z-index: 1;
+}
+.home-accounts::-webkit-scrollbar { width: 0; height: 0; }
+.home-acct {
+  flex: 0 0 auto;
+  width: 278px;
+  padding: 16px 18px 18px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(20, 40, 25, 0.08);
+}
+.home-acct-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.home-acct-amt {
+  margin-top: 8px;
+  font-size: 34px;
+  font-weight: 680;
+  letter-spacing: -1px;
+  color: #101418;
+}
+.home-acct-bar {
+  margin-top: 14px;
+  height: 26px;
+  border-radius: 8px;
+  background: #eef0f2;
+  overflow: hidden;
+}
+.home-acct-fill {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.home-acct-fill--green { background: #57b877; color: #123a20; }
+.home-acct-fill--blue { background: #a9d2ff; color: #123a63; }
+
+/* "View Money Map" pull affordance — fades in above the sheet as it is dragged down */
+.home-map-cue {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 650;
+  color: #111827;
+  z-index: 1;
+  pointer-events: none;
+  transition: transform 160ms ease;
+}
+.home-map-cue.is-armed { transform: translateX(-50%) scale(1.06); }
+
+/* the draggable summary sheet */
+.home-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 620px;
+  padding: 0 16px 24px;
+  border-radius: 28px 28px 0 0;
+  background: #f4f5f6;
+  box-shadow: 0 -8px 30px rgba(20, 40, 25, 0.12);
+  z-index: 3;
+  touch-action: none;
+  cursor: grab;
+}
+.home-sheet:active { cursor: grabbing; }
+.home-sheet-grip {
+  width: 40px;
+  height: 5px;
+  margin: 10px auto 14px;
+  border-radius: 999px;
+  background: #d3d7db;
+}
+.home-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(20, 40, 25, 0.05);
+}
+.home-card + .home-card { margin-top: 16px; }
+.home-card--ghost { height: 96px; background: #f0f1f2; box-shadow: none; }
+.home-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.home-card-title { font-size: 18px; font-weight: 650; color: #101418; }
+.home-pace {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #2f8f4e;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.home-card-figures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22px;
+}
+.home-fig-right { text-align: right; }
+.home-fig-label { font-size: 12px; font-weight: 500; color: #8a94a0; }
+.home-fig-amt { margin-top: 4px; font-size: 26px; font-weight: 650; letter-spacing: -0.6px; color: #101418; }
+.home-chart { display: block; width: 100%; margin-top: 14px; }
+.home-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #b3bac1;
+}
+.home-card-rows { margin-top: 16px; border-top: 1px solid #eef0f2; padding-top: 4px; }
+.home-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  font-size: 14px;
+  color: #5c6670;
+}
+.home-row span:last-child { color: #101418; font-weight: 600; }
+
+/* ---- onboarding money-map screen: compact top bar + top toggle + shifted tree ---- */
+.board--onboard { --onboard-shift: -185px; background: #f3f4f6; }
+.onboard-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 16px 14px;
+  background: #ffffff;
+  z-index: 30;
+}
+.onboard-back {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: #f0f1f2;
+  color: #1f2937;
+  cursor: pointer;
+}
+.onboard-title { font-size: 19px; font-weight: 650; color: #101418; }
+.onboard-done {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: #f0f1f2;
+  color: #1f2937;
+  font-family: var(--font-family);
+  font-size: 15px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.onboard-done:hover { background: #e6e8ea; }
+
+/* toggle pinned to the TOP (below the compact bar) instead of the screen bottom */
+.msplit-toggle--top {
+  position: absolute;
+  top: 108px;
+  bottom: auto;
+}
+
+/* pull the carousel + whole tree up to sit under the compact bar + top toggle */
+.board--onboard .pbi-income-row { transform: translateY(var(--onboard-shift)); }
+.board--onboard .tree-shift { transform: translateY(var(--onboard-shift)); }
+/* the Monthly-split view has no carousel; nudge its content up under the top toggle */
+.board--onboard .msplit--onboard { transform: translateY(-118px); }
