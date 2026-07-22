@@ -21,7 +21,7 @@ export const MONTH_SECS_BY_MODE: Record<Mode, number> = {
   illustrative: 1.35,
 };
 export const monthSecs = (mode: Mode) => MONTH_SECS_BY_MODE[mode];
-export const EVENTS_PER_MONTH = 2; // each month's income arrives as two paychecks
+export const EVENTS_PER_MONTH = 1; // income arrives as ONE full paycheck per month (a single, longer, less-frequent deposit — was 2 half-paychecks)
 
 export type Mode = 'accurate' | 'illustrative';
 export type Dataset = 'simple' | 'optimizer';
@@ -46,7 +46,7 @@ export interface DatasetGoal {
 }
 
 export interface DatasetConfig {
-  income: number; // per month, split into two paychecks
+  income: number; // per month (arrives as one full monthly deposit)
   coreMax: number; // Core account monthly allocation cap
   spendMax: number; // Spend account monthly allocation cap
   incomeAmount: string; // income card display amount
@@ -274,7 +274,7 @@ function valueAt(pts: Pt[], tt: number) {
    series but the dataset's derived goal set / levels / month count so every
    downstream helper stays dataset-aware. */
 interface ScenarioData {
-  income: number[]; // income-event times (two per month)
+  income: number[]; // income-event times (one per month)
   series: Record<string, Pt[]>;
   eventActive: Record<number, Set<string>>; // active branches per income event
   goals: DatasetGoal[];
@@ -374,14 +374,11 @@ function buildScenario(dataset: Dataset, mode: Mode): ScenarioData {
   const cfg = DATASETS[dataset];
 
   // --- income / monthly-expenses money model (dollars), per dataset ---
-  const INCOME = cfg.income; // per month, split into two paychecks
-  const EVENT_INCOME = INCOME / EVENTS_PER_MONTH; // per paycheck
+  const INCOME = cfg.income; // one full paycheck per month (a single monthly deposit)
   const CORE_MAX = cfg.coreMax; // monthly-expense allocation cap
   const SPEND_MAX = cfg.spendMax;
   const EXPENSES = CORE_MAX + SPEND_MAX; // monthly income that goes to expenses
   const SURPLUS = INCOME - EXPENSES; // flows to goals each month
-  // the first paycheck covers this fraction of expenses; both accounts land here
-  const FIRST_FILL = EVENT_INCOME / EXPENSES;
 
   const GOALS = cfg.goals;
   const LEVELS = [...new Set(GOALS.map((g) => g.level))].sort((a, b) => a - b);
@@ -400,7 +397,7 @@ function buildScenario(dataset: Dataset, mode: Mode): ScenarioData {
   const rng = mulberry32(7);
   const income: number[] = [];
   for (let m = 1; m <= TOTAL_MONTHS; m++) {
-    income.push(m - 0.5, m);
+    income.push(m); // ONE combined deposit per month (was two half-paychecks at m-0.5, m)
   }
 
   let coreRaw: Pt[];
@@ -409,9 +406,10 @@ function buildScenario(dataset: Dataset, mode: Mode): ScenarioData {
     coreRaw = buildCore(rng, TOTAL_MONTHS);
     spendRaw = buildSpend(rng, TOTAL_MONTHS);
   } else {
-    // fill in two steps during month 1, then stay complete
-    coreRaw = [{ t: 0, v: 0 }, { t: 0.5, v: FIRST_FILL }, { t: 1, v: 1 }];
-    spendRaw = [{ t: 0, v: 0 }, { t: 0.5, v: FIRST_FILL }, { t: 1, v: 1 }];
+    // one full deposit fills the expense accounts to the brim during month 1,
+    // then they stay complete (a single monthly step, not two half-paycheck steps)
+    coreRaw = [{ t: 0, v: 0 }, { t: 1, v: 1 }];
+    spendRaw = [{ t: 0, v: 0 }, { t: 1, v: 1 }];
   }
 
   const bal: Record<string, number> = {};
@@ -468,20 +466,20 @@ function buildScenario(dataset: Dataset, mode: Mode): ScenarioData {
     }
   };
 
-  // Illustrative goal fill: teach the waterfall one LAYER at a time, but fund a
+  // Illustrative goal fill: teach the waterfall one LAYER at a time, funding a
   // multi-goal layer the way accurate mode does — simultaneously, by weight, with
-  // spillover. Each event pours HALF the current layer's total target through the
-  // shared `distribute()`, so the layer completes over ~2 income events while its
-  // higher-weight (or smaller) goal tops out first and the sibling absorbs the
-  // remainder. A single-goal layer (level 1) still fills over 2 events (0 -> 50%
-  // -> 100%). Only the current (first not-yet-complete) layer fires per event, so
-  // deeper cards stay dark until their turn; leftover isn't spilled here (the next
-  // event advances to the next layer), keeping the calm one-layer-per-step cadence.
+  // spillover. Now that income arrives as ONE deposit per month, each monthly event
+  // pours the current layer's FULL total target through the shared `distribute()`,
+  // so the layer completes in a single (longer) monthly event — its higher-weight
+  // (or smaller) goal tops out first and the sibling absorbs the remainder, and any
+  // leftover isn't spilled here (the next month advances to the next layer). This
+  // preserves the calm one-layer-per-MONTH cadence (previously two half-paycheck
+  // events split the layer 50%/50% within the same month).
   const fundGoalsIllustrative = (active: Set<string>) => {
     for (const lvl of LEVELS) {
       const ids = GOALS.filter((g) => g.level === lvl).map((g) => g.id);
       if (ids.every((id) => bal[id] >= target(id) - 1e-6)) continue; // level done
-      const budget = ids.reduce((s, id) => s + target(id), 0) * 0.5;
+      const budget = ids.reduce((s, id) => s + target(id), 0);
       const received = new Set<string>();
       distribute(ids, budget, received);
       // light the spine + arm(s) only for cards that received money this event, so
@@ -493,43 +491,43 @@ function buildScenario(dataset: Dataset, mode: Mode): ScenarioData {
   };
 
   for (let m = 1; m <= TOTAL_MONTHS; m++) {
-    for (let e = 0; e < EVENTS_PER_MONTH; e++) {
-      const first = e === 0;
-      const t = first ? m - 0.5 : m;
+    // ONE combined income event per month (was two half-paychecks). Each event now
+    // carries the full month's money, so a single monthly deposit fills the accounts
+    // and/or advances the goal waterfall by one full step.
+    const t = m;
 
-      // Clean end: once every on-screen goal is ALREADY funded, later income
-      // events fire NOTHING (no pipes light up). The last in-flight cascade
-      // drains out and the frame freezes, rather than the flow continuing on
-      // toward an off-page gate. The off-page spine connector stays drawn (as a
-      // static skeleton) but no longer keeps the animation running.
-      if (GOALS.every((g) => bal[g.id] >= g.target - 1e-6)) {
-        eventActive[t] = new Set<string>();
-        for (const g of GOALS) goalPts[g.id].push({ t, v: 1 });
-        continue;
-      }
-
-      const active = new Set<string>(['c-income-monthly']);
-
-      // accounts still being funded? accurate: always; illustrative: month 1 only
-      const accountsOpen = mode === 'accurate' || m === 1;
-
-      if (accountsOpen) {
-        // both paychecks flow into the expense accounts (fill / top-off)
-        active.add('c-monthly-core');
-        active.add('c-monthly-spend');
-        // accurate: only the 2nd paycheck overflows into goals via the $ waterfall.
-        // illustrative: month 1 just fills the accounts — goals start (and fill
-        // cleanly over 2 events) from month 2 in the else branch below.
-        if (!first && mode === 'accurate') fundGoals(active, SURPLUS);
-      } else {
-        // illustrative, accounts complete: each event fills half of the current
-        // goal level, so every goal fills over 2 income events (not instantly)
-        fundGoalsIllustrative(active);
-      }
-
-      eventActive[t] = active;
-      for (const g of GOALS) goalPts[g.id].push({ t, v: Math.min(1, bal[g.id] / g.target) });
+    // Clean end: once every on-screen goal is ALREADY funded, later income
+    // events fire NOTHING (no pipes light up). The last in-flight cascade
+    // drains out and the frame freezes, rather than the flow continuing on
+    // toward an off-page gate. The off-page spine connector stays drawn (as a
+    // static skeleton) but no longer keeps the animation running.
+    if (GOALS.every((g) => bal[g.id] >= g.target - 1e-6)) {
+      eventActive[t] = new Set<string>();
+      for (const g of GOALS) goalPts[g.id].push({ t, v: 1 });
+      continue;
     }
+
+    const active = new Set<string>(['c-income-monthly']);
+
+    // accounts still being funded? accurate: always; illustrative: month 1 only
+    const accountsOpen = mode === 'accurate' || m === 1;
+
+    if (accountsOpen) {
+      // the monthly deposit flows into the expense accounts (fill / top-off)
+      active.add('c-monthly-core');
+      active.add('c-monthly-spend');
+      // accurate: the month's surplus overflows into goals via the $ waterfall.
+      // illustrative: month 1 just fills the accounts — goals start (one full
+      // layer per month) from month 2 in the else branch below.
+      if (mode === 'accurate') fundGoals(active, SURPLUS);
+    } else {
+      // illustrative, accounts complete: the single monthly event funds the full
+      // current goal layer, so each layer completes in one (longer) monthly deposit
+      fundGoalsIllustrative(active);
+    }
+
+    eventActive[t] = active;
+    for (const g of GOALS) goalPts[g.id].push({ t, v: Math.min(1, bal[g.id] / g.target) });
   }
 
   return {
@@ -557,7 +555,7 @@ function getScenario(dataset: Dataset, mode: Mode): ScenarioData {
 
 // first income time — the chart stays flat/low until money actually reaches the
 // card (eff >= ORIGIN); the first income then enters as a step at the right edge.
-// (Income times are identical across datasets/modes: m-0.5, m for m>=1.)
+// (Income times are identical across datasets/modes: one deposit at t=m for m>=1.)
 const originOf = (sc: ScenarioData) => sc.income[0] ?? 0;
 
 function lastIncome(times: number[], now: number): number | null {
@@ -617,15 +615,16 @@ export const spineTravelMonths = (mode: Mode): number => SPINE_TRAVEL_BY_MODE[mo
 export const armTravelMonths = (mode: Mode): number => BRANCH_PACING[mode].travel;
 
 // The reversed feeder comet (Account-style income: card → income gate) AND the
-// Direct-deposit bar's drain both read from this ONE value so they stay in exact
-// lockstep. Income events fire every 0.5 months (see `income.push(m - 0.5, m)`),
-// so the feeder travel is capped STRICTLY below that spacing: each deposit's comet
-// fully reaches the gate — draining the bar to empty — BEFORE the next deposit
-// fires. (Illustrative's raw arm travel of 0.62 exceeds the 0.5 spacing, which made
-// comets overlap and the bar refill at ~19% instead of emptying — the reported bug.)
-export const FEEDER_EVENT_SPACING = 0.5;
+// Direct-deposit bar's depletion overlay both read from this ONE value so they stay
+// in exact lockstep. Income now fires ONCE per month (see `income.push(m)`), so the
+// spacing is a full month and the feeder pulse is deliberately LONG — roughly double
+// its old duration — occupying ~80% of the (now doubled) interval: a single, slow,
+// deliberate deposit that travels card→gate over most of the month, then a short gap
+// before the next month's fire. Capped at 80% of the spacing so the pulse fully
+// reaches the gate (finishing its depletion sweep) before the next deposit departs.
+export const FEEDER_EVENT_SPACING = 1.0;
 export const feederTravelMonths = (mode: Mode): number =>
-  Math.min(armTravelMonths(mode), FEEDER_EVENT_SPACING * 0.8);
+  Math.min(armTravelMonths(mode) * 2, FEEDER_EVENT_SPACING * 0.8);
 
 type BranchKind = 'spine' | 'arm';
 // gateDepth = # of near-instant spine hops before this branch departs its event.
@@ -779,7 +778,7 @@ export function incomeBars(dataset: Dataset, mode: Mode, now: number): Bar[] {
     const m = sc.income[eventIdx];
     const isNewest = eventIdx === count - 1;
     const reveal = isNewest ? easeOutCubic(clamp((cur - m) / 0.4)) : 1;
-    // both paychecks in a month share that month's size
+    // one deposit per month → one bar per month
     const scale = INCOME_SCALE[Math.floor(eventIdx / EVENTS_PER_MONTH)] ?? 1;
     bars.push({ x: j * (bw + gap), w: bw, reveal, scale });
   }
@@ -848,10 +847,10 @@ const FILL_SPAN_BY_MODE: Record<Mode, number> = {
    card arms carry the visible, paced motion. Travel and fade are eased with
    smootherstep for fluid, continuous motion.
 
-   Because income arrives as two paychecks a month and the goal branches only
-   fire on the 2nd (overflow) paycheck, we emit ONE pulse per firing event that
-   is still within its travel + fade window, so overlapping pulses STACK and
-   blend on the same branch rather than the old one snapping away. */
+   Because income now arrives as ONE deposit a month, each firing event emits a
+   single pulse; while it's still within its travel + fade window a following
+   month's pulse can overlap and blend on the same branch rather than snapping
+   away — but there are half as many pulses in flight, so the flow reads calmer. */
 export function branchFlow(
   dataset: Dataset,
   mode: Mode,
