@@ -806,6 +806,32 @@ export function branchFlow(
   return out;
 }
 
+/* pbi "Account-style card" income bar depletion. The yellow Direct-deposit bar
+   drains AS the reversed feeder deposit pulse travels card→gate — NOT with the
+   Core/Spend fill. Returns REMAINING 0..1 (1 = deposit just landed / bar full,
+   0 = the pulse has reached the income gate / bar empty), driven by the SAME event
+   timing + `travel` the feeder comet uses (branchFlow(...,'c-income-monthly',
+   {travel})), so the bar and the comet stay in exact lockstep: as the pulse leaves
+   the card it drains right→left and is empty the instant it arrives at the gate.
+   Tracks the NEWEST departed deposit (the pulse currently in flight); full before
+   the first deposit departs. `travel` is the feeder arm travel (armTravelMonths). */
+export function feederDepletion(dataset: Dataset, mode: Mode, now: number, travel: number): number {
+  const sc = getScenario(dataset, mode);
+  const events = sc.eventActive;
+  const meta = BRANCH_TIMING['c-income-monthly'] ?? { gateDepth: 0, kind: 'spine' as BranchKind };
+  const dep = meta.gateDepth * SPINE_TRAVEL_BY_MODE[mode];
+  const tr = travel > 0 ? travel : BRANCH_PACING[mode].travel;
+  let p = 0; // default: full (no deposit has departed the card yet)
+  for (const t of sc.income) {
+    if (t > now + 1e-9) break;
+    if (!events[t]?.has('c-income-monthly')) continue;
+    const local = now - (t + dep);
+    if (local < 0) continue;
+    p = smootherstep(clamp(local / tr)); // newest departed pulse wins
+  }
+  return clamp(1 - p);
+}
+
 /* ---------- "Sheet" style branch-assembly growth windows ----------
    The Sheet account style ONLY: instead of showing the whole map at once, the
    near-black spine + elbow arms DRAW IN progressively as the sim plays, and each

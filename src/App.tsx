@@ -256,6 +256,15 @@ const TRANSITION_OPTS: { id: TransitionAnim; label: string }[] = [
   { id: 'bars', label: 'Progress bars' },
 ];
 
+// Monthly Expenses section background: 'teal' (current translucent mint, default)
+// vs 'gradient' — the blue→green vertical gradient per Figma 1054:12173
+// (water-light #d7ecff → leaf-light #b0ddba), hinting Core=blue / Spend=green.
+type MonthlyBg = 'teal' | 'gradient';
+const MONTHLY_BG_OPTS: { id: MonthlyBg; label: string }[] = [
+  { id: 'teal', label: 'Teal' }, // default first (current behavior)
+  { id: 'gradient', label: 'Gradient' },
+];
+
 // "Data type" reparameterizes the whole scenario/data model (income, expense
 // caps, and the goal waterfall). Simple keeps the original weighted 2nd gate;
 // Optimizer funds goals sequentially and ends with a House goal.
@@ -546,6 +555,7 @@ export default function App() {
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const [transitionAnim, setTransitionAnim] = useState<TransitionAnim>('sections'); // Full↔Monthly morph style: section-band split (default) vs. progress-bar morph
+  const [monthlyBg, setMonthlyBg] = useState<MonthlyBg>('teal'); // Monthly Expenses section background: teal (default) vs. blue→green gradient
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
   // money map inside a mock Fruitful home page. null = normal configurator; 'home'
   // = mock home with the draggable sheet; 'map' = the money map with a compact
@@ -1330,6 +1340,26 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* Monthly Expenses section background color (progress style). Teal (current)
+            vs. the blue→green gradient per Figma 1054:12173. */}
+        {style === 'progress' && (
+          <div className="config-row">
+            <span className="config-label">Monthly Expenses color</span>
+            <div className="mode-toggle" role="tablist" aria-label="Monthly Expenses color">
+              {MONTHLY_BG_OPTS.map((o) => (
+                <button
+                  key={o.id}
+                  role="tab"
+                  aria-selected={monthlyBg === o.id}
+                  className={`mode-opt${monthlyBg === o.id ? ' active' : ''}`}
+                  onClick={() => setMonthlyBg(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Gate-style picker is HIDDEN from the panel (same as the Preview control):
             the underlying `branch` state + its default (pbi-grouped) stay intact and
             drive the tree, but the selector is no longer rendered/selectable. */}
@@ -1483,7 +1513,15 @@ export default function App() {
   // (pbi only), so push the tree down to clear it (the thin pill row needs no shift).
   const usesIncomeCard = style === 'progress' && incomeRep === 'card';
   const INCOME_CARD_SHIFT = 60;
-  const treeShift = (usesHeader ? TREE_SHIFT[style] ?? 0 : 0) + (usesIncomeCard ? INCOME_CARD_SHIFT : 0);
+  // The Full system / Monthly split toggle is now pinned right under the hero header
+  // (see .msplit-toggle). On the styles that show it, push the full-system content
+  // (carousel + tree) down so the toggle sits cleanly between header and content.
+  const showsTopToggle = (style === 'progress' || style === 'pills') && !boardOnboard;
+  const TOGGLE_SHIFT = 56;
+  const treeShift =
+    (usesHeader ? TREE_SHIFT[style] ?? 0 : 0) +
+    (usesIncomeCard ? INCOME_CARD_SHIFT : 0) +
+    (showsTopToggle ? TOGGLE_SHIFT : 0);
   // Center the ACTIVE (leftmost, yellow) carousel pill directly over the tree's
   // main vertical spine so the income visually flows down from under the active
   // month. The active pill sits at the row's left edge, so its center = left +
@@ -1501,7 +1539,7 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${showsTopToggle ? ' board--toptoggle' : ''}${monthlyBg === 'gradient' ? ' board--monthly-gradient' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
       {/* Onboarding money-map screen (Figma 977:12246): compact home-style top bar
           — back (→ home) · "Money Map" · Done (→ exit) — replacing the big hero. */}
       {onboardMap && (

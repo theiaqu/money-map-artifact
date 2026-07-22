@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, Landmark, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiIncomeSectionPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, armTravelMonths, feederDepletion, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -286,15 +286,16 @@ export function IncomeAccountCard({
   top?: number; // board-coord row top; the branch/gate income mode places it in the card column
   onboarding?: boolean;
 }) {
-  // STANDARD app: the income drains in LOCKSTEP with the Core/Spend bars filling —
-  // it reads off the SAME progressAt clock those bars use, so the depletion rate
-  // exactly matches the account-fill rate. Full at the deposit (accounts empty),
-  // empty once Core + Spend are filled. right→left drain is the left-anchored fill.
-  const accountFilled = (progressAt(dataset, mode, 'core', now) + progressAt(dataset, mode, 'spend', now)) / 2;
+  // STANDARD app: the income drains in lockstep with the reversed FEEDER FLOW —
+  // as the deposit pulse travels card→income-gate the yellow bar drains right→left,
+  // reaching empty exactly when the pulse arrives at the gate (same event timing +
+  // arm travel the feeder comet uses, so bar + comet stay in sync). This is driven
+  // by the feeder flow, NOT the Core/Spend account fill.
+  const feederRemaining = feederDepletion(dataset, mode, now, armTravelMonths(mode));
   // HOME/onboarding full-system snapshot keeps the scrub-horizon drain (≥10 months).
   const total = Math.max(animMonths(dataset, mode), 10);
   const onboardRemaining = total > 0 ? 1 - now / total : 1;
-  const remaining = Math.max(0, Math.min(1, onboarding ? onboardRemaining : 1 - accountFilled));
+  const remaining = Math.max(0, Math.min(1, onboarding ? onboardRemaining : feederRemaining));
   const amount = DATASETS[dataset].incomeAmount;
   return (
     <div className="node" style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>

@@ -1617,7 +1617,10 @@ body {
 .msplit-toggle {
   position: fixed;
   left: 50%;
-  bottom: 34px;
+  /* pinned right under the hero header (fixed within the device frame, not floating
+     with the content). device-coord top = 14px bezel + ~312px screen. */
+  top: 326px;
+  bottom: auto;
   transform: translateX(-50%);
   display: flex;
   gap: 2px;
@@ -1628,15 +1631,18 @@ body {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   z-index: 40;
 }
+/* full-system content sits below the pinned toggle: shift the carousel down to
+   match the tree's treeShift so nothing overlaps the toggle. */
+.board--toptoggle .pbi-income-row { transform: translateY(56px); }
 .msplit-toggle button {
   border: none;
   background: transparent;
   cursor: pointer;
   font-family: var(--font-family);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 550;
   color: #6b7280;
-  padding: 9px 18px;
+  padding: 7px 16px;
   border-radius: 999px;
   white-space: nowrap;
   transition: background 160ms ease, color 160ms ease;
@@ -1942,7 +1948,9 @@ body.is-dragging-noselect * {
 .pbi-bar--income { background: #f3f4f6; }
 .pbi-bar-fill--income {
   background: #f6dc72;
-  transition: width 220ms ease;
+  /* short transition so the drain tracks the fast feeder comet tightly (and reaches
+     empty as the pulse hits the gate) rather than lagging behind it. */
+  transition: width 90ms linear;
 }
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to
@@ -1999,6 +2007,12 @@ body.is-dragging-noselect * {
   pointer-events: none;
 }
 .pbi-grouped-panel--mint { background: rgba(56, 195, 203, 0.15); }
+/* "Gradient" Monthly Expenses background (Figma 1054:12173): a vertical blue→green
+   gradient (water-light → leaf-light) hinting Core=blue / Spend=green. Scoped to the
+   Monthly Expenses (mint) band; the pink Goals band is untouched. */
+.board--monthly-gradient .pbi-grouped-panel--mint {
+  background: linear-gradient(to bottom, #d7ecff 39.9%, #b0ddba 59.6%);
+}
 .pbi-grouped-panel--pink { background: #f1e1ea; }
 /* "Sections incl. income" (Figma 977:10048): soft yellow band behind the income
    carousel, echoing the yellow Paycheck pills. */
