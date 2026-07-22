@@ -27,6 +27,12 @@ export type ChartStyle = 'stocks' | 'pie' | 'progress' | 'pills' | 'progress-pil
 // 'timeline' replaces them with month labels ("Aug '26").
 export type CarouselMode = 'paychecks' | 'timeline';
 
+// How the timeline/carousel responds to pointer input:
+//  • 'scrub' — RELATIVE drag: pressing down does nothing; the active month only
+//    changes by the drag DELTA as the pointer moves (no snap-to-finger on press).
+//  • 'tap'   — tapping a month pill jumps the active month to that pill.
+export type CarouselInteraction = 'scrub' | 'tap';
+
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
 // of several date/goal text treatments below it (the `titleVariant`).
@@ -103,6 +109,7 @@ function PaycheckCarousel({
   incomeLeft = PBI_INCOME_LEFT,
   onDraggingChange,
   carouselMode = 'paychecks',
+  interaction = 'scrub',
   onboarding = false,
 }: {
   dataset: Dataset;
@@ -112,6 +119,7 @@ function PaycheckCarousel({
   incomeLeft?: number;
   onDraggingChange?: (dragging: boolean) => void;
   carouselMode?: CarouselMode;
+  interaction?: CarouselInteraction; // 'scrub' = relative drag (no jump on press); 'tap' = tap a pill to select its month
   onboarding?: boolean; // home-page flow (onboard 'home'/'map'): the scrubber pills already show month/paycheck names, so suppress the "Paycheck in {date}" banner overlay (kept for the standard onboarding header)
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -121,16 +129,23 @@ function PaycheckCarousel({
   const total = onboarding ? Math.max(animMonths(dataset, mode), 10) : animMonths(dataset, mode);
   const frac = total > 0 ? Math.max(0, Math.min(1, now / total)) : 0;
   const scrubbable = !!onScrub;
-  // Drag direction is REVERSED from the pointer axis so the carousel behaves like
-  // a native mobile strip: swipe LEFT (drag left) to bring a FUTURE paycheck into
-  // the yellow slot / advance time; swipe RIGHT to go back.
-  const scrubFromClientX = (clientX: number) => {
+  const isTap = interaction === 'tap';
+  // month a given slot represents (0 = present, 5 = furthest). Used by TAP mode to
+  // jump straight to the tapped pill's month.
+  const monthForSlot = (i: number) => (i / 5) * total;
+  // SCRUB mode = RELATIVE drag: remember where the press started (pointer x + the
+  // month at that instant); each move applies only the DELTA so pressing without
+  // moving never changes the active month (no snap-to-finger). Direction is
+  // REVERSED like a native mobile strip: drag LEFT → advance to a FUTURE month.
+  const dragRef = useRef<{ x: number; now: number } | null>(null);
+  const scrubFromDelta = (clientX: number) => {
     const el = rowRef.current;
-    if (!el || !onScrub) return;
+    const start = dragRef.current;
+    if (!el || !onScrub || !start) return;
     const r = el.getBoundingClientRect();
-    const raw = r.width > 0 ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0;
-    const f = 1 - raw;
-    onScrub(f * total);
+    const dx = clientX - start.x;
+    const dMonths = r.width > 0 ? (dx / r.width) * total : 0;
+    onScrub(Math.max(0, Math.min(start.now - dMonths, total)));
   };
   const isTimeline = carouselMode === 'timeline';
   // label for slot i (0 = the fixed yellow "now" slot, 1..5 = upcoming): in
@@ -177,29 +192,48 @@ function PaycheckCarousel({
       )}
       <div
         ref={rowRef}
-        className={`pbi-income-row${scrubbable ? ' pbi-income-row--scrub' : ''}${dragging ? ' is-scrubbing' : ''}`}
-        title={scrubbable ? 'Drag to scrub through time' : undefined}
+        className={`pbi-income-row${scrubbable ? ' pbi-income-row--scrub' : ''}${scrubbable && isTap ? ' pbi-income-row--tap' : ''}${dragging ? ' is-scrubbing' : ''}`}
+        title={scrubbable ? (isTap ? 'Tap a month to jump to it' : 'Drag to scrub through time') : undefined}
         style={{ left: incomeLeft, top: PBI_INCOME_TOP }}
         onPointerDown={
-          scrubbable
+          // TAP mode: the pills carry their own onClick, so the row does nothing on
+          // press. SCRUB mode: record the drag origin but do NOT move or even enter
+          // the dragging state yet (no snap-to-finger, no banner on a bare press).
+          // We DO guard text-selection immediately so the very first move is clean.
+          scrubbable && !isTap
             ? (e) => {
                 e.preventDefault(); // stop the browser from starting a text selection
                 try { rowRef.current?.setPointerCapture?.(e.pointerId); } catch { /* no active pointer (synthetic) */ }
-                setDrag(true);
-                scrubFromClientX(e.clientX);
+                dragRef.current = { x: e.clientX, now };
+                document.body.classList.add('is-scrubbing-noselect');
+                window.getSelection?.()?.removeAllRanges();
               }
             : undefined
         }
-        onPointerMove={scrubbable ? (e) => { if (dragging) scrubFromClientX(e.clientX); } : undefined}
+        onPointerMove={
+          scrubbable && !isTap
+            ? (e) => {
+                const start = dragRef.current;
+                if (!start) return;
+                // only actually scrub once the pointer clears a small slop, so a
+                // click that jitters a pixel doesn't move the active month.
+                if (!dragging && Math.abs(e.clientX - start.x) < 3) return;
+                if (!dragging) setDrag(true);
+                scrubFromDelta(e.clientX);
+              }
+            : undefined
+        }
         onPointerUp={
-          scrubbable
+          scrubbable && !isTap
             ? (e) => {
                 try { rowRef.current?.releasePointerCapture?.(e.pointerId); } catch { /* ignore */ }
-                setDrag(false);
+                dragRef.current = null;
+                if (dragging) setDrag(false);
+                document.body.classList.remove('is-scrubbing-noselect');
               }
             : undefined
         }
-        onPointerCancel={scrubbable ? () => setDrag(false) : undefined}
+        onPointerCancel={scrubbable && !isTap ? () => { dragRef.current = null; if (dragging) setDrag(false); document.body.classList.remove('is-scrubbing-noselect'); } : undefined}
       >
         <div
           className="pbi-income-track"
@@ -208,6 +242,7 @@ function PaycheckCarousel({
           <span
             className={`pbi-pill pbi-pill-slot${!scrubbable ? ' pbi-pill-income' : ''}${scrubbable && activeIdx === 0 ? ' pbi-pill-active' : ''}${scrubbable && activeIdx === 0 && merging ? ' is-merging' : ''}`}
             {...(scrubbable && activeIdx === 0 ? { 'data-morph': 'income', 'data-morph-color': '#f6dc72' } : {})}
+            onClick={scrubbable && isTap ? () => onScrub?.(monthForSlot(0)) : undefined}
           >
             {slotLabel(0)}
           </span>
@@ -216,6 +251,7 @@ function PaycheckCarousel({
               key={i}
               className={`pbi-pill pbi-pill-slot${scrubbable && activeIdx === i + 1 ? ' pbi-pill-active' : ''}${scrubbable && activeIdx === i + 1 && merging ? ' is-merging' : ''}`}
               {...(scrubbable && activeIdx === i + 1 ? { 'data-morph': 'income', 'data-morph-color': '#f6dc72' } : {})}
+              onClick={scrubbable && isTap ? () => onScrub?.(monthForSlot(i + 1)) : undefined}
             >
               {slotLabel(i + 1)}
             </span>
@@ -238,6 +274,7 @@ export function ArtifactHeader({
   onScrub,
   incomeLeft = PBI_INCOME_LEFT,
   carouselMode = 'paychecks',
+  interaction = 'scrub',
   onboarding = false,
 }: {
   dataset: Dataset;
@@ -246,6 +283,7 @@ export function ArtifactHeader({
   onScrub?: (nowMonths: number) => void;
   incomeLeft?: number;
   carouselMode?: CarouselMode;
+  interaction?: CarouselInteraction;
   onboarding?: boolean; // in the onboarding home-screen money map the big hero is replaced by a compact top bar, so suppress it and keep only the carousel
 }) {
   const hero = heroHeadline(dataset);
@@ -272,6 +310,7 @@ export function ArtifactHeader({
         incomeLeft={incomeLeft}
         onDraggingChange={setDragging}
         carouselMode={carouselMode}
+        interaction={interaction}
         onboarding={onboarding}
       />
     </>

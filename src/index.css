@@ -1710,6 +1710,10 @@ body.is-dragging-noselect * {
   overflow: visible;
   clip-path: inset(-30px 0px -30px 0px);
 }
+/* TAP interaction: the row isn't dragged, so drop the drag cursor and make each
+   month pill read as a tappable target. */
+.pbi-income-row--tap { cursor: default; }
+.pbi-income-row--tap .pbi-pill-slot { cursor: pointer; }
 .pbi-income-track {
   display: flex;
   align-items: center;

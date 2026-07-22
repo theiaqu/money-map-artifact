@@ -12,7 +12,7 @@ import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, HOME_PROGRESS, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
-import type { ChartStyle, CarouselMode } from './components/Card';
+import type { ChartStyle, CarouselMode, CarouselInteraction } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
 // ---- "Monthly split" shared-element morph (Figma 907:13144) ----
@@ -160,6 +160,14 @@ const DATE_OPTS: { id: DateMode; label: string }[] = [
 const CAROUSEL_OPTS: { id: CarouselMode; label: string }[] = [
   { id: 'timeline', label: 'Timeline' }, // default first
   { id: 'paychecks', label: 'Paychecks' },
+];
+
+// carousel interaction type: 'scrub' = relative drag (pressing does nothing; the
+// active month only tracks the drag delta as you move) vs. 'tap' = tap a month
+// pill to jump to it. Scrub is default-first per our defaults-first convention.
+const INTERACTION_OPTS: { id: CarouselInteraction; label: string }[] = [
+  { id: 'scrub', label: 'Scrub (drag)' }, // default first
+  { id: 'tap', label: 'Tap' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -447,6 +455,7 @@ export default function App() {
   const [version, setVersion] = useState<Version>('v2');
   const [dateMode, setDateMode] = useState<DateMode>('date');
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('timeline'); // header carousel: month timeline (default) vs. Paycheck pills
+  const [carouselInteraction, setCarouselInteraction] = useState<CarouselInteraction>('scrub'); // timeline interaction: relative drag-scrub (default) vs. tap-to-select a month
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
@@ -1086,6 +1095,22 @@ export default function App() {
           </div>
         </div>
         <div className="config-row">
+          <span className="config-label">Timeline interaction</span>
+          <div className="mode-toggle" role="tablist" aria-label="Timeline interaction">
+            {INTERACTION_OPTS.map((o) => (
+              <button
+                key={o.id}
+                role="tab"
+                aria-selected={carouselInteraction === o.id}
+                className={`mode-opt${carouselInteraction === o.id ? ' active' : ''}`}
+                onClick={() => setCarouselInteraction(o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="config-row">
           <span className="config-label">Core/Spend refill visual</span>
           <div className="mode-toggle" role="tablist" aria-label="Core/Spend refill visual">
             <button
@@ -1313,7 +1338,7 @@ export default function App() {
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
       {!monthlyView && usesHeader && (
-        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} onboarding={boardOnboard} />
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} interaction={carouselInteraction} onboarding={boardOnboard} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
