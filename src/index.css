@@ -1428,7 +1428,7 @@ body {
 .msplit-takehome {
   position: absolute;
   left: 50%;
-  top: 356px;
+  top: 386px; /* +30 shift so the card clears the toggle with a comfortable gap (see MonthlySplit BASELINE note) */
   transform: translateX(-50%);
   min-width: 168px;
   display: flex;
@@ -1458,7 +1458,7 @@ body {
 .msplit-stem {
   position: absolute;
   left: 50%;
-  top: 426px;
+  top: 456px; /* +30 shift, in lockstep with .msplit-takehome / the diagram */
   transform: translateX(-50%);
   width: 10px;
   height: 20px;
@@ -4054,8 +4054,11 @@ body.is-dragging-noselect * {
 .board--onboard .pbi-income-row { transform: translateY(var(--onboard-shift)); }
 .board--onboard .tree-shift { transform: translateY(var(--onboard-shift)); }
 /* the Monthly-split view has no carousel; nudge its content up under the top toggle
-   (matching the ~20px gap the Full-system content keeps beneath the toggle) */
-.board--onboard .msplit--onboard { transform: translateY(-98px); }
+   (matching the ~20px gap the Full-system content keeps beneath the toggle). The
+   base diagram was shifted DOWN 30px (see MonthlySplit BASELINE) to clear the
+   standard toggle, so pull an extra 30px here to keep the onboard money-map split
+   exactly where it was (net unchanged in the onboarding flow). */
+.board--onboard .msplit--onboard { transform: translateY(-128px); }
 
 /* ---- home ⇄ map account-card FLIP ---- */
 /* hide the real map account cards while their ghosts fly in, then crossfade */

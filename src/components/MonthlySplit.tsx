@@ -10,15 +10,21 @@ import { heroHeadline, DATASETS, type Dataset } from '../scenario';
 // Spend = spendMax, Goals = the monthly surplus (income − core − spend).
 
 const BOARD_W = 402;
-const BASELINE = 752; // bars sit on this y; column labels just below (kept clear of the bottom toggle)
+// The whole split diagram (take-home card → stem → circle → branches → bars →
+// labels) is shifted DOWN 30px vs the earlier layout so the take-home card clears
+// the scrolling Full-system/Monthly-split toggle with a comfortable ~24px gap
+// (was overlapping it by ~6px). Every y below (plus .msplit-takehome / .msplit-stem
+// in index.css) carries the same +30 so the block moves as one; the bottom labels
+// still sit well clear of the board bottom (MSPLIT_H 860).
+const BASELINE = 782; // bars sit on this y; column labels just below
 const MAX_BAR_H = 214; // the largest column's height
 
 // column centers + width
 const COL_W = 108;
 const COL_X = { bills: 74, spend: 201, goals: 328 }; // centers
 const CIRCLE_CX = 201;
-const CIRCLE_CY = 452;
-const CIRCLE_BOTTOM = 476;
+const CIRCLE_CY = 482;
+const CIRCLE_BOTTOM = 506;
 
 function money(n: number): string {
   return `$${n.toLocaleString('en-US')}`;
