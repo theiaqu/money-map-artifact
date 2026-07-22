@@ -3823,7 +3823,15 @@ body.is-dragging-noselect * {
   overflow-x: auto;
   scrollbar-width: none;
   z-index: 1;
+  /* drag/swipe horizontally between the two account cards */
+  touch-action: pan-x;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 24px;
+  cursor: grab;
 }
+/* while actively click-dragging, free-scroll (no snap fighting the drag); the JS
+   release handler then eases to the nearest card. */
+.home-accounts.is-hdragging { cursor: grabbing; scroll-snap-type: none; }
 .home-accounts::-webkit-scrollbar { width: 0; height: 0; }
 .home-accounts--hidden .pbi-card { opacity: 0; }
 .home-accounts--reveal .pbi-card { opacity: 1; transition: opacity 220ms ease; }
@@ -3833,11 +3841,14 @@ body.is-dragging-noselect * {
    is visually consistent + morph-compatible with the map card. */
 .pbi-card--home {
   flex: 0 0 auto;
-  width: 232px;
+  /* wide "real app" cards: Spend fills the screen so only a tiny sliver of Core
+     peeks at the right edge (screen 402 − 24 left pad − ~20 sliver). */
+  width: 344px;
   padding: 16px;
   gap: 12px;
   border-radius: 20px;
   box-shadow: 0 6px 20px rgba(20, 40, 25, 0.08);
+  scroll-snap-align: start;
 }
 .pbi-card-balance {
   font-family: var(--font-family);

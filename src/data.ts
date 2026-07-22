@@ -1408,7 +1408,7 @@ export const PBI_CARD_W = 216;
 // cap each progress bar fills toward, so the bar FILL fraction actually matches the
 // displayed balance (balance / cap) on BOTH the home cards and the money-map cards.
 export const HOME_ACCOUNTS: Record<'core' | 'spend', { balance: number; cap: number }> = {
-  core: { balance: 10640, cap: 12000 }, // ~89% full
+  core: { balance: 3284.57, cap: 3600 }, // ~91% full — a believable everyday checking/Core balance
   spend: { balance: 1820.39, cap: 2000 }, // ~91% full
 };
 const homeMoney = (n: number) =>

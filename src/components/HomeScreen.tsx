@@ -65,15 +65,49 @@ export default function HomeScreen({
   const [opening, setOpening] = useState(false); // hand-off to the money map in progress
   const drag = useRef<{ startY: number; startTop: number } | null>(null);
 
-  // while the sheet is being dragged, kill text selection across the whole document
-  // (same protection the carousel scrub uses) so a drag never leaves highlighted
-  // text behind; clear any existing selection when the drag starts.
+  // Horizontal account-card carousel: Spend is primary with a tiny sliver of Core
+  // peeking; the user drags to scroll between them. Touch uses native x-scroll
+  // (touch-action: pan-x); mouse/pen get a JS click-drag so desktop works too. This
+  // is a SEPARATE element from the sheet, so horizontal card scrolling never
+  // conflicts with the vertical sheet drag that opens the money map.
+  const accountsRef = useRef<HTMLDivElement>(null);
+  const hdrag = useRef<{ startX: number; startLeft: number } | null>(null);
+  const [hDragging, setHDragging] = useState(false);
+  const onAccountsPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return; // native touch scroll handles it
+    const el = accountsRef.current;
+    if (!el) return;
+    hdrag.current = { startX: e.clientX, startLeft: el.scrollLeft };
+    setHDragging(true);
+    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* optional */ }
+  };
+  const onAccountsPointerMove = (e: React.PointerEvent) => {
+    const el = accountsRef.current;
+    if (!el || !hdrag.current) return;
+    el.scrollLeft = hdrag.current.startLeft - (e.clientX - hdrag.current.startX);
+  };
+  const endAccountsDrag = () => {
+    if (!hdrag.current) return;
+    hdrag.current = null;
+    setHDragging(false);
+    // ease to the nearest card (Spend at 0, Core at the far edge) so the carousel
+    // settles cleanly after a click-drag.
+    const el = accountsRef.current;
+    if (el) {
+      const max = el.scrollWidth - el.clientWidth;
+      el.scrollTo({ left: el.scrollLeft > max / 2 ? max : 0, behavior: 'smooth' });
+    }
+  };
+
+  // while any drag is active (vertical sheet drag OR horizontal card scroll), kill
+  // text selection across the whole document (same guard the carousel scrub uses)
+  // so a drag never leaves highlighted text behind; clear any existing selection.
   useEffect(() => {
-    if (!dragging) return;
+    if (!dragging && !hDragging) return;
     document.body.classList.add('is-dragging-noselect');
     window.getSelection?.()?.removeAllRanges();
     return () => document.body.classList.remove('is-dragging-noselect');
-  }, [dragging]);
+  }, [dragging, hDragging]);
 
   // account balances shown as the BIG number on each card (Figma 977:11967).
   // Static home-page mock values that sit above the same in-card bar the money-map
@@ -163,7 +197,14 @@ export default function HomeScreen({
       {/* top-section account cards — the SAME pbi card the money map uses (icon +
           name + in-card bar), plus a BIG balance number above the bar and a touch
           more padding. Tagged data-morph-card so they FLIP into the map cards. */}
-      <div className={`home-accounts${cardsHidden && !cardsReveal ? ' home-accounts--hidden' : ''}${cardsReveal ? ' home-accounts--reveal' : ''}`}>
+      <div
+        ref={accountsRef}
+        className={`home-accounts${hDragging ? ' is-hdragging' : ''}${cardsHidden && !cardsReveal ? ' home-accounts--hidden' : ''}${cardsReveal ? ' home-accounts--reveal' : ''}`}
+        onPointerDown={onAccountsPointerDown}
+        onPointerMove={onAccountsPointerMove}
+        onPointerUp={endAccountsDrag}
+        onPointerCancel={endAccountsDrag}
+      >
         <div className="pbi-card pbi-card--home" data-morph-card="spend">
           <div className="pbi-card-head">
             <CreditCard className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />

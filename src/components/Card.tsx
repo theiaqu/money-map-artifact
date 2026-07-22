@@ -116,7 +116,9 @@ function PaycheckCarousel({
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
-  const total = animMonths(dataset, mode);
+  // HOME flow exposes ≥10 scrubbable future months (matches App's scrubSpan) so the
+  // accounts can top off to the brim over a longer horizon; standard app uses the sim span.
+  const total = onboarding ? Math.max(animMonths(dataset, mode), 10) : animMonths(dataset, mode);
   const frac = total > 0 ? Math.max(0, Math.min(1, now / total)) : 0;
   const scrubbable = !!onScrub;
   // Drag direction is REVERSED from the pointer axis so the carousel behaves like

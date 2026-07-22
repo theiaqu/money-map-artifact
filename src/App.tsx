@@ -902,7 +902,10 @@ export default function App() {
   const scrubTo = useCallback(
     (nowMonths: number) => {
       cancelAnimationFrame(raf.current);
-      const clamped = Math.max(0, Math.min(nowMonths, animMonths(dataset, effMode)));
+      // HOME flow scrubs a ≥10-month horizon (see scrubSpan); the standard app
+      // clamps to the simulated span. onboardRef mirrors `onboard` for the callback.
+      const span = onboardRef.current !== null ? Math.max(animMonths(dataset, effMode), 10) : animMonths(dataset, effMode);
+      const clamped = Math.max(0, Math.min(nowMonths, span));
       const secs = clamped * monthSecs(effMode);
       elapsedRef.current = secs;
       setT(secs);
@@ -913,8 +916,14 @@ export default function App() {
     [dataset, effMode],
   );
 
-  const now = t < 0 ? 0 : Math.min(t / monthSecs(effMode), animMonths(dataset, effMode));
-  const dimmed = dimmedNodes(dataset, effMode, now);
+  // Scrub horizon (in months). The live sim freezes at animMonths, but the HOME
+  // flow is a scrubbable "real app" snapshot, so we expose AT LEAST 10 future
+  // months to scrub through there (extending the timeline past the sim end). The
+  // standard app is untouched — it always uses the plain simulated span.
+  const simSpan = animMonths(dataset, effMode);
+  const scrubSpan = boardOnboard ? Math.max(simSpan, 10) : simSpan;
+  const now = t < 0 ? 0 : Math.min(t / monthSecs(effMode), scrubSpan);
+  const dimmed = dimmedNodes(dataset, effMode, Math.min(now, simSpan));
 
   // HOME-PAGE flow: the money map is meant to feel like a real app, so as the user
   // scrubs the carousel FORWARD in time the Core/Spend account bars top off from
@@ -924,7 +933,7 @@ export default function App() {
   // tracks the fill (fill × cap), so a brimming bar reads its cap amount. Goals stay
   // at their illustrative snapshot. Only used when boardOnboard (home flow); the
   // standard app is unaffected (it never receives these overrides).
-  const homeSpan = animMonths(dataset, effMode);
+  const homeSpan = scrubSpan;
   const homeScrub = homeSpan > 0 ? Math.max(0, Math.min(now / homeSpan, 1)) : 0;
   const homeFillNow = (id: 'core' | 'spend') => {
     const base = homeAccountFill(id);
