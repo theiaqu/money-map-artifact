@@ -1686,6 +1686,15 @@ body.is-scrubbing-noselect * {
   cursor: ew-resize !important;
 }
 
+/* generic no-select applied during any pointer-drag interaction (e.g. the home
+   sheet drag). Same text-selection guard as the scrubber, but WITHOUT forcing a
+   cursor so each drag keeps its own (e.g. grab/grabbing on the sheet). */
+body.is-dragging-noselect,
+body.is-dragging-noselect * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
 /* ---- paycheck carousel as a time scrubber ---- */
 /* the row becomes a fixed-width VIEWPORT: the leftmost slot is the yellow
    "active" spot and the whole pill strip swipes so the active paycheck snaps
@@ -3870,6 +3879,8 @@ body.is-scrubbing-noselect * {
   box-shadow: 0 -8px 30px rgba(20, 40, 25, 0.12);
   z-index: 3;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   cursor: grab;
 }
 .home-sheet:active { cursor: grabbing; }

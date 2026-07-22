@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CreditCard, Receipt, MessageCircle, CircleUser } from 'lucide-react';
 import { type Dataset } from '../scenario';
 import { HOME_BALANCES, HOME_ACCOUNTS, homeAccountFill } from '../data';
@@ -64,6 +64,16 @@ export default function HomeScreen({
   const [dragging, setDragging] = useState(false);
   const [opening, setOpening] = useState(false); // hand-off to the money map in progress
   const drag = useRef<{ startY: number; startTop: number } | null>(null);
+
+  // while the sheet is being dragged, kill text selection across the whole document
+  // (same protection the carousel scrub uses) so a drag never leaves highlighted
+  // text behind; clear any existing selection when the drag starts.
+  useEffect(() => {
+    if (!dragging) return;
+    document.body.classList.add('is-dragging-noselect');
+    window.getSelection?.()?.removeAllRanges();
+    return () => document.body.classList.remove('is-dragging-noselect');
+  }, [dragging]);
 
   // account balances shown as the BIG number on each card (Figma 977:11967).
   // Static home-page mock values that sit above the same in-card bar the money-map
