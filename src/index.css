@@ -1554,6 +1554,214 @@ body {
   color: #6b7280;
   z-index: 3;
 }
+
+/* ---- "Income Split" calculator + goals waterfall, stacked UNDER the split graphic
+   (Figma 1082:15049). Absolutely anchored just below the column labels; its content
+   flows/​grows downward and the board scrolls to reveal the full list. ---- */
+.msplit-below {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 830px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0 24px 56px;
+  z-index: 4;
+  animation: msplit-fade 520ms ease 220ms both;
+}
+/* Spend ↔ Goals calculator card */
+.msplit-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+}
+.msplit-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.msplit-slider-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  color: #7d7d7d;
+}
+.msplit-slider-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.msplit-slider-dot--spend { background: #61bc76; }
+.msplit-slider-dot--goals { background: #eebed4; }
+.msplit-track {
+  position: relative;
+  height: 8px;
+  border-radius: 9999px;
+  background: #f5f5f5;
+  margin: 8px 0 10px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.msplit-track-spend {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #61bc76;
+  border-radius: 9999px 2px 2px 9999px;
+}
+.msplit-track-goals {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  background: #eebed4;
+  border-radius: 2px 9999px 9999px 2px;
+}
+.msplit-knob {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.msplit-slider-vals {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.msplit-slider-val {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.msplit-slider-val--goals { align-items: flex-end; }
+.msplit-slider-amt {
+  font-family: var(--font-family);
+  font-size: 18px;
+  font-weight: 600;
+  color: #111111;
+}
+.msplit-slider-sub {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  color: #7d7d7d;
+}
+/* goals waterfall list */
+.msplit-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.msplit-goals-group {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.msplit-goals-group + .msplit-goals-group { margin-top: 16px; }
+.msplit-goals-year {
+  font-family: var(--font-family);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 36px;
+  color: #000000;
+}
+.msplit-goal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+}
+.msplit-goal-time {
+  width: 60px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.msplit-goal-time-val {
+  font-family: var(--font-family);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  color: #000000;
+}
+.msplit-goal-time-unit {
+  font-family: var(--font-family);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  color: #adadad;
+}
+.msplit-goal-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.msplit-goal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.msplit-goal-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family);
+  font-size: 14px;
+  font-weight: 500;
+  color: #000000;
+}
+.msplit-goal-name span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msplit-goal-amt {
+  font-family: var(--font-family);
+  font-size: 16px;
+  font-weight: 600;
+  color: #111111;
+}
+.msplit-goal-date {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #eebed4;
+  font-family: var(--font-family);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #111111;
+  white-space: nowrap;
+}
 @keyframes msplit-grow {
   from { transform: scaleY(0); opacity: 0.4; }
   to { transform: scaleY(1); opacity: 1; }

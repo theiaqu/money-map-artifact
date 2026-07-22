@@ -252,8 +252,8 @@ const INTERACTION_OPTS: { id: CarouselInteraction; label: string }[] = [
 // income representation: 'pills' = the paycheck-scrubber pill row (default first);
 // 'card' = an account-style card whose bar depletes backwards (income spent down).
 const INCOME_OPTS: { id: IncomeRep; label: string }[] = [
-  { id: 'pills', label: 'Individual pills' }, // default first
-  { id: 'card', label: 'Account-style card' },
+  { id: 'card', label: 'Account-style card' }, // default first
+  { id: 'pills', label: 'Individual pills' },
 ];
 
 // "Transition animation" chooses HOW the Full system → Monthly split morph plays:
@@ -561,7 +561,7 @@ export default function App() {
   const [dateMode, setDateMode] = useState<DateMode>('date');
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('timeline'); // header carousel: month timeline (default) vs. Paycheck pills
   const [carouselInteraction, setCarouselInteraction] = useState<CarouselInteraction>('scrub'); // timeline interaction: relative drag-scrub (default) vs. tap-to-select a month
-  const [incomeRep, setIncomeRep] = useState<IncomeRep>('pills'); // income representation: paycheck pills (default) vs. account-style reverse-depleting card
+  const [incomeRep, setIncomeRep] = useState<IncomeRep>('card'); // income representation: account-style reverse-depleting card (default) vs. paycheck pills
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const [transitionAnim, setTransitionAnim] = useState<TransitionAnim>('sections'); // Full↔Monthly morph style: section-band split (default) vs. progress-bar morph

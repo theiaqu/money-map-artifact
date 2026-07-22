@@ -151,6 +151,82 @@ export function scrubMonthShort(monthsElapsed: number): string {
   return `${MONTH_FULL_NAMES[m].slice(0, 3)} '${String(y).slice(2)}`;
 }
 
+/* ---------- "Income Split" goals waterfall (Monthly-split view, Figma 1082:15049) ----------
+   Orders the dataset's goals into the SAME level-by-level, weight-proportional
+   funding waterfall the live sim uses: goals fund by ASCENDING level; within a
+   level the buckets fill simultaneously in proportion to their weight, and as each
+   one completes its share redistributes to the still-open buckets (see the DATASETS
+   notes — "the higher-share bucket completes first, then the other absorbs 100% of
+   the remaining money", and "only once a layer is fully funded does the flow spill
+   to the next"). Given a MONTHLY goals contribution (the leftover after Bills +
+   Spend), it returns every goal in the order it FINISHES funding, tagged with the
+   cumulative number of months from "now" until it's fully funded — so the split
+   view can group goals by completion year and recompute live as the user drags the
+   Spend↔Goals slider. */
+export interface WaterfallStep {
+  id: string;
+  title: string;
+  target: number;
+  level: number;
+  months: number; // cumulative months from now until fully funded (Infinity if unreachable)
+}
+export function goalWaterfall(cfg: DatasetConfig, monthlyGoals: number): WaterfallStep[] {
+  const out: WaterfallStep[] = [];
+  const levels = Array.from(new Set(cfg.goals.map((g) => g.level))).sort((a, b) => a - b);
+  if (monthlyGoals <= 0) {
+    // no money reaches goals — list them in level then weight order, unreachable
+    for (const lvl of levels) {
+      cfg.goals
+        .filter((g) => g.level === lvl)
+        .sort((a, b) => b.weight - a.weight)
+        .forEach((g) => out.push({ id: g.id, title: g.title, target: g.target, level: lvl, months: Infinity }));
+    }
+    return out;
+  }
+  let monthCursor = 0; // months elapsed once all EARLIER levels are fully funded
+  for (const lvl of levels) {
+    const items = cfg.goals.filter((g) => g.level === lvl).map((g) => ({ g, rem: g.target }));
+    let tAcc = 0; // months spent funding THIS level so far
+    const done = new Set<string>();
+    let guard = 0;
+    while (items.some((it) => it.rem > 1e-6) && guard++ < 2000) {
+      const active = items.filter((it) => it.rem > 1e-6);
+      const tw = active.reduce((s, it) => s + it.g.weight, 0) || 1;
+      // time until the NEXT bucket in this level completes at its weighted rate
+      let minT = Infinity;
+      for (const it of active) {
+        const rate = (monthlyGoals * it.g.weight) / tw;
+        minT = Math.min(minT, it.rem / rate);
+      }
+      for (const it of active) {
+        const rate = (monthlyGoals * it.g.weight) / tw;
+        it.rem -= rate * minT;
+        if (it.rem <= 1e-6) it.rem = 0;
+      }
+      tAcc += minT;
+      for (const it of active) {
+        if (it.rem === 0 && !done.has(it.g.id)) {
+          done.add(it.g.id);
+          out.push({ id: it.g.id, title: it.g.title, target: it.g.target, level: lvl, months: monthCursor + tAcc });
+        }
+      }
+    }
+    monthCursor += tAcc; // the next level can't start until this one is done
+  }
+  return out;
+}
+
+/* Calendar label for a point `months` from the artifact reference month (Jul 2026):
+   months≈3 -> { year: 2026, label: "OCT 2026" }. Drives the goals-waterfall list's
+   year grouping and per-row date pill. */
+export function waterfallDate(months: number): { year: number; label: string } {
+  if (!isFinite(months)) return { year: Infinity, label: '—' };
+  const idx = DATE_REF_YEAR * 12 + DATE_REF_MONTH + Math.round(months);
+  const y = Math.floor(idx / 12);
+  const m = ((idx % 12) + 12) % 12;
+  return { year: y, label: `${MONTH_ABBR[m].toUpperCase()} ${y}` };
+}
+
 export const WINDOW_MONTHS = 3; // squeeze -> scroll cutoff
 export const MAX_BARS = 7;
 // NOTE: the animation's total duration is derived PER (dataset, mode) from the
