@@ -1907,6 +1907,14 @@ body.is-dragging-noselect * {
   color: #111111;
   white-space: nowrap;
 }
+/* secondary "per month" cadence after the big amount on the Direct deposit / Core /
+   Spend bars — lighter, lowercase, slightly muted so the dollar figure still leads. */
+.pbi-bar-amount-suffix {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  opacity: 0.55;
+}
 .pbi-bar-date {
   position: relative;
   z-index: 2;

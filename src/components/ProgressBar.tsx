@@ -60,6 +60,7 @@ export default function ProgressBar({
   now = 0,
   refillOverride,
   morphRole,
+  perMonth = false,
 }: {
   color: GraphColor;
   progress: number;
@@ -70,6 +71,7 @@ export default function ProgressBar({
   now?: number;
   refillOverride?: number; // HOME flow: drive the refill OVERLAY width (0..1 of the whole bar) from the scrub position instead of the time-based monthly sweep. The overlay leads and the base fill (driven separately) trails it up to 100%.
   morphRole?: string; // "bills" | "spend" | "goals" — tags the bar for the Monthly-split shared-element morph
+  perMonth?: boolean; // account cards (Core/Spend) append a small secondary "per month" after the amount
 }) {
   const p = Math.max(0, Math.min(1, progress));
   // HOME flow: the overlay width is driven by the scrub (refillOverride), held at a
@@ -89,7 +91,7 @@ export default function ProgressBar({
           style={{ width: `${overlayW * 100}%`, background: REFILL_SOLID[color], opacity: overlayOp }}
         />
       )}
-      <span className="pbi-bar-amount">{amount}</span>
+      <span className="pbi-bar-amount">{amount}{perMonth && <span className="pbi-bar-amount-suffix"> per month</span>}</span>
       {date && <span className={`pbi-bar-date${reached ? ' reached' : ''}`}>{date}</span>}
     </div>
   );

@@ -286,10 +286,15 @@ export function IncomeAccountCard({
   top?: number; // board-coord row top; the branch/gate income mode places it in the card column
   onboarding?: boolean;
 }) {
-  // horizon matches the carousel's (home flow exposes ≥10 months). `remaining` is
-  // 1 at the present month and drains to 0 by the furthest month.
-  const total = onboarding ? Math.max(animMonths(dataset, mode), 10) : animMonths(dataset, mode);
-  const remaining = total > 0 ? Math.max(0, Math.min(1, 1 - now / total)) : 1;
+  // STANDARD app: the income drains in LOCKSTEP with the Core/Spend bars filling —
+  // it reads off the SAME progressAt clock those bars use, so the depletion rate
+  // exactly matches the account-fill rate. Full at the deposit (accounts empty),
+  // empty once Core + Spend are filled. right→left drain is the left-anchored fill.
+  const accountFilled = (progressAt(dataset, mode, 'core', now) + progressAt(dataset, mode, 'spend', now)) / 2;
+  // HOME/onboarding full-system snapshot keeps the scrub-horizon drain (≥10 months).
+  const total = Math.max(animMonths(dataset, mode), 10);
+  const onboardRemaining = total > 0 ? 1 - now / total : 1;
+  const remaining = Math.max(0, Math.min(1, onboarding ? onboardRemaining : 1 - accountFilled));
   const amount = DATASETS[dataset].incomeAmount;
   return (
     <div className="node" style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>
@@ -303,7 +308,7 @@ export function IncomeAccountCard({
             gray track) as income is spent into the system with the scrub/flow */}
         <div className="pbi-bar pbi-bar--income">
           <div className="pbi-bar-fill pbi-bar-fill--income" style={{ width: `${remaining * 100}%` }} />
-          <span className="pbi-bar-amount">{amount}</span>
+          <span className="pbi-bar-amount">{amount}<span className="pbi-bar-amount-suffix"> per month</span></span>
         </div>
       </div>
     </div>
@@ -915,6 +920,7 @@ export default function Card({
             now={now}
             refillOverride={node.kind === 'account' ? refillOverride?.[node.id] : undefined}
             morphRole={node.kind === 'goal' ? 'goals' : node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : undefined}
+            perMonth={node.kind === 'account'}
           />
         </div>
       </div>
