@@ -1946,13 +1946,23 @@ body.is-dragging-noselect * {
 .pbi-bar--income { background: #f3f4f6; }
 .pbi-bar-fill--income {
   background: #f6dc72;
-  /* NO width transition: the bar's remaining value is recomputed every animation
-     frame from the exact same feeder-pulse progress that drives the comet, so any
-     CSS easing here only makes the bar LAG the comet (and adds a wrong slide-up on
-     each refill). Zero transition keeps the drain frame-for-frame in lockstep with
-     the feeder comet — empty exactly as the pulse reaches the gate, instant reset to
-     full when the next deposit fires. */
   transition: none;
+}
+/* Direct-deposit OUTFLOW overlay — the depleting mirror of .pbi-bar-refill. Sits
+   above the full yellow fill but below the amount label. Right-anchored so it GROWS
+   leftward (leading edge sweeping toward the gate), with a slightly DARKER leading
+   (left) edge — the exact opposite of the refill overlay's darker right edge. Width
+   + opacity are set inline per feeder fire (feederDepletionSweep). Subtle by design:
+   it reads as a gentle outflow wave, never a full-bar drain. */
+.pbi-bar-deplete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  z-index: 1;
+  border-radius: 10px;
+  pointer-events: none;
+  background: linear-gradient(to left, #eccb52 0%, #ddb42e 100%);
 }
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to

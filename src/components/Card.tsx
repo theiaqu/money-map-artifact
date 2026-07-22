@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, Landmark, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiIncomeSectionPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletion, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletionSweep, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -286,16 +286,16 @@ export function IncomeAccountCard({
   top?: number; // board-coord row top; the branch/gate income mode places it in the card column
   onboarding?: boolean;
 }) {
-  // STANDARD app: the income drains in lockstep with the reversed FEEDER FLOW —
-  // as the deposit pulse travels card→income-gate the yellow bar drains right→left,
-  // reaching empty exactly when the pulse arrives at the gate (same event timing +
-  // arm travel the feeder comet uses, so bar + comet stay in sync). This is driven
-  // by the feeder flow, NOT the Core/Spend account fill.
-  const feederRemaining = feederDepletion(dataset, mode, now, feederTravelMonths(mode));
-  // HOME/onboarding full-system snapshot keeps the scrub-horizon drain (≥10 months).
+  // STANDARD app: the base yellow bar stays FULL (the $8k deposit) and does NOT drain
+  // to empty on every fire. Instead a subtle depletion OVERLAY (the mirror of the
+  // Core/Spend refill sweep, opposite direction) sweeps right→left in lockstep with
+  // each reversed feeder fire card→gate — see `feederDepletionSweep`, keyed to the
+  // SAME income events + feeder travel the comet uses. HOME/onboarding keeps its
+  // scrub-horizon slow drain (≥10 months) and shows no per-fire overlay.
   const total = Math.max(animMonths(dataset, mode), 10);
   const onboardRemaining = total > 0 ? 1 - now / total : 1;
-  const remaining = Math.max(0, Math.min(1, onboarding ? onboardRemaining : feederRemaining));
+  const remaining = onboarding ? Math.max(0, Math.min(1, onboardRemaining)) : 1;
+  const depSweep = onboarding ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederTravelMonths(mode));
   const amount = DATASETS[dataset].incomeAmount;
   return (
     <div className="node" style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>
@@ -304,11 +304,15 @@ export function IncomeAccountCard({
           <Landmark className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
           <span className="pbi-card-name">Direct deposit</span>
         </div>
-        {/* reverse-depleting bar: GRAY empty track, left-anchored solid-lemon fill =
-            remaining income, shrinking so the yellow drains right→left (revealing the
-            gray track) as income is spent into the system with the scrub/flow */}
+        {/* GRAY track + solid-lemon fill (the yellow-over-gray base look). The base
+            stays full; the depletion OVERLAY (.pbi-bar-deplete) is the subtle outflow
+            indicator, right-anchored so its leading edge sweeps LEFT toward the gate
+            on each fire (mirror of the refill overlay), then fades before the next. */}
         <div className="pbi-bar pbi-bar--income">
           <div className="pbi-bar-fill pbi-bar-fill--income" style={{ width: `${remaining * 100}%` }} />
+          {depSweep.op > 0.001 && depSweep.w > 0.001 && (
+            <div className="pbi-bar-deplete" style={{ width: `${depSweep.w * 100}%`, opacity: depSweep.op }} />
+          )}
           <span className="pbi-bar-amount">{amount}<span className="pbi-bar-amount-suffix"> per month</span></span>
         </div>
       </div>

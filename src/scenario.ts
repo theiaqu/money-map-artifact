@@ -843,6 +843,38 @@ export function feederDepletion(dataset: Dataset, mode: Mode, now: number, trave
   return clamp(1 - p);
 }
 
+/* pbi "Account-style card" income OUTFLOW overlay — the depleting MIRROR of the
+   Core/Spend "refill visual" sweep (ProgressBar `refillSweep`). Instead of the whole
+   yellow base bar draining full→empty on every fire, the base stays full and this
+   returns a subtle OVERLAY (width 0..1 + opacity) for the deposit pulse currently in
+   flight card→gate. Keyed to the SAME income events + feeder `travel` the comet uses,
+   so it's in lockstep with each visible fire: as the pulse leaves the card the overlay
+   GROWS (its leading edge sweeping right→left — the opposite direction to the refill's
+   left→right sweep), reaching full width as the pulse lands at the gate, then fades out
+   before the next deposit fires. Rendered right-anchored so the leading edge travels
+   toward the gate (left). `travel` is feederTravelMonths(mode). */
+export const FEEDER_DEPLETE_PEAK_OPACITY = 0.3; // subtle, matching the refill overlay
+export function feederDepletionSweep(dataset: Dataset, mode: Mode, now: number, travel: number): { w: number; op: number } {
+  const sc = getScenario(dataset, mode);
+  const events = sc.eventActive;
+  const meta = BRANCH_TIMING['c-income-monthly'] ?? { gateDepth: 0, kind: 'spine' as BranchKind };
+  const dep = meta.gateDepth * SPINE_TRAVEL_BY_MODE[mode];
+  const tr = travel > 0 ? travel : BRANCH_PACING[mode].travel;
+  // fade the spent wave out over the gap before the next deposit fires, so each fire
+  // is a clean self-contained sweep (no hard reset flash between fires).
+  const fadeTail = Math.max(0.05, FEEDER_EVENT_SPACING - tr);
+  let best = { w: 0, op: 0 };
+  for (const t of sc.income) {
+    if (t > now + 1e-9) break;
+    if (!events[t]?.has('c-income-monthly')) continue;
+    const local = now - (t + dep);
+    if (local < 0) continue;
+    if (local <= tr) best = { w: smootherstep(clamp(local / tr)), op: FEEDER_DEPLETE_PEAK_OPACITY }; // newest pulse wins
+    else best = { w: 1, op: FEEDER_DEPLETE_PEAK_OPACITY * (1 - clamp((local - tr) / fadeTail)) };
+  }
+  return best;
+}
+
 /* ---------- "Sheet" style branch-assembly growth windows ----------
    The Sheet account style ONLY: instead of showing the whole map at once, the
    near-black spine + elbow arms DRAW IN progressively as the sim plays, and each
