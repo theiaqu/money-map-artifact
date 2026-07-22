@@ -69,6 +69,55 @@ function measureMorph(board: HTMLElement): MorphMap {
   return map;
 }
 
+// ---- "Sections" transition source/target measurement ----
+// Alternative to measureMorph for the Full-system side of the morph: instead of the
+// per-card PROGRESS BARS, the colored SECTION BACKGROUND bands are what fly to/from
+// the Monthly-split columns. The mint "Monthly Expenses" band (which stacks Core
+// above Spend) SPLITS into two ghosts — a BLUE top half (Core → bills) and a GREEN
+// bottom half (Spend → spend) — while the pink Goals band maps to the goals column.
+// Income keeps morphing from the header paycheck pill so the take-home pill still
+// flies in. Returns {} for styles/gates without section bands (caller falls back).
+function measureSectionBands(board: HTMLElement): MorphMap {
+  const br = board.getBoundingClientRect();
+  const scale = board.offsetWidth ? br.width / board.offsetWidth : 1;
+  const map: MorphMap = {};
+  const push = (role: string, left: number, top: number, width: number, height: number, color: string, radius: string) => {
+    if (!width || !height) return;
+    (map[role] ||= []).push({
+      left: (left - br.left) / scale,
+      top: (top - br.top) / scale,
+      width: width / scale,
+      height: height / scale,
+      color,
+      radius,
+    });
+  };
+  // income still morphs from the header paycheck pill (so the take-home pill flies)
+  const inc = board.querySelector<HTMLElement>('[data-morph="income"]');
+  if (inc) {
+    const geo = inc.querySelector<HTMLElement>('[data-morph-rect]') ?? inc;
+    const r = geo.getBoundingClientRect();
+    push('income', r.left, r.top, r.width, r.height, inc.getAttribute('data-morph-color') || '#f6dc72', getComputedStyle(geo).borderTopLeftRadius || '12px');
+  }
+  // Monthly Expenses band → SPLIT into blue (Core, top) + green (Spend, bottom).
+  const monthly = board.querySelector<HTMLElement>('[data-morph-band="monthly"]');
+  if (monthly) {
+    const r = monthly.getBoundingClientRect();
+    const radius = getComputedStyle(monthly).borderTopLeftRadius || '16px';
+    const half = r.height / 2;
+    push('bills', r.left, r.top, r.width, half, '#b0d9ff', radius);
+    push('spend', r.left, r.top + half, r.width, half, '#61bc76', radius);
+  }
+  // Goals band → the pink goals column.
+  const goals = board.querySelector<HTMLElement>('[data-morph-band="goals"]');
+  if (goals) {
+    const r = goals.getBoundingClientRect();
+    const radius = getComputedStyle(goals).borderTopLeftRadius || '16px';
+    push('goals', r.left, r.top, r.width, r.height, '#eebed4', radius);
+  }
+  return map;
+}
+
 // ---- Onboarding home ⇄ map account-card FLIP ----
 // A card-level shared-element morph, separate from the bar-level Monthly-split
 // morph. The mock home page's account cards (data-morph-card="spend"/"bills") fly
@@ -195,6 +244,16 @@ const INTERACTION_OPTS: { id: CarouselInteraction; label: string }[] = [
 const INCOME_OPTS: { id: IncomeRep; label: string }[] = [
   { id: 'pills', label: 'Individual pills' }, // default first
   { id: 'card', label: 'Account-style card' },
+];
+
+// "Transition animation" chooses HOW the Full system → Monthly split morph plays:
+// 'sections' (default) morphs the colored SECTION BACKGROUND bands into the split
+// columns (the mint Monthly-Expenses band splits into a blue Core + green Spend
+// half); 'bars' keeps the original per-progress-bar morph.
+type TransitionAnim = 'sections' | 'bars';
+const TRANSITION_OPTS: { id: TransitionAnim; label: string }[] = [
+  { id: 'sections', label: 'Sections' }, // default first
+  { id: 'bars', label: 'Progress bars' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -486,6 +545,7 @@ export default function App() {
   const [incomeRep, setIncomeRep] = useState<IncomeRep>('pills'); // income representation: paycheck pills (default) vs. account-style reverse-depleting card
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
+  const [transitionAnim, setTransitionAnim] = useState<TransitionAnim>('sections'); // Full↔Monthly morph style: section-band split (default) vs. progress-bar morph
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
   // money map inside a mock Fruitful home page. null = normal configurator; 'home'
   // = mock home with the draggable sheet; 'map' = the money map with a compact
@@ -515,13 +575,26 @@ export default function App() {
   const [morphReveal, setMorphReveal] = useState(false); // tail crossfade: real targets fade in / ghosts fade out
   const [morphDur, setMorphDur] = useState<{ morph: number; reveal: number }>({ morph: MORPH_MS.monthly, reveal: REVEAL_MS.monthly }); // active (direction-aware) durations, fed to CSS vars
 
+  // Measure one side of the Full↔Monthly morph. In "Sections" mode the FULL-system
+  // side is measured from the colored section BANDS (Monthly Expenses splits into a
+  // blue Core + green Spend half; Goals → the pink column) instead of the progress
+  // bars; the Monthly-split side always uses the [data-morph] bars. Falls back to the
+  // per-bar morph for styles/gates that have no section bands (so it degrades safely).
+  const measureView = (board: HTMLElement, view: 'full' | 'monthly'): MorphMap => {
+    if (transitionAnim === 'sections' && view === 'full') {
+      const bands = measureSectionBands(board);
+      if ((bands.bills && bands.bills.length) || (bands.goals && bands.goals.length)) return bands;
+    }
+    return measureMorph(board);
+  };
+
   // Toggle Full system <-> Monthly split with a shared-element morph: capture the
   // CURRENT view's source rects synchronously (before the DOM swaps), then let the
   // layout effect below measure the new view and fly the ghosts.
   const switchView = (to: 'full' | 'monthly') => {
     if (to === systemView) return;
     const board = boardRef.current;
-    if (board) pendingMorphRef.current = { sources: measureMorph(board) };
+    if (board) pendingMorphRef.current = { sources: measureView(board, systemView) };
     setSystemView(to);
   };
 
@@ -707,7 +780,7 @@ export default function App() {
     pendingMorphRef.current = null;
     const board = boardRef.current;
     if (!board) return;
-    const targets = measureMorph(board);
+    const targets = measureView(board, systemView);
     const gs: Ghost[] = [];
     for (const role of MORPH_ROLES) {
       const src = pending.sources[role] ?? [];
@@ -1228,6 +1301,28 @@ export default function App() {
                   aria-selected={incomeRep === o.id}
                   className={`mode-opt${incomeRep === o.id ? ' active' : ''}`}
                   onClick={() => setIncomeRep(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* How the Full system → Monthly split morph plays. Offered on the styles that
+            expose the Monthly-split toggle (progress / pills). "Sections" (default)
+            morphs the colored section bands into the split columns; "Progress bars"
+            keeps the original per-bar morph. */}
+        {(style === 'progress' || style === 'pills') && (
+          <div className="config-row">
+            <span className="config-label">Transition animation</span>
+            <div className="mode-toggle" role="tablist" aria-label="Transition animation">
+              {TRANSITION_OPTS.map((o) => (
+                <button
+                  key={o.id}
+                  role="tab"
+                  aria-selected={transitionAnim === o.id}
+                  className={`mode-opt${transitionAnim === o.id ? ' active' : ''}`}
+                  onClick={() => setTransitionAnim(o.id)}
                 >
                   {o.label}
                 </button>

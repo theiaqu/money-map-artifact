@@ -392,6 +392,7 @@ export function PbiGroupedPanels({ dataset }: { dataset: Dataset }) {
         <div
           key={p.id}
           className={`pbi-grouped-panel pbi-grouped-panel--${p.tint}`}
+          data-morph-band={p.id}
           style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
         />
       ))}
@@ -413,6 +414,7 @@ export function PbiSectionLabelPanels({ dataset }: { dataset: Dataset }) {
         <div
           key={p.id}
           className={`pbi-grouped-panel pbi-grouped-panel--${p.tint}`}
+          data-morph-band={p.id}
           style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
         >
           <span className="pbi-grouped-label">{LABELS[p.id] ?? ''}</span>
@@ -434,6 +436,7 @@ export function PbiIncomeSectionPanels({ dataset }: { dataset: Dataset }) {
         <div
           key={p.id}
           className={`pbi-grouped-panel pbi-grouped-panel--${p.tint}`}
+          data-morph-band={p.id}
           style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
         />
       ))}
@@ -453,6 +456,7 @@ export function PbiGrouped2Panels({ dataset }: { dataset: Dataset }) {
         <div
           key={p.id}
           className="pbi-grouped2-panel"
+          data-morph-band={p.id}
           style={{ left: p.x, top: p.y, width: p.w, height: p.h }}
         >
           <span className="pbi-grouped2-label">{p.label}</span>
