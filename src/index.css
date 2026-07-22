@@ -1839,7 +1839,8 @@ body.is-dragging-noselect * {
   width: 216px;
   background: #ffffff;
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(17, 17, 17, 0.06), 0 6px 16px rgba(17, 17, 17, 0.05);
+  /* flat account cards — no drop shadow (matches Figma flow node 1054:10928) */
+  box-shadow: none;
 }
 /* Figma 804:8789: bare icon glyph immediately left of the title (6px gap), no tile */
 .pbi-card-head {
@@ -1926,6 +1927,15 @@ body.is-dragging-noselect * {
   transition: background 0.4s ease, color 0.4s ease;
 }
 .pbi-bar-date.reached { background: #624b52; color: #f7dfe9; }
+
+/* "Account-style card" income bar (Figma 1054:10928): the whole track is the light
+   lemon "spent" band; the solid-lemon fill is the REMAINING income, left-anchored
+   and shrinking so the bar empties right→left as the clock advances. */
+.pbi-bar--income { background: #fbedb8; }
+.pbi-bar-fill--income {
+  background: #f6dc72;
+  transition: width 220ms ease;
+}
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to
    the LEFT of the bold white spine (right-aligned, ending just left of x=84), and
@@ -3860,7 +3870,8 @@ body.is-dragging-noselect * {
   padding: 16px;
   gap: 12px;
   border-radius: 20px;
-  box-shadow: 0 6px 20px rgba(20, 40, 25, 0.08);
+  /* flat account cards — no drop shadow */
+  box-shadow: none;
   scroll-snap-align: start;
 }
 .pbi-card-balance {
@@ -4038,22 +4049,32 @@ body.is-dragging-noselect * {
   transition: opacity 200ms ease;
 }
 .cardmorph-layer.is-reveal { opacity: 0; }
-/* only the POSITION of the ghost animates (no non-uniform scale → no text distortion) */
+/* TRUE 1:1 morph: the ghost FRAME interpolates its position AND its width/height
+   from the big home card down to the exact small full-system card, so it visibly
+   SCALES and lands precisely on the target (rather than fading out to nothing).
+   overflow:hidden clips the two faces to the current (shrinking) frame. */
 .cardmorph-ghost {
   position: absolute;
   left: 0;
   top: 0;
   transform-origin: top left;
-  transition: transform var(--card-ms, 640ms) cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  overflow: hidden;
+  transition: transform var(--card-ms, 640ms) cubic-bezier(0.22, 1, 0.36, 1),
+    width var(--card-ms, 640ms) cubic-bezier(0.22, 1, 0.36, 1),
+    height var(--card-ms, 640ms) cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, width, height;
 }
-/* two stacked, natural-size clones (source + target) that CROSSFADE; the box-size
-   change reads through the crossfade rather than a distorting scale. */
+/* two stacked clones (source + target), each at its NATURAL size and UNIFORMLY
+   scaled (single factor → no text stretch) to fill the current frame, crossfading
+   src→dst. At the end the frame == target geometry and the dst face sits at scale
+   1 (crisp), so the ghost matches the real card exactly before the reveal. */
 .cardmorph-face {
   position: absolute;
   left: 0;
   top: 0;
-  transition: opacity var(--card-ms, 640ms) ease;
+  transform-origin: top left;
+  transition: opacity var(--card-ms, 640ms) ease,
+    transform var(--card-ms, 640ms) cubic-bezier(0.22, 1, 0.36, 1);
 }
 .cardmorph-face > * {
   width: 100%;

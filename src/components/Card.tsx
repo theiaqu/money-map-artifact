@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, Landmark, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiIncomeSectionPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -32,6 +32,12 @@ export type CarouselMode = 'paychecks' | 'timeline';
 //    changes by the drag DELTA as the pointer moves (no snap-to-finger on press).
 //  • 'tap'   — tapping a month pill jumps the active month to that pill.
 export type CarouselInteraction = 'scrub' | 'tap';
+
+// How income is represented in the header/income slot:
+//  • 'pills' — the paycheck-scrubber pill row (default, the individual month pills).
+//  • 'card'  — an account-style card (Figma 1054:10928) whose bar DEPLETES backwards
+//    (drains right→left) to show the month's income being spent down over time.
+export type IncomeRep = 'pills' | 'card';
 
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
@@ -262,6 +268,45 @@ function PaycheckCarousel({
   );
 }
 
+// "Account-style card" income representation (Figma 1054:10928): instead of the
+// paycheck pills, income renders as an account card (aligned with the Core/Spend
+// column) whose bar DEPLETES BACKWARDS. The solid-lemon "remaining income" fill is
+// left-anchored and shrinks as the clock advances, so the light-lemon "spent" track
+// grows from the RIGHT — i.e. the bar empties right→left (income being spent down).
+function IncomeAccountCard({
+  dataset,
+  mode,
+  now,
+  onboarding = false,
+}: {
+  dataset: Dataset;
+  mode: Mode;
+  now: number;
+  onboarding?: boolean;
+}) {
+  // horizon matches the carousel's (home flow exposes ≥10 months). `remaining` is
+  // 1 at the present month and drains to 0 by the furthest month.
+  const total = onboarding ? Math.max(animMonths(dataset, mode), 10) : animMonths(dataset, mode);
+  const remaining = total > 0 ? Math.max(0, Math.min(1, 1 - now / total)) : 1;
+  const amount = DATASETS[dataset].incomeAmount;
+  return (
+    <div className="node" style={{ left: PBI_CARD_LEFT, top: PBI_INCOME_TOP, width: PBI_CARD_W }}>
+      <div className="pbi-card">
+        <div className="pbi-card-head">
+          <Landmark className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
+          <span className="pbi-card-name">Direct deposit</span>
+        </div>
+        {/* two-tone reverse-depleting bar: track = light lemon (spent), left-anchored
+            solid-lemon fill = remaining income, shrinking right→left as time advances */}
+        <div className="pbi-bar pbi-bar--income">
+          <div className="pbi-bar-fill pbi-bar-fill--income" style={{ width: `${remaining * 100}%` }} />
+          <span className="pbi-bar-amount">{amount}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // The shared artifact header carried by EVERY account style: the "Money Map is
 // ready!" hero (logo · subtitle · serif headline) PLUS the paycheck-scrubber
 // carousel beneath it. Rendered once at board level; each style's prototype is
@@ -275,6 +320,7 @@ export function ArtifactHeader({
   incomeLeft = PBI_INCOME_LEFT,
   carouselMode = 'paychecks',
   interaction = 'scrub',
+  incomeRep = 'pills',
   onboarding = false,
 }: {
   dataset: Dataset;
@@ -284,6 +330,7 @@ export function ArtifactHeader({
   incomeLeft?: number;
   carouselMode?: CarouselMode;
   interaction?: CarouselInteraction;
+  incomeRep?: IncomeRep; // 'pills' = paycheck carousel (default); 'card' = account-style reverse-depleting income card
   onboarding?: boolean; // in the onboarding home-screen money map the big hero is replaced by a compact top bar, so suppress it and keep only the carousel
 }) {
   const hero = heroHeadline(dataset);
@@ -302,17 +349,21 @@ export function ArtifactHeader({
           <h1 className={`pbi-hero-title${dragging ? ' is-scrub-hidden' : ''}`}>{`${hero.pre} ${hero.date}`}</h1>
         </>
       )}
-      <PaycheckCarousel
-        dataset={dataset}
-        mode={mode}
-        now={now}
-        onScrub={onScrub}
-        incomeLeft={incomeLeft}
-        onDraggingChange={setDragging}
-        carouselMode={carouselMode}
-        interaction={interaction}
-        onboarding={onboarding}
-      />
+      {incomeRep === 'card' ? (
+        <IncomeAccountCard dataset={dataset} mode={mode} now={now} onboarding={onboarding} />
+      ) : (
+        <PaycheckCarousel
+          dataset={dataset}
+          mode={mode}
+          now={now}
+          onScrub={onScrub}
+          incomeLeft={incomeLeft}
+          onDraggingChange={setDragging}
+          carouselMode={carouselMode}
+          interaction={interaction}
+          onboarding={onboarding}
+        />
+      )}
     </>
   );
 }

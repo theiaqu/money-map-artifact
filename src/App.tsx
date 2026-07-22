@@ -12,7 +12,7 @@ import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
-import type { ChartStyle, CarouselMode, CarouselInteraction } from './components/Card';
+import type { ChartStyle, CarouselMode, CarouselInteraction, IncomeRep } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
 
 // ---- "Monthly split" shared-element morph (Figma 907:13144) ----
@@ -97,6 +97,26 @@ type CardGhost = {
   dstW: number;
   dstH: number;
 };
+// Interpolate a card ghost's FRAME (position + width/height) and the two faces'
+// uniform scales for a given progress t (0 = big source card, 1 = small target
+// card). The frame box lerps src→dst geometry so it lands EXACTLY on the target;
+// each face is UNIFORMLY scaled (single width-based factor → text never stretches)
+// so at t=0 the src face is crisp at natural size and at t=1 the dst face is crisp
+// at natural size, matching the real card before the reveal. Faces crossfade on t.
+function cardMorphFrame(g: CardGhost, t: number) {
+  const boxLeft = g.from.left + (g.to.left - g.from.left) * t;
+  const boxTop = g.from.top + (g.to.top - g.from.top) * t;
+  const boxW = g.srcW + (g.dstW - g.srcW) * t;
+  const boxH = g.srcH + (g.dstH - g.srcH) * t;
+  const srcScale = g.srcW ? boxW / g.srcW : 1;
+  const dstScale = g.dstW ? boxW / g.dstW : 1;
+  return {
+    ghost: { transform: `translate(${boxLeft}px, ${boxTop}px)`, width: boxW, height: boxH } as CSSProperties,
+    src: { width: g.srcW, height: g.srcH, transform: `scale(${srcScale})`, opacity: 1 - t } as CSSProperties,
+    dst: { width: g.dstW, height: g.dstH, transform: `scale(${dstScale})`, opacity: t } as CSSProperties,
+  };
+}
+
 const CARD_MORPH_MS = 640;
 // While the sheet is being dragged, the home→map card morph is only allowed to
 // show a SUBTLE preview (a small hint that the cards are starting to move toward
@@ -168,6 +188,13 @@ const CAROUSEL_OPTS: { id: CarouselMode; label: string }[] = [
 const INTERACTION_OPTS: { id: CarouselInteraction; label: string }[] = [
   { id: 'scrub', label: 'Scrub (drag)' }, // default first
   { id: 'tap', label: 'Tap' },
+];
+
+// income representation: 'pills' = the paycheck-scrubber pill row (default first);
+// 'card' = an account-style card whose bar depletes backwards (income spent down).
+const INCOME_OPTS: { id: IncomeRep; label: string }[] = [
+  { id: 'pills', label: 'Individual pills' }, // default first
+  { id: 'card', label: 'Account-style card' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -456,6 +483,7 @@ export default function App() {
   const [dateMode, setDateMode] = useState<DateMode>('date');
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('timeline'); // header carousel: month timeline (default) vs. Paycheck pills
   const [carouselInteraction, setCarouselInteraction] = useState<CarouselInteraction>('scrub'); // timeline interaction: relative drag-scrub (default) vs. tap-to-select a month
+  const [incomeRep, setIncomeRep] = useState<IncomeRep>('pills'); // income representation: paycheck pills (default) vs. account-style reverse-depleting card
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
@@ -904,6 +932,16 @@ export default function App() {
     };
   }, []);
 
+  // The "Preview" config control is hidden (see onboardToggle), but the onboarding
+  // home/map entry points stay live and referenced here — exposed on window so the
+  // flow remains reachable programmatically for testing without the visible toggle.
+  useEffect(() => {
+    (window as unknown as { __preview: { enter: () => void; exit: () => void } }).__preview = {
+      enter: enterOnboarding,
+      exit: exitOnboarding,
+    };
+  });
+
   // Paycheck-carousel scrubber (pbi style): dragging the carousel takes over the
   // clock and parks the sim at the dragged month so the user can watch the goal
   // accounts fill/unfill at any point in time. It stops the RAF loop and leaves
@@ -1179,6 +1217,24 @@ export default function App() {
             </button>
           </div>
         </div>
+        {style === 'progress' && (
+          <div className="config-row">
+            <span className="config-label">Income</span>
+            <div className="mode-toggle" role="tablist" aria-label="Income representation">
+              {INCOME_OPTS.map((o) => (
+                <button
+                  key={o.id}
+                  role="tab"
+                  aria-selected={incomeRep === o.id}
+                  className={`mode-opt${incomeRep === o.id ? ' active' : ''}`}
+                  onClick={() => setIncomeRep(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {!stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && style !== 'pills' && (
         <div className="config-row">
           <span className="config-label">Gate style</span>
@@ -1325,7 +1381,11 @@ export default function App() {
     illo: 175,
     pots: 44,
   };
-  const treeShift = usesHeader ? TREE_SHIFT[style] ?? 0 : 0;
+  // "Account-style card" income mode renders a full income CARD in the income slot
+  // (pbi only), so push the tree down to clear it (the thin pill row needs no shift).
+  const usesIncomeCard = style === 'progress' && incomeRep === 'card';
+  const INCOME_CARD_SHIFT = 60;
+  const treeShift = (usesHeader ? TREE_SHIFT[style] ?? 0 : 0) + (usesIncomeCard ? INCOME_CARD_SHIFT : 0);
   // Center the ACTIVE (leftmost, yellow) carousel pill directly over the tree's
   // main vertical spine so the income visually flows down from under the active
   // month. The active pill sits at the row's left edge, so its center = left +
@@ -1394,7 +1454,7 @@ export default function App() {
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
       {!monthlyView && usesHeader && (
-        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={carouselInteraction === 'tap' ? playToMonth : scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} interaction={carouselInteraction} onboarding={boardOnboard} />
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={carouselInteraction === 'tap' ? playToMonth : scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} interaction={carouselInteraction} incomeRep={style === 'progress' ? incomeRep : 'pills'} onboarding={boardOnboard} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
@@ -1512,21 +1572,20 @@ export default function App() {
       style={{ ['--card-ms' as string]: `${CARD_MORPH_MS}ms` } as CSSProperties}
     >
       {cardGhosts.map((g) => {
-        const p = cardPhase === 'start' ? g.from : g.to;
+        // t drives the whole morph: start → 0 (frame = big src card), end → 1
+        // (frame = small dst card). CSS transitions tween every property.
+        const t = cardPhase === 'end' ? 1 : 0;
+        const s = cardMorphFrame(g, t);
         return (
-          <div
-            key={g.id}
-            className="cardmorph-ghost"
-            style={{ transform: `translate(${p.left}px, ${p.top}px)` }}
-          >
+          <div key={g.id} className="cardmorph-ghost" style={s.ghost}>
             <div
               className="cardmorph-face cardmorph-face--src"
-              style={{ width: g.srcW, height: g.srcH }}
+              style={s.src}
               dangerouslySetInnerHTML={{ __html: g.srcHtml }}
             />
             <div
               className="cardmorph-face cardmorph-face--dst"
-              style={{ width: g.dstW, height: g.dstH }}
+              style={s.dst}
               dangerouslySetInnerHTML={{ __html: g.dstHtml }}
             />
           </div>
@@ -1545,19 +1604,19 @@ export default function App() {
       style={{ ['--card-ms' as string]: `${CARD_MORPH_MS}ms` } as CSSProperties}
     >
       {dragGhosts.map((g) => {
-        const left = g.from.left + (g.to.left - g.from.left) * dragProgress;
-        const top = g.from.top + (g.to.top - g.from.top) * dragProgress;
-        const c = dragProgress; // src (home look) → dst (map look) crossfade tracks the pull
+        // the sheet pull (dragProgress) drives the frame scale + position + crossfade
+        // directly; on release the class flips and CSS tweens to 0 or 1.
+        const s = cardMorphFrame(g, dragProgress);
         return (
-          <div key={g.id} className="cardmorph-ghost" style={{ transform: `translate(${left}px, ${top}px)` }}>
+          <div key={g.id} className="cardmorph-ghost" style={s.ghost}>
             <div
               className="cardmorph-face cardmorph-face--src"
-              style={{ width: g.srcW, height: g.srcH, opacity: 1 - c }}
+              style={s.src}
               dangerouslySetInnerHTML={{ __html: g.srcHtml }}
             />
             <div
               className="cardmorph-face cardmorph-face--dst"
-              style={{ width: g.dstW, height: g.dstH, opacity: c }}
+              style={s.dst}
               dangerouslySetInnerHTML={{ __html: g.dstHtml }}
             />
           </div>
@@ -1572,30 +1631,12 @@ export default function App() {
   // + card morph still works independently; this toggle is just a direct flip.
   // Note: the drag hand-off opens the compact onboarding map ('map'); the toggle's
   // "Onboarding" option is the original standard money-map view (onboard = null).
-  const onboardToggle =
-    style === 'progress' ? (
-      <div className="config-row onboard-preview-row">
-        <span className="config-label">Preview</span>
-        <div className="mode-toggle" role="tablist" aria-label="Preview view">
-          <button
-            role="tab"
-            aria-selected={onboard === null}
-            className={`mode-opt${onboard === null ? ' active' : ''}`}
-            onClick={exitOnboarding}
-          >
-            Onboarding
-          </button>
-          <button
-            role="tab"
-            aria-selected={onboard === 'home' || onboard === 'map'}
-            className={`mode-opt${onboard === 'home' || onboard === 'map' ? ' active' : ''}`}
-            onClick={enterOnboarding}
-          >
-            Home page
-          </button>
-        </div>
-      </div>
-    ) : null;
+  // The "Preview" (Onboarding | Home page) config control is intentionally HIDDEN
+  // from the panel (per request) — but all of its state + behavior is preserved.
+  // The home-page flow is still reachable via the drag-to-open card morph, and the
+  // enter/exit entry points remain wired (exposed on window for programmatic/test
+  // access so the machinery stays live and referenced).
+  const onboardToggle = null;
 
   // ---- MOBILE: full-screen board + floating controls + config drawer ----
   if (isMobile) {
