@@ -1430,20 +1430,9 @@ export const homeAccountFill = (id: 'core' | 'spend'): number =>
 export const homeAccountAmount = (id: 'core' | 'spend', fill: number): string =>
   homeMoney(Math.max(0, Math.min(1, fill)) * HOME_ACCOUNTS[id].cap);
 
-// Illustrative per-node progress for the home-page onboarding FULL-SYSTEM snapshot
-// ONLY (a zoomed-out "here's your whole system" look — NOT the live simulation).
-// Account bars fill to match their balances; the first goal layer (ef1) reads fully
-// funded, the second layer (debt/ef6) is partway with varied amounts, and deeper
-// Optimizer layers (travel/brokerage) are untouched. Deterministic + tasteful.
-export const HOME_PROGRESS: Record<string, number> = {
-  core: homeAccountFill('core'),
-  spend: homeAccountFill('spend'),
-  ef1: 1, // 1st goal layer — full
-  debt: 0.64, // 2nd layer — in progress
-  ef6: 0.38, // 2nd layer — in progress (varied)
-  travel: 0, // deeper (Optimizer) — not yet started
-  brokerage: 0, // deeper (Optimizer) — not yet started
-};
+// (Home-page goal progress is now driven by the live income-waterfall model in
+// scenario.ts `homeGoalFill`, mapped from the scrub position in App.tsx — see the
+// HOME-PAGE flow block there. The old static HOME_PROGRESS snapshot was removed.)
 // cardTop -> the point each branch arm attaches: the card's VERTICAL CENTER
 // (card height = 8 pad + 24 head + 8 gap + 32 bar + 8 pad = 80 -> center 40),
 // matching the Figma "path - bills" branch endpoints (node 792:8522).

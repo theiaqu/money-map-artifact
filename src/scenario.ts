@@ -971,6 +971,69 @@ export function animMonths(dataset: Dataset, mode: Mode): number {
 // wall-clock seconds for the whole run (per dataset + mode)
 export const endSecs = (dataset: Dataset, mode: Mode) => animMonths(dataset, mode) * MONTH_SECS_BY_MODE[mode];
 
+/* ---------- HOME-PAGE illustrative funding waterfall ----------
+   Used ONLY by the home-page "real app" money map (onboarding), NOT the live sim.
+   After Core/Spend are refilled each month, the LEFTOVER money fills the goals in
+   the SAME level/weight waterfall order the live sim uses: level 1 completes, then
+   level 2, then level 3, … Within a layer, money is split by weight with spillover
+   (the higher-share goal caps first, then its share flows to the rest of the layer)
+   — mirroring the accurate-mode `distribute()` grammar. `goalFrac` is 0..1 across
+   the whole goal-funding window (0 = layers untouched, 1 = every layer funded), so
+   the caller maps scrub position → goalFrac. Earlier layers reach 100% before any
+   later layer begins to fill.
+
+   Both datasets also start with a small, varied BASELINE already funded at the
+   present month (goalFrac = 0), so goals never read as a flat 0% before the
+   waterfall tops them off — deeper layers start with a little less. The baseline
+   is a floor: the waterfall climbs from it and takes over once it exceeds it. */
+const HOME_GOAL_BASELINE: Record<string, number> = {
+  ef1: 0.14, // 1st layer — a little more already saved
+  debt: 0.07, // 2nd layer
+  ef6: 0.05, // 2nd layer (varied)
+  travel: 0.04, // deeper (Optimizer)
+  brokerage: 0.02, // deepest (Optimizer) — the least started
+};
+export function homeGoalFill(dataset: Dataset, goalFrac: number): Record<string, number> {
+  const goals = DATASETS[dataset].goals;
+  const levels = [...new Set(goals.map((g) => g.level))].sort((a, b) => a - b);
+  const n = levels.length;
+  const out: Record<string, number> = {};
+  goals.forEach((g) => { out[g.id] = HOME_GOAL_BASELINE[g.id] ?? 0.05; });
+  const gf = clamp(goalFrac);
+  levels.forEach((lvl, li) => {
+    // this layer owns the sub-window [li/n, (li+1)/n] of the goal-funding span, so
+    // it only starts once every earlier layer has completed (gf >= li/n).
+    const layerFrac = clamp((gf - li / n) / (1 / n));
+    const layerGoals = goals.filter((g) => g.level === lvl);
+    const totalTarget = layerGoals.reduce((s, g) => s + g.target, 0);
+    // money available to this layer = layerFrac × the layer's total target, so the
+    // whole layer completes exactly at the end of its sub-window.
+    let remaining = layerFrac * totalTarget;
+    const filled: Record<string, number> = {};
+    layerGoals.forEach((g) => { filled[g.id] = 0; });
+    let active = layerGoals.map((g) => ({ id: g.id, target: g.target, weight: g.weight }));
+    let guard = 0;
+    while (remaining > 1e-6 && active.length > 0 && guard++ < 32) {
+      const wsum = active.reduce((s, g) => s + g.weight, 0);
+      // the least money (at current weight shares) that caps ONE of the active goals
+      let scale = Infinity;
+      for (const g of active) {
+        const room = g.target - filled[g.id];
+        const share = g.weight / wsum;
+        scale = Math.min(scale, room / share);
+      }
+      const spend = Math.min(remaining, scale);
+      for (const g of active) filled[g.id] += spend * (g.weight / wsum);
+      remaining -= spend;
+      active = active.filter((g) => filled[g.id] < g.target - 1e-6);
+    }
+    // the waterfall fill is a floor'd on the present-day baseline (never drops below
+    // it); once the layer's money climbs past the baseline it takes over up to 100%.
+    layerGoals.forEach((g) => { out[g.id] = clamp(Math.max(HOME_GOAL_BASELINE[g.id] ?? 0.05, filled[g.id] / g.target)); });
+  });
+  return out;
+}
+
 // simulated month of the FIRST income event (income[0], = 0.5). Used by the
 // stocks/heart-monitor cards to gate their solid data line/fill/highlight so
 // nothing but the dotted baseline shows during the pre-first-income idle period.

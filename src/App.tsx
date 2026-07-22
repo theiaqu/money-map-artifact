@@ -11,9 +11,9 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, HOME_PROGRESS, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode, CarouselInteraction } from './components/Card';
-import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
+import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
 
 // ---- "Monthly split" shared-element morph (Figma 907:13144) ----
 // Every morphable element in either view carries data-morph="<role>" (income /
@@ -934,22 +934,28 @@ export default function App() {
   const now = t < 0 ? 0 : Math.min(t / monthSecs(effMode), scrubSpan);
   const dimmed = dimmedNodes(dataset, effMode, Math.min(now, simSpan));
 
-  // HOME-PAGE flow: the money map is meant to feel like a real app, so as the user
-  // scrubs the carousel FORWARD in time the Core/Spend account bars top off from
-  // their present fill toward the brim (100%), reaching full at the furthest future
-  // month — as if the accounts fill up over time. The present month (now = 0) keeps
-  // the accurate present fills (Core ~88.7%, Spend ~91%). The displayed dollar number
-  // tracks the fill (fill × cap), so a brimming bar reads its cap amount. Goals stay
-  // at their illustrative snapshot. Only used when boardOnboard (home flow); the
-  // standard app is unaffected (it never receives these overrides).
-  const homeSpan = scrubSpan;
-  const homeScrub = homeSpan > 0 ? Math.max(0, Math.min(now / homeSpan, 1)) : 0;
-  const homeFillNow = (id: 'core' | 'spend') => {
-    const base = homeAccountFill(id);
-    return base + (1 - base) * homeScrub; // present fill → 100% as scrub advances
-  };
-  const homeProgressNow: Record<string, number> = { ...HOME_PROGRESS, core: homeFillNow('core'), spend: homeFillNow('spend') };
-  const homeAmountsNow: Record<string, string> = { ...HOME_BALANCES, core: homeAccountAmount('core', homeFillNow('core')), spend: homeAccountAmount('spend', homeFillNow('spend')) };
+  // HOME-PAGE flow: the money map mimics a real monthly income WATERFALL as the
+  // user scrubs FORWARD in time. Each month behaves like: (1) Core & Spend refill
+  // FIRST — we model a wipe-to-0 (never shown) and drive the refill OVERLAY from 0
+  // up to full; the overlay LEADS and the true base bar TRAILS it to 100% once the
+  // overlay passes the present fill; then (2) the LEFTOVER money fills the goals in
+  // the sim's level/weight waterfall order (layer 1 completes, then 2, then 3…).
+  // The present month (now = 0) keeps the accurate present fills (Core/Spend ~91%,
+  // goals empty). Only used when boardOnboard; the standard app never sees these.
+  const HOME_ACCT_MONTHS = 1; // Core/Spend finish refilling within the first month
+  // refill overlay 0→1 over the first HOME_ACCT_MONTHS month(s) of scrub.
+  const homeRefill = Math.max(0, Math.min(now / HOME_ACCT_MONTHS, 1));
+  // base bar = the present fill until the overlay passes it, then it follows the
+  // overlay up to 100% (max = "trails the overlay to full").
+  const homeAcctBase = (id: 'core' | 'spend') => Math.max(homeAccountFill(id), homeRefill);
+  // goals only start once Core/Spend are satisfied (now ≥ HOME_ACCT_MONTHS); goalFrac
+  // spans the rest of the scrub horizon so later layers fill as you scrub further.
+  const homeGoalFrac = scrubSpan > HOME_ACCT_MONTHS ? Math.max(0, Math.min((now - HOME_ACCT_MONTHS) / (scrubSpan - HOME_ACCT_MONTHS), 1)) : 0;
+  const homeGoalFills = homeGoalFill(dataset, homeGoalFrac);
+  const homeProgressNow: Record<string, number> = { ...homeGoalFills, core: homeAcctBase('core'), spend: homeAcctBase('spend') };
+  const homeAmountsNow: Record<string, string> = { ...HOME_BALANCES, core: homeAccountAmount('core', homeAcctBase('core')), spend: homeAccountAmount('spend', homeAcctBase('spend')) };
+  // the scrub-driven refill overlay width for the two account bars (same lead value).
+  const homeRefillNow: Record<string, number> = { core: homeRefill, spend: homeRefill };
 
   // dataset-aware card + percent-badge sets (layout positions stay identical)
   const cards = cardsFor(dataset);
@@ -1389,7 +1395,7 @@ export default function App() {
         ))}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? homeAmountsNow : undefined} progressOverride={boardOnboard ? homeProgressNow : undefined} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? homeAmountsNow : undefined} progressOverride={boardOnboard ? homeProgressNow : undefined} refillOverride={boardOnboard ? homeRefillNow : undefined} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&

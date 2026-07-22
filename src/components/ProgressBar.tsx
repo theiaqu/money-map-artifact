@@ -26,6 +26,9 @@ const easeOutCubic = (x: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x))
 // earlier attempt) so it reads as a soft second bar sweeping over the real fill.
 const REFILL_PEAK_OPACITY = 0.3;
 const REFILL_FILL_PORTION = 0.6; // fraction of each month spent sweeping; rest fades
+// HOME flow driven overlay: a touch stronger than the faint standard sweep so the
+// "refill leading the base bar to full" reads clearly as you scrub.
+const REFILL_DRIVEN_OPACITY = 0.5;
 
 // Per-month refill sweep: given whole-months-elapsed `now`, returns the overlay's
 // width fraction and opacity for the CURRENT month's refill. Sweeps 0→1 over the
@@ -55,6 +58,7 @@ export default function ProgressBar({
   reached = false,
   refill = false,
   now = 0,
+  refillOverride,
   morphRole,
 }: {
   color: GraphColor;
@@ -64,19 +68,25 @@ export default function ProgressBar({
   reached?: boolean;
   refill?: boolean;
   now?: number;
+  refillOverride?: number; // HOME flow: drive the refill OVERLAY width (0..1 of the whole bar) from the scrub position instead of the time-based monthly sweep. The overlay leads and the base fill (driven separately) trails it up to 100%.
   morphRole?: string; // "bills" | "spend" | "goals" — tags the bar for the Monthly-split shared-element morph
 }) {
   const p = Math.max(0, Math.min(1, progress));
-  const sweep = refill ? refillSweep(now) : { w: 0, op: 0 };
+  // HOME flow: the overlay width is driven by the scrub (refillOverride), held at a
+  // steady visible opacity, and spans the WHOLE bar (0..1) so it can sweep up to
+  // full and lead the base fill. Standard app: the faint per-month time sweep.
+  const driven = refillOverride !== undefined;
+  const overlayW = driven ? Math.max(0, Math.min(1, refillOverride)) : refillSweep(now).w * p;
+  const overlayOp = driven ? REFILL_DRIVEN_OPACITY : refillSweep(now).op;
   return (
     <div className="pbi-bar" {...(morphRole ? { 'data-morph': morphRole, 'data-morph-color': FILL[color] } : {})}>
       {p > 0.001 && (
         <div className="pbi-bar-fill" style={{ width: `${p * 100}%`, background: FILL[color] }} />
       )}
-      {refill && sweep.op > 0.001 && sweep.w > 0.001 && (
+      {refill && overlayOp > 0.001 && overlayW > 0.001 && (
         <div
           className="pbi-bar-refill"
-          style={{ width: `${sweep.w * p * 100}%`, background: REFILL_SOLID[color], opacity: sweep.op }}
+          style={{ width: `${overlayW * 100}%`, background: REFILL_SOLID[color], opacity: overlayOp }}
         />
       )}
       <span className="pbi-bar-amount">{amount}</span>

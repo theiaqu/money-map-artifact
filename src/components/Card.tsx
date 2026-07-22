@@ -451,6 +451,7 @@ export default function Card({
   refillVisual = false,
   amountOverride,
   progressOverride,
+  refillOverride,
 }: {
   node: CardNode;
   now: number;
@@ -473,6 +474,7 @@ export default function Card({
   refillVisual?: boolean; // pbi "Core/Spend refill visual": two-tone capacity+balance bar (Figma 907:13009)
   amountOverride?: Record<string, string>; // per-node id → amount string override (onboarding home→map: Core/Spend show the home balances for number continuity)
   progressOverride?: Record<string, number>; // per-node id → 0..1 fill override (onboarding full-system snapshot: bars reflect home balances / illustrative goal progress instead of the live sim)
+  refillOverride?: Record<string, number>; // per-node id → 0..1 refill-overlay width (HOME flow: the scrub-driven Core/Spend refill overlay that leads the base bar to 100%)
 }) {
   // Styles that render the shared board-level ArtifactHeader use its paycheck
   // carousel as the income element, so the per-style income node is suppressed.
@@ -855,6 +857,7 @@ export default function Card({
             reached={reached}
             refill={refillVisual && node.kind === 'account'}
             now={now}
+            refillOverride={node.kind === 'account' ? refillOverride?.[node.id] : undefined}
             morphRole={node.kind === 'goal' ? 'goals' : node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : undefined}
           />
         </div>
