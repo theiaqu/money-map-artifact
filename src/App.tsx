@@ -1483,7 +1483,10 @@ export default function App() {
   // fit its appended goals — but the minimalist "icons" style uses a COMPACT row
   // rhythm whose 8 rows fit the 874px screen, so it stays on the 960px board for
   // both datasets (no tall-board rule).
-  const boardH = style === 'pills' ? pillsLayoutFor(dataset).height : dataset === 'optimizer' && style !== 'icons' ? 1200 : 960;
+  // Progress (pbi) tree tightened to an 84px card pitch, so its content ends higher
+  // — give it its own trimmed board height (was on the shared 960/1200) while every
+  // other style keeps the generous shared height.
+  const boardH = style === 'pills' ? pillsLayoutFor(dataset).height : style === 'progress' ? (dataset === 'optimizer' ? 1148 : 924) : dataset === 'optimizer' && style !== 'icons' ? 1200 : 960;
   const openConvo = (id: string, rect: DOMRect) => {
     setSelectedRect(rect);
     setSelectedConvo(id);
