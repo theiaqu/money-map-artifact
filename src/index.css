@@ -1731,6 +1731,12 @@ body.is-dragging-noselect * {
   pointer-events: none; /* the viewport owns the drag; pills never intercept */
   transition: background 220ms ease, color 220ms ease;
 }
+/* TAP mode re-enables clicks on the individual pills. The row carries BOTH the
+   --scrub and --tap classes, so the rule just above (--scrub .pbi-pill-slot →
+   pointer-events:none, meant for the drag viewport) would otherwise swallow each
+   pill's onClick. This rule is intentionally placed AFTER it so the later, equal-
+   specificity declaration wins and tap-to-select works. */
+.pbi-income-row--tap .pbi-pill-slot { pointer-events: auto; }
 /* the pill sitting in the yellow slot */
 .pbi-income-row--scrub .pbi-pill-active {
   background: #f6dc72;
