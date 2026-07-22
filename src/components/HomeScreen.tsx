@@ -33,9 +33,9 @@ function MoneyMapIcon({ size = 22, color = '#111827' }: { size?: number; color?:
 
 const SHEET_REST = 330; // sheet top at rest (account cards visible above)
 const SHEET_RAISED = 150; // dragged up: sheet covers the account cards
-const SHEET_MAX = 560; // dragged down: sheet floor (reveals the money-map affordance)
-const OPEN_PULL = 96; // full downward pull: the card→map morph reaches 100% here
-const COMMIT_PULL = OPEN_PULL * 0.55; // release past this → complete to the money map; before → snap back
+const SHEET_MAX = 600; // dragged down: sheet floor (reveals the money-map affordance); raised so the longer commit pull is comfortably reachable before the rubber-band
+const OPEN_PULL = 180; // full downward pull: the card→map morph preview reaches 100% here. Widened (was 96) so the pre-threshold hint builds over a LONGER, more gradual drag
+const COMMIT_PULL = OPEN_PULL * 0.62; // ~112px: release past this → complete to the money map; before → snap back. ~2.1× the old ~53px so it takes a clear, deliberate drag to fire
 const REVEAL_PULL = 18; // affordance starts fading in after this much downward pull
 
 function clamp(n: number, lo: number, hi: number) {
