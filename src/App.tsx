@@ -11,7 +11,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, HOME_PROGRESS, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, HOME_PROGRESS, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -916,6 +916,23 @@ export default function App() {
   const now = t < 0 ? 0 : Math.min(t / monthSecs(effMode), animMonths(dataset, effMode));
   const dimmed = dimmedNodes(dataset, effMode, now);
 
+  // HOME-PAGE flow: the money map is meant to feel like a real app, so as the user
+  // scrubs the carousel FORWARD in time the Core/Spend account bars top off from
+  // their present fill toward the brim (100%), reaching full at the furthest future
+  // month — as if the accounts fill up over time. The present month (now = 0) keeps
+  // the accurate present fills (Core ~88.7%, Spend ~91%). The displayed dollar number
+  // tracks the fill (fill × cap), so a brimming bar reads its cap amount. Goals stay
+  // at their illustrative snapshot. Only used when boardOnboard (home flow); the
+  // standard app is unaffected (it never receives these overrides).
+  const homeSpan = animMonths(dataset, effMode);
+  const homeScrub = homeSpan > 0 ? Math.max(0, Math.min(now / homeSpan, 1)) : 0;
+  const homeFillNow = (id: 'core' | 'spend') => {
+    const base = homeAccountFill(id);
+    return base + (1 - base) * homeScrub; // present fill → 100% as scrub advances
+  };
+  const homeProgressNow: Record<string, number> = { ...HOME_PROGRESS, core: homeFillNow('core'), spend: homeFillNow('spend') };
+  const homeAmountsNow: Record<string, string> = { ...HOME_BALANCES, core: homeAccountAmount('core', homeFillNow('core')), spend: homeAccountAmount('spend', homeFillNow('spend')) };
+
   // dataset-aware card + percent-badge sets (layout positions stay identical)
   const cards = cardsFor(dataset);
   const percentBadges = badgesFor(dataset);
@@ -1338,7 +1355,7 @@ export default function App() {
         ))}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? HOME_BALANCES : undefined} progressOverride={boardOnboard ? HOME_PROGRESS : undefined} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? homeAmountsNow : undefined} progressOverride={boardOnboard ? homeProgressNow : undefined} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&

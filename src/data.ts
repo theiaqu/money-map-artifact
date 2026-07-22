@@ -1424,6 +1424,12 @@ export const HOME_BALANCES: Record<'core' | 'spend', string> = {
 export const homeAccountFill = (id: 'core' | 'spend'): number =>
   Math.max(0, Math.min(1, HOME_ACCOUNTS[id].balance / HOME_ACCOUNTS[id].cap));
 
+// Dollar amount that matches a given 0..1 fill (number stays consistent with the
+// bar): fill × cap. At the present fill this returns the balance; at the brim it
+// returns the cap. Used when the home-page accounts top off toward 100% on scrub.
+export const homeAccountAmount = (id: 'core' | 'spend', fill: number): string =>
+  homeMoney(Math.max(0, Math.min(1, fill)) * HOME_ACCOUNTS[id].cap);
+
 // Illustrative per-node progress for the home-page onboarding FULL-SYSTEM snapshot
 // ONLY (a zoomed-out "here's your whole system" look — NOT the live simulation).
 // Account bars fill to match their balances; the first goal layer (ef1) reads fully
