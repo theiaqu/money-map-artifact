@@ -1938,25 +1938,28 @@ body.is-dragging-noselect * {
 
 /* full-width vertical gradient behind the tree (below the hero). Scoped to the
    Locked path gate — rendered only for that gate so it never tints other gates or
-   account styles. Px-anchored stops (from the Figma 594px gradient box at top 280:
-   0/7.98/26.62/56.887%) keep the gold→teal→pink transition fixed to the tree
-   regardless of board height; pink holds to the bottom. Sits BEHIND cards/branches. */
+   account styles. Colours + stop proportions come straight from the Figma gradient
+   (node 1010:13886): a soft transparent-gold → gold → mint-green → teal → pink wash
+   at 16% opacity over the #f3f4f6 page. Px-anchored stops (converted from the Figma
+   603px gradient box: 1.92/13.46/16.83/43.27/47.12%) keep the gold→green→teal→pink
+   transition fixed near the top of the tree; pink then holds all the way down. The
+   element's HEIGHT is set inline (= boardH − top) because its .tree-shift parent is
+   zero-height, so a `bottom: 0` would collapse it. Sits BEHIND cards/branches. */
 .pbi-locked-bg {
   position: absolute;
   left: 0;
   right: 0;
   top: 280px;
-  bottom: 0;
   z-index: 0;
   pointer-events: none;
-  /* barely-there tint: dropped from 0.39 to a faint whisper of color */
-  opacity: 0.12;
+  opacity: 0.16;
   background: linear-gradient(
     to bottom,
-    rgba(246, 220, 114, 0) 0px,
-    rgb(246, 220, 114) 47px,
-    rgb(88, 200, 180) 158px,
-    rgb(235, 197, 214) 338px
+    rgba(246, 220, 114, 0) 12px,
+    rgb(246, 220, 114) 81px,
+    rgb(107, 203, 172) 101px,
+    rgb(88, 200, 180) 261px,
+    rgb(235, 197, 214) 284px
   );
 }
 

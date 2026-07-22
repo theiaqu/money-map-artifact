@@ -1358,7 +1358,7 @@ export default function App() {
       <div className="tree-shift" style={treeShift ? { transform: `translateY(${treeShift}px)` } : undefined}>
         {/* Locked-path (pbi-only) soft vertical gold→green→pink gradient behind the
             tree; scoped to this gate so no other gate/style is tinted. */}
-        {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" />}
+        {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" style={{ height: Math.max(0, boardH - 280) }} />}
         {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
         {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
         {/* Section plus label (pbi-only): same teal/pink panels, WITH top-left section labels. */}
