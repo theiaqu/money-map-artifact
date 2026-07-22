@@ -1290,38 +1290,45 @@ export default function App() {
             ))}
           </div>
         </div>
-        <div className="config-row">
-          <span className="config-label">Header carousel</span>
-          <div className="mode-toggle" role="tablist" aria-label="Header carousel">
-            {CAROUSEL_OPTS.map((c) => (
-              <button
-                key={c.id}
-                role="tab"
-                aria-selected={carouselMode === c.id}
-                className={`mode-opt${carouselMode === c.id ? ' active' : ''}`}
-                onClick={() => setCarouselMode(c.id)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="config-row">
-          <span className="config-label">Timeline interaction</span>
-          <div className="mode-toggle" role="tablist" aria-label="Timeline interaction">
-            {INTERACTION_OPTS.map((o) => (
-              <button
-                key={o.id}
-                role="tab"
-                aria-selected={carouselInteraction === o.id}
-                className={`mode-opt${carouselInteraction === o.id ? ' active' : ''}`}
-                onClick={() => setCarouselInteraction(o.id)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Header carousel + Timeline interaction only apply to the paycheck-pill
+            carousel, which only exists in "Individual pills" income mode. In the
+            default "Account-style card" mode there is no carousel, so hide both. */}
+        {incomeRep === 'pills' && (
+          <>
+            <div className="config-row">
+              <span className="config-label">Header carousel</span>
+              <div className="mode-toggle" role="tablist" aria-label="Header carousel">
+                {CAROUSEL_OPTS.map((c) => (
+                  <button
+                    key={c.id}
+                    role="tab"
+                    aria-selected={carouselMode === c.id}
+                    className={`mode-opt${carouselMode === c.id ? ' active' : ''}`}
+                    onClick={() => setCarouselMode(c.id)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="config-row">
+              <span className="config-label">Timeline interaction</span>
+              <div className="mode-toggle" role="tablist" aria-label="Timeline interaction">
+                {INTERACTION_OPTS.map((o) => (
+                  <button
+                    key={o.id}
+                    role="tab"
+                    aria-selected={carouselInteraction === o.id}
+                    className={`mode-opt${carouselInteraction === o.id ? ' active' : ''}`}
+                    onClick={() => setCarouselInteraction(o.id)}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
         <div className="config-row">
           <span className="config-label">Core/Spend refill visual</span>
           <div className="mode-toggle" role="tablist" aria-label="Core/Spend refill visual">

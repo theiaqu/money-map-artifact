@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Umbrella, PiggyBank, Home, Plane, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Umbrella, PiggyBank, Home, Plane, TrendingUp, ArrowDown, type LucideIcon } from 'lucide-react';
 import FruitfulLogo from './FruitfulLogo';
 import { heroHeadline, goalWaterfall, waterfallDate, DATASETS, type Dataset } from '../scenario';
 
@@ -44,6 +44,14 @@ function goalIcon(title: string): LucideIcon {
   if (/travel|slush/.test(t)) return Plane;
   if (/brokerage|invest/.test(t)) return TrendingUp;
   return Umbrella; // emergency funds + default
+}
+
+// funding-level index → ordinal badge ("1st", "2nd", "3rd", …) for the income-split
+// goal cards (Figma 1079:12915 shows the layer/tier number in a pink circle badge).
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
 }
 
 // months-to-fund → a big value + unit ("5" / "months", "2.5" / "years"). Under two
@@ -353,30 +361,37 @@ export default function MonthlySplit({
           {goalsView === 'split' && (
             <div className="msplit-wf">
               <h2 className="msplit-goals-h">Goals waterfall</h2>
-              {flow.map((row) => {
+              {flow.map((row, i) => {
                 const Icon = goalIcon(row.title);
                 return (
-                  <div className="msplit-wf-card" key={row.id}>
-                    <div className="msplit-wf-head">
-                      <span className="msplit-wf-avatar">
-                        <Icon size={16} strokeWidth={1.75} color="#7a4a5f" />
-                      </span>
-                      <span className="msplit-wf-date">{row.date}</span>
+                  <div key={row.id}>
+                    <div className="msplit-wf-card">
+                      <div className="msplit-wf-head">
+                        <span className="msplit-wf-badge">{ordinal(row.level)}</span>
+                        <span className="msplit-wf-title">{row.title}</span>
+                        <span className="msplit-wf-date">{row.date}</span>
+                      </div>
+                      <div className="msplit-wf-rule">
+                        <div className="msplit-wf-line">
+                          Contribute <span className="msplit-wf-strong">{isFinite(row.months) ? `${row.pct}%` : '—'}</span>
+                        </div>
+                        <div className="msplit-wf-line">
+                          to
+                          <span className="msplit-wf-avatar-sm">
+                            <Icon size={13} strokeWidth={1.75} color="#7a4a5f" />
+                          </span>
+                          <span className="msplit-wf-strong">{row.account}</span>
+                        </div>
+                        <div className="msplit-wf-line">
+                          until available balance = <span className="msplit-wf-strong">{money(row.target)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="msplit-wf-title">{row.title}</div>
-                    <div className="msplit-wf-line">
-                      Contribute <span className="msplit-wf-strong">{isFinite(row.months) ? `${row.pct}%` : '—'}</span>
-                    </div>
-                    <div className="msplit-wf-line">
-                      to{' '}
-                      <span className="msplit-wf-acct">
-                        <Icon size={13} strokeWidth={1.75} color="#7a4a5f" />
-                        {row.account}
-                      </span>
-                    </div>
-                    <div className="msplit-wf-line">
-                      until available balance = <span className="msplit-wf-strong">{money(row.target)}</span>
-                    </div>
+                    {i < flow.length - 1 && (
+                      <div className="msplit-wf-arrow" aria-hidden="true">
+                        <ArrowDown size={18} strokeWidth={2} color="#c2c2c2" />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -403,10 +418,19 @@ export default function MonthlySplit({
               const linePath = smoothPath(curve);
               const areaPath = pts.length ? `${linePath} L ${xOf(maxM).toFixed(1)} ${(GH - PADB).toFixed(1)} L ${xOf(0).toFixed(1)} ${(GH - PADB).toFixed(1)} Z` : '';
               // x-axis ticks: TODAY at the origin + each January boundary within range
-              const ticks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
+              const allTicks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
               for (let m = 1; m <= Math.ceil(maxM); m++) {
                 const d = waterfallDate(m);
-                if (d.label.startsWith('JAN')) ticks.push({ x: xOf(m), label: String(d.year) });
+                if (d.label.startsWith('JAN')) allTicks.push({ x: xOf(m), label: String(d.year) });
+              }
+              // Cap at 4 labels so a long range (e.g. Optimizer → 2032) doesn't crowd
+              // the axis: keep first + last and evenly subsample a couple in between.
+              const MAX_TICKS = 4;
+              let ticks = allTicks;
+              if (allTicks.length > MAX_TICKS) {
+                const idxs = new Set<number>();
+                for (let i = 0; i < MAX_TICKS; i++) idxs.add(Math.round((i * (allTicks.length - 1)) / (MAX_TICKS - 1)));
+                ticks = [...idxs].sort((a, b) => a - b).map((i) => allTicks[i]);
               }
               const detailParts = activeGoal ? activeGoal.date.split(' ') : ['', ''];
               const DetailIcon = activeGoal ? goalIcon(activeGoal.title) : Umbrella;
