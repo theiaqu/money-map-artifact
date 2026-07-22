@@ -11,7 +11,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, PBI_INCOME_CARD_TOP, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, PBI_INCOME_CARD_TOP, PBI_INCOME_GATE_Y, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode, CarouselInteraction, IncomeRep } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -1235,7 +1235,10 @@ export default function App() {
             </div>
           </div>
         )}
-        {!stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && style !== 'pills' && (
+        {/* Gate-style picker is HIDDEN from the panel (same as the Preview control):
+            the underlying `branch` state + its default (pbi-grouped) stay intact and
+            drive the tree, but the selector is no longer rendered/selectable. */}
+        {false && !stocksFixed && style !== 'sheet' && style !== 'illo' && style !== 'grid' && style !== 'pills' && (
         <div className="config-row">
           <span className="config-label">Gate style</span>
             <div className="mode-toggle" role="tablist" aria-label="Gate style">
@@ -1471,6 +1474,15 @@ export default function App() {
         {style === 'progress' && branch === 'pbi-locked' && <div className="pbi-locked-bg" style={{ height: Math.max(0, boardH - 280) }} />}
         {/* Grouped (pbi-only) colored section panels behind the cards/branches. */}
         {style === 'progress' && branch === 'pbi-grouped' && <PbiGroupedPanels dataset={dataset} />}
+        {/* "Account-style card" income mode: a YELLOW section band behind the
+            Direct-deposit income card (Figma 1054:10928), matching the Monthly/Goals
+            bands. Sits BEHIND the connectors + cards; ends just above the mint panel. */}
+        {usesIncomeCard && (
+          <div
+            className="pbi-grouped-panel pbi-grouped-panel--yellow"
+            style={{ left: 11, top: PBI_INCOME_CARD_TOP - 10, width: 379, height: 88 }}
+          />
+        )}
         {/* Section plus label (pbi-only): same teal/pink panels, WITH top-left section labels. */}
         {style === 'progress' && branch === 'pbi-sectionlabel' && <PbiSectionLabelPanels dataset={dataset} />}
         {/* Sections incl. income (pbi-only): In-sections panels PLUS a yellow Income band. */}
@@ -1510,6 +1522,15 @@ export default function App() {
         {style !== 'sheet' && style !== 'grid' && sectionsFor(dataset).map((s) => (
           <SectionNodeView key={s.id} node={s} dimmed={dimmed.has(s.id)} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} convo={style === 'convo'} illo={style === 'illo'} pbi={style === 'progress'} pots={style === 'pots'} />
         ))}
+
+        {/* "Account-style card" income mode: the INCOME gate label pill on the spine
+            (Figma 1054:10928), rendered like the Monthly/Goals gate pills so the
+            feeder branch reads as flowing into a proper income gate. */}
+        {usesIncomeCard && (
+          <div className="node section-pill-node" style={{ left: 50, top: PBI_INCOME_GATE_Y - 11 }}>
+            <div className="pbi-gate">Income</div>
+          </div>
+        )}
 
         {cards.map((c) => (
           <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? homeAmountsNow : undefined} progressOverride={boardOnboard ? homeProgressNow : undefined} refillOverride={boardOnboard ? homeRefillNow : undefined} />

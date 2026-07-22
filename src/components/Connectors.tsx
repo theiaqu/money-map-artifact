@@ -543,12 +543,10 @@ export default function Connectors({
      meets it) and the reversed feeder PULSE (a yellow band travelling card→gate,
      i.e. the deposit leaving the card). All system pulses take `incomeDelay` so
      they only start after this feeder has arrived at the gate. */
-  const incomeGateNode = incomeGate ? (
-    <g key="income-gate">
-      <circle cx={incomeGate.x} cy={incomeGate.y} r={7} fill="#ffffff" stroke="#c9ccd2" strokeWidth={1.5} />
-      <circle cx={incomeGate.x} cy={incomeGate.y} r={2.6} fill={YELLOW} />
-    </g>
-  ) : null;
+  // The income gate itself renders as the "INCOME" label pill on the spine (App,
+  // matching the Monthly/Goals gate pills per Figma 1054:10928); the feeder just
+  // meets the spine under it, so no SVG gate disc is drawn here.
+  const incomeGateNode = null;
   const feederComet = (strokeW: number) => {
     const d = conns.find((c) => c.id === 'c-income-card')?.d;
     const len = lens['c-income-card'];
