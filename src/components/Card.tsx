@@ -298,8 +298,9 @@ export function IncomeAccountCard({
           <Landmark className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
           <span className="pbi-card-name">Direct deposit</span>
         </div>
-        {/* two-tone reverse-depleting bar: track = light lemon (spent), left-anchored
-            solid-lemon fill = remaining income, shrinking right→left as time advances */}
+        {/* reverse-depleting bar: GRAY empty track, left-anchored solid-lemon fill =
+            remaining income, shrinking so the yellow drains right→left (revealing the
+            gray track) as income is spent into the system with the scrub/flow */}
         <div className="pbi-bar pbi-bar--income">
           <div className="pbi-bar-fill pbi-bar-fill--income" style={{ width: `${remaining * 100}%` }} />
           <span className="pbi-bar-amount">{amount}</span>

@@ -1928,10 +1928,10 @@ body.is-dragging-noselect * {
 }
 .pbi-bar-date.reached { background: #624b52; color: #f7dfe9; }
 
-/* "Account-style card" income bar (Figma 1054:10928): the whole track is the light
-   lemon "spent" band; the solid-lemon fill is the REMAINING income, left-anchored
-   and shrinking so the bar empties right→left as the clock advances. */
-.pbi-bar--income { background: #fbedb8; }
+/* "Account-style card" income bar (Figma 1054:10928): a GRAY empty track with the
+   solid-lemon fill as the REMAINING income — left-anchored and shrinking, so the
+   yellow drains right→left revealing the gray track as income is spent. */
+.pbi-bar--income { background: #f3f4f6; }
 .pbi-bar-fill--income {
   background: #f6dc72;
   transition: width 220ms ease;
