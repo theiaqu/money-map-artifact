@@ -92,6 +92,16 @@ function measureSectionBands(board: HTMLElement): MorphMap {
       radius,
     });
   };
+  // Use the band's REAL (softer/faded) rendered color as the ghost's full-system
+  // endpoint — NOT the vivid monthly-split hue — so the flying ghost visibly
+  // CROSSFADES its background between the two views (Full→Monthly deepens toward
+  // the vivid split color; Monthly→Full fades toward this softer band tint), and
+  // the ghost lands exactly on the real band's color (seamless reveal). Falls back
+  // to a known tint when the computed color is transparent (e.g. gradient bands).
+  const bandColor = (el: HTMLElement, fallback: string): string => {
+    const bg = getComputedStyle(el).backgroundColor;
+    return bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent' ? bg : fallback;
+  };
   // Income source: prefer the YELLOW income SECTION BAND (Account-style card mode),
   // so the band itself morphs into the take-home yellow card — consistent with the
   // mint/pink bands. Fall back to the header paycheck pill when no band is present
@@ -100,7 +110,7 @@ function measureSectionBands(board: HTMLElement): MorphMap {
   if (incBand) {
     const r = incBand.getBoundingClientRect();
     const radius = getComputedStyle(incBand).borderTopLeftRadius || '16px';
-    push('income', r.left, r.top, r.width, r.height, '#f6dc72', radius);
+    push('income', r.left, r.top, r.width, r.height, bandColor(incBand, 'rgba(255, 224, 117, 0.5)'), radius);
   } else {
     const inc = board.querySelector<HTMLElement>('[data-morph="income"]');
     if (inc) {
@@ -110,20 +120,28 @@ function measureSectionBands(board: HTMLElement): MorphMap {
     }
   }
   // Monthly Expenses band → SPLIT into blue (Core, top) + green (Spend, bottom).
+  // The single mint band has one solid color, so both halves crossfade toward the
+  // SAME band tint; when the "Gradient" config paints it blue→green (transparent
+  // background-color), each half crossfades toward its matching faded stop instead.
   const monthly = board.querySelector<HTMLElement>('[data-morph-band="monthly"]');
   if (monthly) {
     const r = monthly.getBoundingClientRect();
-    const radius = getComputedStyle(monthly).borderTopLeftRadius || '16px';
+    const cs = getComputedStyle(monthly);
+    const radius = cs.borderTopLeftRadius || '16px';
     const half = r.height / 2;
-    push('bills', r.left, r.top, r.width, half, '#b0d9ff', radius);
-    push('spend', r.left, r.top + half, r.width, half, '#61bc76', radius);
+    const gradient = !!cs.backgroundImage && cs.backgroundImage !== 'none';
+    const mint = cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' ? cs.backgroundColor : 'rgba(56, 195, 203, 0.15)';
+    const billsColor = gradient ? '#d7ecff' : mint;
+    const spendColor = gradient ? '#b0ddba' : mint;
+    push('bills', r.left, r.top, r.width, half, billsColor, radius);
+    push('spend', r.left, r.top + half, r.width, half, spendColor, radius);
   }
-  // Goals band → the pink goals column.
+  // Goals band → the pink goals column (fades toward the softer band pink #f1e1ea).
   const goals = board.querySelector<HTMLElement>('[data-morph-band="goals"]');
   if (goals) {
     const r = goals.getBoundingClientRect();
     const radius = getComputedStyle(goals).borderTopLeftRadius || '16px';
-    push('goals', r.left, r.top, r.width, r.height, '#eebed4', radius);
+    push('goals', r.left, r.top, r.width, r.height, bandColor(goals, '#f1e1ea'), radius);
   }
   return map;
 }
@@ -273,6 +291,20 @@ type MonthlyBg = 'teal' | 'gradient';
 const MONTHLY_BG_OPTS: { id: MonthlyBg; label: string }[] = [
   { id: 'teal', label: 'Teal' }, // default first (current behavior)
   { id: 'gradient', label: 'Gradient' },
+];
+
+// How the GOALS section under the monthly-split graphic is represented:
+// 'list' = the year-grouped goals-waterfall calendar list (default, current);
+// 'split' = an income-split-style waterfall (each goal shows its contribution %,
+//   destination account, and "until balance = $target"; Figma 1079:12915);
+// 'networth' = an interactive net-worth timeline graph where each goal is a point
+//   the user can click to highlight/select (Figma 1099:15988). All three recompute
+//   from the live Spend↔Goals simulation state inside MonthlySplit.
+type GoalsView = 'list' | 'split' | 'networth';
+const GOALS_VIEW_OPTS: { id: GoalsView; label: string }[] = [
+  { id: 'list', label: 'Calendar list' }, // default first
+  { id: 'split', label: 'Like our income split' },
+  { id: 'networth', label: 'Net worth graph' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -566,6 +598,7 @@ export default function App() {
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const [transitionAnim, setTransitionAnim] = useState<TransitionAnim>('sections'); // Full↔Monthly morph style: section-band split (default) vs. progress-bar morph
   const [monthlyBg, setMonthlyBg] = useState<MonthlyBg>('teal'); // Monthly Expenses section background: teal (default) vs. blue→green gradient
+  const [goalsView, setGoalsView] = useState<GoalsView>('list'); // Goals section under the monthly split: calendar list (default) vs. income-split style vs. net-worth graph
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
   // money map inside a mock Fruitful home page. null = normal configurator; 'home'
   // = mock home with the draggable sheet; 'map' = the money map with a compact
@@ -1370,6 +1403,27 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* How the GOALS section under the monthly-split graphic is represented.
+            Offered on the styles that expose the Monthly-split view (progress / pills):
+            calendar list (default) vs. income-split style vs. interactive net-worth graph. */}
+        {(style === 'progress' || style === 'pills') && (
+          <div className="config-row">
+            <span className="config-label">Goals section</span>
+            <div className="mode-toggle" role="tablist" aria-label="Goals section representation">
+              {GOALS_VIEW_OPTS.map((o) => (
+                <button
+                  key={o.id}
+                  role="tab"
+                  aria-selected={goalsView === o.id}
+                  className={`mode-opt${goalsView === o.id ? ' active' : ''}`}
+                  onClick={() => setGoalsView(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Gate-style picker is HIDDEN from the panel (same as the Preview control):
             the underlying `branch` state + its default (pbi-grouped) stay intact and
             drive the tree, but the selector is no longer rendered/selectable. */}
@@ -1599,7 +1653,7 @@ export default function App() {
         </div>
       )}
 
-      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} />}
+      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} />}
 
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The

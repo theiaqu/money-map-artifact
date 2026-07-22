@@ -59,7 +59,38 @@ function durParts(months: number): { value: string; unit: string } {
   return { value, unit: yrs === 1 ? 'year' : 'years' };
 }
 
-export default function MonthlySplit({ dataset, onboarding = false }: { dataset: Dataset; onboarding?: boolean }) {
+// Smooth (Catmull-Rom → cubic-bezier) path through a series of points — used to
+// draw the rising net-worth curve so it eases through each goal point instead of
+// reading as straight segments.
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return '';
+  if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
+export type GoalsView = 'list' | 'split' | 'networth';
+
+export default function MonthlySplit({
+  dataset,
+  onboarding = false,
+  goalsView = 'list',
+}: {
+  dataset: Dataset;
+  onboarding?: boolean;
+  goalsView?: GoalsView;
+}) {
   const cfg = DATASETS[dataset];
   const hero = heroHeadline(dataset);
   const bills = cfg.coreMax;
@@ -140,6 +171,38 @@ export default function MonthlySplit({ dataset, onboarding = false }: { dataset:
     }
     g.rows.push(s);
   }
+
+  // ---- enriched waterfall for the "income-split" + "net worth" goals views ----
+  // Each step gains: its contribution % (the goal's weight WITHIN its funding level,
+  // mirroring how the income split shows each bucket's % share), its destination
+  // account label + icon, its completion date, and the cumulative net worth once it
+  // funds. All derive from the SAME live `goals` number, so they recompute as the
+  // Spend↔Goals slider moves.
+  const levelWeight = new Map<number, number>();
+  cfg.goals.forEach((g) => levelWeight.set(g.level, (levelWeight.get(g.level) ?? 0) + g.weight));
+  let cumulative = 0;
+  const flow = steps.map((s) => {
+    const g = cfg.goals.find((x) => x.id === s.id)!;
+    const pct = Math.round((g.weight / (levelWeight.get(s.level) || 1)) * 100);
+    cumulative += s.target;
+    return {
+      ...s,
+      pct,
+      account: g.pill,
+      date: waterfallDate(s.months).label,
+      networth: cumulative,
+    };
+  });
+
+  // ---- interactive net-worth graph selection ----
+  // Which goal point is highlighted (defaults to the FIRST-funding goal). Reset when
+  // the dataset changes so a stale id from the other dataset never lingers.
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  useEffect(() => {
+    setSelectedGoal(null);
+  }, [dataset]);
+  const activeGoalId = selectedGoal ?? (flow[0]?.id ?? null);
+  const activeGoal = flow.find((f) => f.id === activeGoalId) ?? flow[0];
 
   return (
     <div className={`msplit${onboarding ? ' msplit--onboard' : ''}`} style={{ width: BOARD_W }}>
@@ -249,36 +312,161 @@ export default function MonthlySplit({ dataset, onboarding = false }: { dataset:
             </div>
           </div>
 
-          <div className="msplit-goals">
-            {yearGroups.map((g) => (
-              <div className="msplit-goals-group" key={g.label}>
-                <div className="msplit-goals-year">{g.label}</div>
-                {g.rows.map((row) => {
-                  const Icon = goalIcon(row.title);
-                  const d = durParts(row.months);
-                  const date = waterfallDate(row.months).label;
-                  return (
-                    <div className="msplit-goal" key={row.id}>
-                      <div className="msplit-goal-time">
-                        <span className="msplit-goal-time-val">{d.value}</span>
-                        {d.unit && <span className="msplit-goal-time-unit">{d.unit}</span>}
-                      </div>
-                      <div className="msplit-goal-main">
-                        <div className="msplit-goal-info">
-                          <div className="msplit-goal-name">
-                            <Icon size={16} strokeWidth={1.75} color="#111" />
-                            <span>{row.title}</span>
-                          </div>
-                          <span className="msplit-goal-amt">Goal: {money(row.target)}</span>
+          {/* ---- (a) Calendar list — year-grouped goals waterfall (default) ---- */}
+          {goalsView === 'list' && (
+            <div className="msplit-goals">
+              {yearGroups.map((g) => (
+                <div className="msplit-goals-group" key={g.label}>
+                  <div className="msplit-goals-year">{g.label}</div>
+                  {g.rows.map((row) => {
+                    const Icon = goalIcon(row.title);
+                    const d = durParts(row.months);
+                    const date = waterfallDate(row.months).label;
+                    return (
+                      <div className="msplit-goal" key={row.id}>
+                        <div className="msplit-goal-time">
+                          <span className="msplit-goal-time-val">{d.value}</span>
+                          {d.unit && <span className="msplit-goal-time-unit">{d.unit}</span>}
                         </div>
-                        <span className="msplit-goal-date">{date}</span>
+                        <div className="msplit-goal-main">
+                          <div className="msplit-goal-info">
+                            <div className="msplit-goal-name">
+                              <Icon size={16} strokeWidth={1.75} color="#111" />
+                              <span>{row.title}</span>
+                            </div>
+                            <span className="msplit-goal-amt">Goal: {money(row.target)}</span>
+                          </div>
+                          <span className="msplit-goal-date">{date}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ---- (b) "Like our income split" — a waterfall of contribution cards
+               (Figma 1079:12915). Each goal shows its % share of the goals money, its
+               destination account, and the balance it funds up to — mirroring how the
+               Spend/Goals split reads. ---- */}
+          {goalsView === 'split' && (
+            <div className="msplit-wf">
+              <h2 className="msplit-goals-h">Goals waterfall</h2>
+              {flow.map((row) => {
+                const Icon = goalIcon(row.title);
+                return (
+                  <div className="msplit-wf-card" key={row.id}>
+                    <div className="msplit-wf-head">
+                      <span className="msplit-wf-avatar">
+                        <Icon size={16} strokeWidth={1.75} color="#7a4a5f" />
+                      </span>
+                      <span className="msplit-wf-date">{row.date}</span>
+                    </div>
+                    <div className="msplit-wf-title">{row.title}</div>
+                    <div className="msplit-wf-line">
+                      Contribute <span className="msplit-wf-strong">{isFinite(row.months) ? `${row.pct}%` : '—'}</span>
+                    </div>
+                    <div className="msplit-wf-line">
+                      to{' '}
+                      <span className="msplit-wf-acct">
+                        <Icon size={13} strokeWidth={1.75} color="#7a4a5f" />
+                        {row.account}
+                      </span>
+                    </div>
+                    <div className="msplit-wf-line">
+                      until available balance = <span className="msplit-wf-strong">{money(row.target)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ---- (c) Net worth graph — an interactive timeline (Figma 1099:15988).
+               The rising curve plots cumulative net worth; each goal is a clickable
+               point that highlights the goal + shows its detail card below. ---- */}
+          {goalsView === 'networth' &&
+            (() => {
+              const GW = 330;
+              const GH = 188;
+              const PADL = 16;
+              const PADR = 26;
+              const PADT = 20;
+              const PADB = 30;
+              const pts = flow.filter((f) => isFinite(f.months));
+              const maxM = Math.max(1, ...pts.map((p) => p.months));
+              const maxNW = Math.max(1, ...pts.map((p) => p.networth));
+              const xOf = (m: number) => PADL + (m / maxM) * (GW - PADL - PADR);
+              const yOf = (nw: number) => GH - PADB - (nw / maxNW) * (GH - PADT - PADB);
+              const curve = [{ x: xOf(0), y: yOf(0) }, ...pts.map((p) => ({ x: xOf(p.months), y: yOf(p.networth) }))];
+              const linePath = smoothPath(curve);
+              const areaPath = pts.length ? `${linePath} L ${xOf(maxM).toFixed(1)} ${(GH - PADB).toFixed(1)} L ${xOf(0).toFixed(1)} ${(GH - PADB).toFixed(1)} Z` : '';
+              // x-axis ticks: TODAY at the origin + each January boundary within range
+              const ticks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
+              for (let m = 1; m <= Math.ceil(maxM); m++) {
+                const d = waterfallDate(m);
+                if (d.label.startsWith('JAN')) ticks.push({ x: xOf(m), label: String(d.year) });
+              }
+              const detailParts = activeGoal ? activeGoal.date.split(' ') : ['', ''];
+              const DetailIcon = activeGoal ? goalIcon(activeGoal.title) : Umbrella;
+              return (
+                <div className="msplit-nw">
+                  <h2 className="msplit-goals-h">Your goals timeline</h2>
+                  <div className="msplit-nw-card">
+                    <div className="msplit-nw-plot" style={{ width: GW, height: GH }}>
+                      <svg width={GW} height={GH} viewBox={`0 0 ${GW} ${GH}`} fill="none" className="msplit-nw-svg">
+                        {areaPath && <path d={areaPath} fill="url(#nwfill)" />}
+                        <defs>
+                          <linearGradient id="nwfill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#eebed4" stopOpacity="0.28" />
+                            <stop offset="100%" stopColor="#eebed4" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <path d={linePath} stroke="#c9c9c9" strokeWidth={2} strokeLinecap="round" />
+                      </svg>
+                      {ticks.map((t, i) => (
+                        <span className="msplit-nw-tick" key={`${t.label}-${i}`} style={{ left: t.x, top: GH - PADB + 8 }}>
+                          {t.label}
+                        </span>
+                      ))}
+                      {pts.map((p) => {
+                        const PtIcon = goalIcon(p.title);
+                        const on = p.id === activeGoalId;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`msplit-nw-pt${on ? ' msplit-nw-pt--on' : ''}`}
+                            style={{ left: xOf(p.months), top: yOf(p.networth) }}
+                            onClick={() => setSelectedGoal(p.id)}
+                            aria-label={`${p.title} — ${p.date}`}
+                            aria-pressed={on}
+                          >
+                            <PtIcon size={on ? 16 : 13} strokeWidth={2} color={on ? '#ffffff' : '#7a4a5f'} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {activeGoal && (
+                    <div className="msplit-nw-detail">
+                      <div className="msplit-nw-detail-date">
+                        <span className="msplit-nw-detail-mo">{detailParts[0]}</span>
+                        <span className="msplit-nw-detail-yr">{detailParts[1]}</span>
+                      </div>
+                      <div className="msplit-nw-detail-main">
+                        <div className="msplit-nw-detail-name">
+                          <DetailIcon size={16} strokeWidth={1.75} color="#111" />
+                          <span>{activeGoal.title}</span>
+                        </div>
+                        <span className="msplit-nw-detail-amt">Goal: {money(activeGoal.target)}</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+                  )}
+                </div>
+              );
+            })()}
         </div>
       )}
     </div>
