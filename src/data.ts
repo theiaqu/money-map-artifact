@@ -1771,7 +1771,7 @@ export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; 
 export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   const rows = dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
   const lastGoal = dataset === 'optimizer' ? rows.brokerage : rows.ef6;
-  const PAD_T = 10; // top/side breathing room above a card
+  const PAD_T = 10; // top breathing room above a card
   const PAD_B = 8; // extra below a card (card height = 80)
   const GAP = 8; // clean, symmetric visible separation between the mint and pink panels
   // center the 8px gap on the midpoint of the Spend-card-bottom → 1st-goal-card-top
@@ -1781,9 +1781,10 @@ export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   const mintBottom = mid - GAP / 2; // mint ends 4px above the midpoint
   const pinkTop = mid + GAP / 2; // pink starts 4px below the midpoint
   const pinkBottom = lastGoal + 80 + PAD_B;
+  // 8px side margins per the spacing Figma (1075:20494): x=8, width=402−8−8=386.
   return [
-    { id: 'monthly', x: 11, y: mintTop, w: 379, h: mintBottom - mintTop, tint: 'mint', label: '' },
-    { id: 'goals', x: 11, y: pinkTop, w: 379, h: pinkBottom - pinkTop, tint: 'pink', label: '' },
+    { id: 'monthly', x: 8, y: mintTop, w: 386, h: mintBottom - mintTop, tint: 'mint', label: '' },
+    { id: 'goals', x: 8, y: pinkTop, w: 386, h: pinkBottom - pinkTop, tint: 'pink', label: '' },
   ];
 }
 

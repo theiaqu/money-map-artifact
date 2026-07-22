@@ -92,12 +92,22 @@ function measureSectionBands(board: HTMLElement): MorphMap {
       radius,
     });
   };
-  // income still morphs from the header paycheck pill (so the take-home pill flies)
-  const inc = board.querySelector<HTMLElement>('[data-morph="income"]');
-  if (inc) {
-    const geo = inc.querySelector<HTMLElement>('[data-morph-rect]') ?? inc;
-    const r = geo.getBoundingClientRect();
-    push('income', r.left, r.top, r.width, r.height, inc.getAttribute('data-morph-color') || '#f6dc72', getComputedStyle(geo).borderTopLeftRadius || '12px');
+  // Income source: prefer the YELLOW income SECTION BAND (Account-style card mode),
+  // so the band itself morphs into the take-home yellow card — consistent with the
+  // mint/pink bands. Fall back to the header paycheck pill when no band is present
+  // (e.g. Individual-pills income), so the take-home pill still flies in.
+  const incBand = board.querySelector<HTMLElement>('[data-morph-band="income"]');
+  if (incBand) {
+    const r = incBand.getBoundingClientRect();
+    const radius = getComputedStyle(incBand).borderTopLeftRadius || '16px';
+    push('income', r.left, r.top, r.width, r.height, '#f6dc72', radius);
+  } else {
+    const inc = board.querySelector<HTMLElement>('[data-morph="income"]');
+    if (inc) {
+      const geo = inc.querySelector<HTMLElement>('[data-morph-rect]') ?? inc;
+      const r = geo.getBoundingClientRect();
+      push('income', r.left, r.top, r.width, r.height, inc.getAttribute('data-morph-color') || '#f6dc72', getComputedStyle(geo).borderTopLeftRadius || '12px');
+    }
   }
   // Monthly Expenses band → SPLIT into blue (Core, top) + green (Spend, bottom).
   const monthly = board.querySelector<HTMLElement>('[data-morph-band="monthly"]');
@@ -1513,11 +1523,13 @@ export default function App() {
   // (pbi only), so push the tree down to clear it (the thin pill row needs no shift).
   const usesIncomeCard = style === 'progress' && incomeRep === 'card';
   const INCOME_CARD_SHIFT = 60;
-  // The Full system / Monthly split toggle is now pinned right under the hero header
-  // (see .msplit-toggle). On the styles that show it, push the full-system content
-  // (carousel + tree) down so the toggle sits cleanly between header and content.
+  // The Full system / Monthly split toggle sits right under the hero header and now
+  // SCROLLS WITH the board (see .msplit-toggle: position:absolute). On the styles
+  // that show it, push the full-system content (carousel + tree) down so it clears
+  // the toggle by ~8px. TOGGLE_SHIFT is kept in sync with the carousel's translateY
+  // (.board--toptoggle .pbi-income-row) so the carousel and tree move together.
   const showsTopToggle = (style === 'progress' || style === 'pills') && !boardOnboard;
-  const TOGGLE_SHIFT = 56;
+  const TOGGLE_SHIFT = 35;
   const treeShift =
     (usesHeader ? TREE_SHIFT[style] ?? 0 : 0) +
     (usesIncomeCard ? INCOME_CARD_SHIFT : 0) +
@@ -1613,7 +1625,8 @@ export default function App() {
         {usesIncomeCard && (
           <div
             className="pbi-grouped-panel pbi-grouped-panel--yellow"
-            style={{ left: 11, top: PBI_INCOME_CARD_TOP - 10, width: 379, height: 88 }}
+            data-morph-band="income"
+            style={{ left: 8, top: PBI_INCOME_CARD_TOP - 10, width: 386, height: 88 }}
           />
         )}
         {/* Section plus label (pbi-only): same teal/pink panels, WITH top-left section labels. */}

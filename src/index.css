@@ -1610,17 +1610,15 @@ body {
     opacity var(--reveal-ms, 340ms) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* in-prototype view toggle pinned to the bottom of the PHONE SCREEN (not the
-   scrolling board). `.device` carries the scale transform, so it's the containing
-   block for this fixed element — bottom:34px lands ~20px above the screen's inner
-   bottom edge (past the 14px bezel), horizontally centered, in both views. */
+/* in-prototype view toggle sitting right under the hero header. It is
+   `position: absolute` within the SCROLLING board (not fixed to the device), so it
+   scrolls away with the rest of the page instead of staying pinned. `top` is in
+   board coordinates: just below the hero title (~308) with a little breathing room
+   above (task: more space above the toggle). Horizontally centered in both views. */
 .msplit-toggle {
-  position: fixed;
+  position: absolute;
   left: 50%;
-  /* pinned right under the hero header (fixed within the device frame, not floating
-     with the content). device-coord top = 14px bezel + ~312px screen. */
-  top: 326px;
-  bottom: auto;
+  top: 324px;
   transform: translateX(-50%);
   display: flex;
   gap: 2px;
@@ -1631,9 +1629,9 @@ body {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   z-index: 40;
 }
-/* full-system content sits below the pinned toggle: shift the carousel down to
-   match the tree's treeShift so nothing overlaps the toggle. */
-.board--toptoggle .pbi-income-row { transform: translateY(56px); }
+/* full-system content sits ~8px below the toggle: shift the carousel down by the
+   same amount as the tree's treeShift (TOGGLE_SHIFT) so nothing overlaps. */
+.board--toptoggle .pbi-income-row { transform: translateY(35px); }
 .msplit-toggle button {
   border: none;
   background: transparent;
