@@ -273,15 +273,17 @@ function PaycheckCarousel({
 // column) whose bar DEPLETES BACKWARDS. The solid-lemon "remaining income" fill is
 // left-anchored and shrinks as the clock advances, so the light-lemon "spent" track
 // grows from the RIGHT — i.e. the bar empties right→left (income being spent down).
-function IncomeAccountCard({
+export function IncomeAccountCard({
   dataset,
   mode,
   now,
+  top = PBI_INCOME_TOP,
   onboarding = false,
 }: {
   dataset: Dataset;
   mode: Mode;
   now: number;
+  top?: number; // board-coord row top; the branch/gate income mode places it in the card column
   onboarding?: boolean;
 }) {
   // horizon matches the carousel's (home flow exposes ≥10 months). `remaining` is
@@ -290,7 +292,7 @@ function IncomeAccountCard({
   const remaining = total > 0 ? Math.max(0, Math.min(1, 1 - now / total)) : 1;
   const amount = DATASETS[dataset].incomeAmount;
   return (
-    <div className="node" style={{ left: PBI_CARD_LEFT, top: PBI_INCOME_TOP, width: PBI_CARD_W }}>
+    <div className="node" style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>
       <div className="pbi-card">
         <div className="pbi-card-head">
           <Landmark className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
@@ -349,9 +351,11 @@ export function ArtifactHeader({
           <h1 className={`pbi-hero-title${dragging ? ' is-scrub-hidden' : ''}`}>{`${hero.pre} ${hero.date}`}</h1>
         </>
       )}
-      {incomeRep === 'card' ? (
-        <IncomeAccountCard dataset={dataset} mode={mode} now={now} onboarding={onboarding} />
-      ) : (
+      {/* "Account-style card" income mode renders the Direct-deposit income CARD as
+          a proper TREE NODE (in App, inside the shifted tree) so it can feed the
+          income gate via a branch — the header keeps only the hero. Pills mode keeps
+          the paycheck-scrubber carousel here. */}
+      {incomeRep === 'card' ? null : (
         <PaycheckCarousel
           dataset={dataset}
           mode={mode}

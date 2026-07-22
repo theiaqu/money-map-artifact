@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { SlidersHorizontal, X, ArrowLeft } from 'lucide-react';
-import Card, { ArtifactHeader, PbiGroupedPanels, PbiSectionLabelPanels, PbiIncomeSectionPanels, PbiGrouped2Panels } from './components/Card';
+import Card, { ArtifactHeader, IncomeAccountCard, PbiGroupedPanels, PbiSectionLabelPanels, PbiIncomeSectionPanels, PbiGrouped2Panels } from './components/Card';
 import MonthlySplit from './components/MonthlySplit';
 import HomeScreen from './components/HomeScreen';
 import SectionNodeView from './components/SectionNodeView';
@@ -11,7 +11,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, PBI_INCOME_CARD_TOP, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode, CarouselInteraction, IncomeRep } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -1485,7 +1485,14 @@ export default function App() {
         ))}
         {/* "grid" faint graph-paper background behind the tree + cards (grid-scoped). */}
         {style === 'grid' && <div className="grid-paper" />}
-        <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} />
+        <Connectors now={now} mode={effMode} dataset={dataset} branch={branch} map={effMap} v1={isV1} condensed={isCondensed} pillIncome={style === 'progress-pill'} iconTree={style === 'icons'} convoTree={style === 'convo'} sheetTree={style === 'sheet'} illoTree={style === 'illo'} pbiTree={style === 'progress'} potsTree={style === 'pots'} gridTree={style === 'grid'} incomeCard={usesIncomeCard} />
+
+        {/* "Account-style card" income mode: the Direct-deposit income card is a
+            real tree node in the card column that FEEDS the income gate via the
+            reversed feeder branch (rendered by Connectors). */}
+        {usesIncomeCard && (
+          <IncomeAccountCard dataset={dataset} mode={effMode} now={now} top={PBI_INCOME_CARD_TOP} onboarding={boardOnboard} />
+        )}
 
         {style === 'icons' && branch === 'skinny-line' && (
           <div className="icon-footer" style={{ top: iconFooterTop }}>

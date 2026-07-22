@@ -1443,6 +1443,14 @@ export const PBI_INCOME_LEFT = 16;
 export const PBI_INCOME_TOP = 335;
 export const PBI_PAYCHECK_LEFT = 92;
 
+// "Account-style card" income mode (pbi-only): the Direct-deposit income CARD sits
+// in the card column ONE 92px pitch ABOVE Core (378 - 92 = 286), so it reads as a
+// proper account row that FEEDS the income gate. Its vertical center (top + 40,
+// card height 80) is the income-gate junction on the spine — the reversed feeder
+// arm runs card→gate there, and c-income-monthly drops from the gate to Monthly.
+export const PBI_INCOME_CARD_TOP = 286;
+export const PBI_INCOME_GATE_Y = PBI_INCOME_CARD_TOP + PBI_ARM_ATTACH_DY; // 326
+
 // Card TOPS on a UNIFORM 92px pitch, taken directly from the Figma frame
 // (Core 378, Spend 470, Starter EF 562, Pay off debt 654, Full EF 746). Every
 // consecutive card is spaced by the same 92px so the column reads evenly (the

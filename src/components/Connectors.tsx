@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
-import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, connectorsProgressIndentedFor, pbiIndentedPillsFor, PBI_INDENTED_PILL_X, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
-import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, type Dataset, type Mode } from '../scenario';
+import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, connectorsProgressIndentedFor, pbiIndentedPillsFor, PBI_INDENTED_PILL_X, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, PBI_INCOME_GATE_Y, PBI_CARD_LEFT, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
+import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, armTravelMonths, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
 const MM_ROPE = (id: string): string =>
@@ -127,6 +127,7 @@ export default function Connectors({
   pbiTree = false,
   potsTree = false,
   gridTree = false,
+  incomeCard = false,
 }: {
   now: number;
   mode: Mode;
@@ -143,6 +144,7 @@ export default function Connectors({
   pbiTree?: boolean; // "Progress bar, inside" style: thin gray spine + curvy arms
   potsTree?: boolean; // "Pots" style: thin gray spine + curvy arms + check discs (mirrors pbi)
   gridTree?: boolean; // "Grid" style: black spine + black square-corner branches + black value pills
+  incomeCard?: boolean; // pbi "Account-style card" income mode: add the card→income-gate feeder branch + gate node
 }) {
   // Gate-style precedence (a gate choice can OVERRIDE the visual identity):
   //   compact     -> skinny-arrow connectors + % badges, REGARDLESS of identity
@@ -215,9 +217,51 @@ export default function Connectors({
   // so geometry + measurement + animation stay in sync). Dataset-aware endpoint
   // matches each layout's spine top. Every other connector and every other style
   // is untouched.
-  const conns: Connector[] = pillIncome
+  const pilledConns: Connector[] = pillIncome
     ? baseConns.map((c) => (c.id === 'c-income-monthly' ? { ...c, d: PILL_INCOME_CONN[dataset] } : c))
     : baseConns;
+
+  /* pbi "Account-style card" income mode: the income is a real account CARD in the
+     card column that must FEED an income gate on the spine, then the spine drops
+     into Monthly (matching every other income style). We derive the gate geometry
+     from the ACTIVE gate's own income spine (parse its `M<x> <y1> L <x> <y2>`), so
+     this lines up regardless of the gate style's spine x. Then:
+      - c-income-monthly is EXTENDED UP to start at the income gate (gateY),
+      - a reversed feeder arm `c-income-card` runs FROM the card (x=160) TO the gate.
+     The feeder pulse (rendered card→gate) and the gate node are drawn per renderer;
+     the whole gate→Monthly system is delayed by one feeder travel (see incomeDelay). */
+  const incomeGate = ((): { x: number; y: number } | null => {
+    if (!pbiTree || !incomeCard) return null;
+    const inc = pilledConns.find((c) => c.id === 'c-income-monthly');
+    const m = inc?.d.match(/M\s*([\d.]+)\s+([\d.]+)\s+L\s*([\d.]+)\s+([\d.]+)/);
+    if (!m) return null;
+    return { x: parseFloat(m[1]), y: PBI_INCOME_GATE_Y };
+  })();
+  const conns: Connector[] = incomeGate
+    ? pilledConns
+        .map((c) => {
+          if (c.id !== 'c-income-monthly') return c;
+          const m = c.d.match(/M\s*([\d.]+)\s+([\d.]+)\s+L\s*([\d.]+)\s+([\d.]+)/)!;
+          const x = parseFloat(m[1]);
+          const endY = parseFloat(m[4]);
+          return { ...c, d: `M${x} ${incomeGate.y} L ${x} ${endY}` };
+        })
+        // reversed feeder: authored card(160)→gate(x) so the pulse (p:0→1) travels
+        // OUT of the card toward the gate (opposite the usual gate→card direction).
+        .concat({
+          id: 'c-income-card',
+          d: `M${PBI_CARD_LEFT - 10} ${incomeGate.y} C 132 ${incomeGate.y}, ${incomeGate.x + 24} ${incomeGate.y}, ${incomeGate.x} ${incomeGate.y}`,
+          arrow: false,
+        })
+    : pilledConns;
+
+  // feeder travel span; the whole gate→Monthly system is delayed by it so the
+  // deposit visibly ARRIVES at the gate before the rest of the tree starts flowing.
+  const feederTravel = armTravelMonths(mode);
+  const incomeDelay = incomeGate ? { departDelay: feederTravel } : undefined;
+  // reversed feeder pulse: reuses c-income-monthly's income events (fires every
+  // income cadence) but travels the paced ARM span from card out to the gate.
+  const feederFlows = incomeGate ? branchFlow(dataset, mode, now, 'c-income-monthly', -Infinity, { travel: feederTravel }) : [];
 
   // Optimizer's appended 3rd gate extends the spine/braces past the 960px Simple
   // canvas, so the SVG (and its viewBox) grows to match the taller Optimizer board
@@ -249,7 +293,7 @@ export default function Connectors({
     setMids(nextMids);
     // conns is derived purely from branch + map + v1 + condensed + dataset
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree, potsTree, gridTree]);
+  }, [branch, map, v1, condensed, dataset, pillIncome, iconTree, convoTree, sheetTree, illoTree, pbiTree, potsTree, gridTree, incomeCard]);
 
   // check badges on decommissioned (fully funded) branch arms — shared by both
   // the money-map and flow/compact renderers. Rendered last so it sits on top of
@@ -494,6 +538,40 @@ export default function Connectors({
     };
   })();
 
+  /* Shared pbi "Account-style card" income-mode render bits, injected into each
+     pbi renderer: the income GATE node (a small disc on the spine where the feeder
+     meets it) and the reversed feeder PULSE (a yellow band travelling card→gate,
+     i.e. the deposit leaving the card). All system pulses take `incomeDelay` so
+     they only start after this feeder has arrived at the gate. */
+  const incomeGateNode = incomeGate ? (
+    <g key="income-gate">
+      <circle cx={incomeGate.x} cy={incomeGate.y} r={7} fill="#ffffff" stroke="#c9ccd2" strokeWidth={1.5} />
+      <circle cx={incomeGate.x} cy={incomeGate.y} r={2.6} fill={YELLOW} />
+    </g>
+  ) : null;
+  const feederComet = (strokeW: number) => {
+    const d = conns.find((c) => c.id === 'c-income-card')?.d;
+    const len = lens['c-income-card'];
+    if (!incomeGate || !d || !len || len <= 0) return null;
+    return feederFlows.map((f, j) => {
+      const { dashArray, dashOffset } = pulseDash(len, f.p);
+      return (
+        <path
+          key={`feeder-${j}`}
+          d={d}
+          stroke={YELLOW}
+          strokeWidth={strokeW}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={f.alpha}
+          strokeDasharray={dashArray}
+          strokeDashoffset={dashOffset}
+        />
+      );
+    });
+  };
+
   // ---------- pbi "Locked path": bold WHITE spine + heavy white curvy branches + animated padlock discs ----------
   // (Figma 802:10378) A thick rounded WHITE track spine with heavy organic white
   // wishbone branches into the cards, plain gray gate labels to the left (rendered
@@ -533,7 +611,7 @@ export default function Connectors({
           const d = lockById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity, incomeDelay);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -552,6 +630,8 @@ export default function Connectors({
             );
           });
         })}
+        {feederComet(3.5)}
+        {incomeGateNode}
         {lockDiscs}
       </svg>
     );
@@ -582,7 +662,7 @@ export default function Connectors({
           const d = grpById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity, incomeDelay);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -601,6 +681,8 @@ export default function Connectors({
             );
           });
         })}
+        {feederComet(2.5)}
+        {incomeGateNode}
       </svg>
     );
   }
@@ -640,7 +722,7 @@ export default function Connectors({
           const d = grp2ById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity, incomeDelay);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -659,6 +741,8 @@ export default function Connectors({
             );
           });
         })}
+        {feederComet(2.5)}
+        {incomeGateNode}
         {lockDiscs}
       </svg>
     );
@@ -684,7 +768,7 @@ export default function Connectors({
           const d = indById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity, incomeDelay);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -718,6 +802,8 @@ export default function Connectors({
             </text>
           </g>
         ))}
+        {feederComet(2.5)}
+        {incomeGateNode}
       </svg>
     );
   }
@@ -764,7 +850,7 @@ export default function Connectors({
           const d = slById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity, incomeDelay);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -784,6 +870,8 @@ export default function Connectors({
           });
         })}
         {pctPills}
+        {feederComet(2.5)}
+        {incomeGateNode}
       </svg>
     );
   }
@@ -825,7 +913,7 @@ export default function Connectors({
           const d = pbiById(m.id);
           const len = lens[m.id];
           if (!d || !len || len <= 0) return null;
-          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity);
+          const flows = branchFlow(dataset, mode, now, m.id, pbiGate[m.id] ?? -Infinity, incomeDelay);
           return flows.map((f, j) => {
             const { dashArray, dashOffset } = pulseDash(len, f.p);
             return (
@@ -844,6 +932,8 @@ export default function Connectors({
             );
           });
         })}
+        {feederComet(4)}
+        {incomeGateNode}
         {pbiBadges}
       </svg>
     );

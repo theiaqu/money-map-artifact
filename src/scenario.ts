@@ -534,6 +534,12 @@ const SPINE_TRAVEL_BY_MODE: Record<Mode, number> = {
 // one near-instant spine hop it takes for the parent gate to be reached.
 export const spineTravelMonths = (mode: Mode): number => SPINE_TRAVEL_BY_MODE[mode];
 
+// exposed so the pbi "Account-style card" income mode can time its reversed
+// feeder branch (deposit travelling FROM the income card OUT to the income gate)
+// to one paced ARM travel, and delay the whole gate→Monthly system by the same
+// span so the deposit visibly ARRIVES at the gate before the system starts flowing.
+export const armTravelMonths = (mode: Mode): number => BRANCH_PACING[mode].travel;
+
 type BranchKind = 'spine' | 'arm';
 // gateDepth = # of near-instant spine hops before this branch departs its event.
 // kind = spine (zips at SPINE_TRAVEL) vs arm (paced at BRANCH_PACING.travel).
@@ -759,14 +765,26 @@ const FILL_SPAN_BY_MODE: Record<Mode, number> = {
    fire on the 2nd (overflow) paycheck, we emit ONE pulse per firing event that
    is still within its travel + fade window, so overlapping pulses STACK and
    blend on the same branch rather than the old one snapping away. */
-export function branchFlow(dataset: Dataset, mode: Mode, now: number, branchId: string, gateRelease = -Infinity): Flow[] {
+export function branchFlow(
+  dataset: Dataset,
+  mode: Mode,
+  now: number,
+  branchId: string,
+  gateRelease = -Infinity,
+  // pbi "Account-style card" income mode hooks (all other callers omit these):
+  //  - departDelay shifts a branch's departure LATER by a fixed span, so the whole
+  //    gate→Monthly system can wait for the reversed feeder deposit to reach the gate.
+  //  - travel overrides the per-branch traverse time (used to render the feeder
+  //    pulse on the card→gate arm at a visible, paced ARM speed).
+  opts?: { departDelay?: number; travel?: number },
+): Flow[] {
   const sc = getScenario(dataset, mode);
   const events = sc.eventActive;
   const pace = BRANCH_PACING[mode];
   const meta = BRANCH_TIMING[branchId] ?? { gateDepth: 0, kind: 'arm' as BranchKind };
   const spine = SPINE_TRAVEL_BY_MODE[mode];
-  const dep = meta.gateDepth * spine; // departs when its gate is reached (near-instant)
-  const tr = meta.kind === 'spine' ? spine : pace.travel; // spine zips; arm is paced
+  const dep = meta.gateDepth * spine + (opts?.departDelay ?? 0); // departs when its gate is reached (+ optional delay)
+  const tr = opts?.travel ?? (meta.kind === 'spine' ? spine : pace.travel); // spine zips; arm is paced
   const out: Flow[] = [];
   for (const t of sc.income) {
     if (t > now + 1e-9) break;
