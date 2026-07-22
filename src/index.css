@@ -1948,9 +1948,13 @@ body.is-dragging-noselect * {
 .pbi-bar--income { background: #f3f4f6; }
 .pbi-bar-fill--income {
   background: #f6dc72;
-  /* short transition so the drain tracks the fast feeder comet tightly (and reaches
-     empty as the pulse hits the gate) rather than lagging behind it. */
-  transition: width 90ms linear;
+  /* NO width transition: the bar's remaining value is recomputed every animation
+     frame from the exact same feeder-pulse progress that drives the comet, so any
+     CSS easing here only makes the bar LAG the comet (and adds a wrong slide-up on
+     each refill). Zero transition keeps the drain frame-for-frame in lockstep with
+     the feeder comet — empty exactly as the pulse reaches the gate, instant reset to
+     full when the next deposit fires. */
+  transition: none;
 }
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to

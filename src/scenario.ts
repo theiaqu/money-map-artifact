@@ -540,6 +540,17 @@ export const spineTravelMonths = (mode: Mode): number => SPINE_TRAVEL_BY_MODE[mo
 // span so the deposit visibly ARRIVES at the gate before the system starts flowing.
 export const armTravelMonths = (mode: Mode): number => BRANCH_PACING[mode].travel;
 
+// The reversed feeder comet (Account-style income: card → income gate) AND the
+// Direct-deposit bar's drain both read from this ONE value so they stay in exact
+// lockstep. Income events fire every 0.5 months (see `income.push(m - 0.5, m)`),
+// so the feeder travel is capped STRICTLY below that spacing: each deposit's comet
+// fully reaches the gate — draining the bar to empty — BEFORE the next deposit
+// fires. (Illustrative's raw arm travel of 0.62 exceeds the 0.5 spacing, which made
+// comets overlap and the bar refill at ~19% instead of emptying — the reported bug.)
+export const FEEDER_EVENT_SPACING = 0.5;
+export const feederTravelMonths = (mode: Mode): number =>
+  Math.min(armTravelMonths(mode), FEEDER_EVENT_SPACING * 0.8);
+
 type BranchKind = 'spine' | 'arm';
 // gateDepth = # of near-instant spine hops before this branch departs its event.
 // kind = spine (zips at SPINE_TRAVEL) vs arm (paced at BRANCH_PACING.travel).

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
 import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, connectorsProgressIndentedFor, pbiIndentedPillsFor, PBI_INDENTED_PILL_X, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, PBI_INCOME_GATE_Y, PBI_CARD_LEFT, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
-import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, armTravelMonths, type Dataset, type Mode } from '../scenario';
+import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, feederTravelMonths, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
 const MM_ROPE = (id: string): string =>
@@ -257,7 +257,7 @@ export default function Connectors({
 
   // feeder travel span; the whole gate→Monthly system is delayed by it so the
   // deposit visibly ARRIVES at the gate before the rest of the tree starts flowing.
-  const feederTravel = armTravelMonths(mode);
+  const feederTravel = feederTravelMonths(mode);
   const incomeDelay = incomeGate ? { departDelay: feederTravel } : undefined;
   // reversed feeder pulse: reuses c-income-monthly's income events (fires every
   // income cadence) but travels the paced ARM span from card out to the gate.
