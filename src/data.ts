@@ -1404,13 +1404,39 @@ export const condensedRowTopFor = (dataset: Dataset): Record<string, number> =>
 export const PBI_CARD_LEFT = 170;
 export const PBI_CARD_W = 216;
 
-// Onboarding home-page account balances (Figma 977:11967). Shown as the BIG number
-// on the home cards AND re-used as the Core/Spend amounts on the money map reached
-// via the home → map drag hand-off, so the numbers stay continuous through the
-// transition. (The standard/onboarding money map keeps its usual monthly amounts.)
+// Onboarding home-page account balances (Figma 977:11967). Numeric balance + the
+// cap each progress bar fills toward, so the bar FILL fraction actually matches the
+// displayed balance (balance / cap) on BOTH the home cards and the money-map cards.
+export const HOME_ACCOUNTS: Record<'core' | 'spend', { balance: number; cap: number }> = {
+  core: { balance: 10640, cap: 12000 }, // ~89% full
+  spend: { balance: 1820.39, cap: 2000 }, // ~91% full
+};
+const homeMoney = (n: number) =>
+  `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// Display strings (BIG number on the home cards; re-used as the Core/Spend amounts
+// on the drag-entered money map so the numbers stay continuous). Derived from the
+// numeric balances above so the number and the fill can never drift apart.
 export const HOME_BALANCES: Record<'core' | 'spend', string> = {
-  spend: '$1,820.39',
-  core: '$10,640.00',
+  spend: homeMoney(HOME_ACCOUNTS.spend.balance),
+  core: homeMoney(HOME_ACCOUNTS.core.balance),
+};
+// 0..1 bar fill for an account, driven by its balance relative to its cap.
+export const homeAccountFill = (id: 'core' | 'spend'): number =>
+  Math.max(0, Math.min(1, HOME_ACCOUNTS[id].balance / HOME_ACCOUNTS[id].cap));
+
+// Illustrative per-node progress for the home-page onboarding FULL-SYSTEM snapshot
+// ONLY (a zoomed-out "here's your whole system" look — NOT the live simulation).
+// Account bars fill to match their balances; the first goal layer (ef1) reads fully
+// funded, the second layer (debt/ef6) is partway with varied amounts, and deeper
+// Optimizer layers (travel/brokerage) are untouched. Deterministic + tasteful.
+export const HOME_PROGRESS: Record<string, number> = {
+  core: homeAccountFill('core'),
+  spend: homeAccountFill('spend'),
+  ef1: 1, // 1st goal layer — full
+  debt: 0.64, // 2nd layer — in progress
+  ef6: 0.38, // 2nd layer — in progress (varied)
+  travel: 0, // deeper (Optimizer) — not yet started
+  brokerage: 0, // deeper (Optimizer) — not yet started
 };
 // cardTop -> the point each branch arm attaches: the card's VERTICAL CENTER
 // (card height = 8 pad + 24 head + 8 gap + 32 bar + 8 pad = 80 -> center 40),

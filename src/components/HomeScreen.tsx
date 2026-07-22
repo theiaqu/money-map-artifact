@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { CreditCard, Receipt, MessageCircle, CircleUser } from 'lucide-react';
-import { DATASETS, type Dataset } from '../scenario';
-import { HOME_BALANCES } from '../data';
+import { type Dataset } from '../scenario';
+import { HOME_BALANCES, HOME_ACCOUNTS, homeAccountFill } from '../data';
 
 const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 
@@ -64,7 +64,6 @@ export default function HomeScreen({
   const [dragging, setDragging] = useState(false);
   const [opening, setOpening] = useState(false); // hand-off to the money map in progress
   const drag = useRef<{ startY: number; startTop: number } | null>(null);
-  const cfg = DATASETS[dataset];
 
   // account balances shown as the BIG number on each card (Figma 977:11967).
   // Static home-page mock values that sit above the same in-card bar the money-map
@@ -162,8 +161,8 @@ export default function HomeScreen({
           </div>
           <div className="pbi-card-balance">{HOME_BALANCES.spend}</div>
           <div className="pbi-bar">
-            <div className="pbi-bar-fill" style={{ width: '45%', background: '#61bc76' }} />
-            <span className="pbi-bar-amount">{money(cfg.spendMax)}</span>
+            <div className="pbi-bar-fill" style={{ width: `${homeAccountFill('spend') * 100}%`, background: '#61bc76' }} />
+            <span className="pbi-bar-amount">{money(HOME_ACCOUNTS.spend.cap)}</span>
           </div>
         </div>
         <div className="pbi-card pbi-card--home" data-morph-card="bills">
@@ -173,8 +172,8 @@ export default function HomeScreen({
           </div>
           <div className="pbi-card-balance">{HOME_BALANCES.core}</div>
           <div className="pbi-bar">
-            <div className="pbi-bar-fill" style={{ width: '45%', background: '#b0d9ff' }} />
-            <span className="pbi-bar-amount">{money(cfg.coreMax)}</span>
+            <div className="pbi-bar-fill" style={{ width: `${homeAccountFill('core') * 100}%`, background: '#b0d9ff' }} />
+            <span className="pbi-bar-amount">{money(HOME_ACCOUNTS.core.cap)}</span>
           </div>
         </div>
       </div>

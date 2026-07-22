@@ -11,7 +11,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, HOME_PROGRESS, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -1338,7 +1338,7 @@ export default function App() {
         ))}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? HOME_BALANCES : undefined} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? HOME_BALANCES : undefined} progressOverride={boardOnboard ? HOME_PROGRESS : undefined} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&

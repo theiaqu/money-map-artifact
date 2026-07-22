@@ -409,6 +409,7 @@ export default function Card({
   hideIncome = false,
   refillVisual = false,
   amountOverride,
+  progressOverride,
 }: {
   node: CardNode;
   now: number;
@@ -430,6 +431,7 @@ export default function Card({
   hideIncome?: boolean; // styles that carry the shared ArtifactHeader render the carousel AS income, so the per-style income node is suppressed
   refillVisual?: boolean; // pbi "Core/Spend refill visual": two-tone capacity+balance bar (Figma 907:13009)
   amountOverride?: Record<string, string>; // per-node id → amount string override (onboarding home→map: Core/Spend show the home balances for number continuity)
+  progressOverride?: Record<string, number>; // per-node id → 0..1 fill override (onboarding full-system snapshot: bars reflect home balances / illustrative goal progress instead of the live sim)
 }) {
   // Styles that render the shared board-level ArtifactHeader use its paycheck
   // carousel as the income element, so the per-style income node is suppressed.
@@ -778,7 +780,10 @@ export default function Card({
   // step with the branch pulse; isReached flips the goal date pill to "reached".
   if (isProgress) {
     // income is rendered by the shared ArtifactHeader carousel (hideIncome)
-    const p = progressAt(dataset, mode, node.id, now);
+    // onboarding full-system snapshot: use the illustrative per-node fill override
+    // (accounts reflect their home balances; goals show first-layer-full / second-
+    // layer-in-progress) instead of the live simulation. Falls back to the sim.
+    const p = progressOverride?.[node.id] ?? progressAt(dataset, mode, node.id, now);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
     // every pbi gate (Text gates / Text gates + backgrounds / Indented) shares the
     // default uniform-pitch rows; the panels/tree are built around these same rows.
