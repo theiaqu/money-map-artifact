@@ -33,10 +33,14 @@ const REFILL_DRIVEN_OPACITY = 0.5;
 // Per-month refill sweep: given whole-months-elapsed `now`, returns the overlay's
 // width fraction and opacity for the CURRENT month's refill. Sweeps 0→1 over the
 // first REFILL_FILL_PORTION of the month, then holds full width while fading to 0.
-// Only active after the first month (monthIdx >= 1).
-function refillSweep(now: number): { w: number; op: number } {
+// Only active after the first month (monthIdx >= 1). The FINAL round (the month the
+// sim freezes in, monthIdx >= maxMonth) is suppressed: its sweep can never fully
+// complete/fade before the freeze, so it would otherwise leave a stray partial
+// overlay stuck short of 100% — instead the sequence ends on the prior COMPLETED
+// refill (see refillMaxMonth, computed from animMonths in Card.tsx).
+function refillSweep(now: number, maxMonth = Infinity): { w: number; op: number } {
   const monthIdx = Math.floor(now);
-  if (now <= 0 || monthIdx < 1) return { w: 0, op: 0 };
+  if (now <= 0 || monthIdx < 1 || monthIdx >= maxMonth) return { w: 0, op: 0 };
   const phase = now - monthIdx; // 0..1 within the current month
   if (phase <= REFILL_FILL_PORTION) {
     return { w: easeOutCubic(phase / REFILL_FILL_PORTION), op: REFILL_PEAK_OPACITY };
@@ -59,6 +63,7 @@ export default function ProgressBar({
   refill = false,
   now = 0,
   refillOverride,
+  refillMaxMonth,
   morphRole,
   perMonth = false,
 }: {
@@ -70,6 +75,7 @@ export default function ProgressBar({
   refill?: boolean;
   now?: number;
   refillOverride?: number; // HOME flow: drive the refill OVERLAY width (0..1 of the whole bar) from the scrub position instead of the time-based monthly sweep. The overlay leads and the base fill (driven separately) trails it up to 100%.
+  refillMaxMonth?: number; // live sim: month index at/after which the monthly refill sweep is suppressed (the freeze month), so the final partial round is dropped and the sequence ends on a completed refill.
   morphRole?: string; // "bills" | "spend" | "goals" — tags the bar for the Monthly-split shared-element morph
   perMonth?: boolean; // account cards (Core/Spend) append a small secondary "per month" after the amount
 }) {
@@ -78,8 +84,9 @@ export default function ProgressBar({
   // steady visible opacity, and spans the WHOLE bar (0..1) so it can sweep up to
   // full and lead the base fill. Standard app: the faint per-month time sweep.
   const driven = refillOverride !== undefined;
-  const overlayW = driven ? Math.max(0, Math.min(1, refillOverride)) : refillSweep(now).w * p;
-  const overlayOp = driven ? REFILL_DRIVEN_OPACITY : refillSweep(now).op;
+  const sweep = refillSweep(now, refillMaxMonth ?? Infinity);
+  const overlayW = driven ? Math.max(0, Math.min(1, refillOverride)) : sweep.w * p;
+  const overlayOp = driven ? REFILL_DRIVEN_OPACITY : sweep.op;
   return (
     <div className="pbi-bar" {...(morphRole ? { 'data-morph': morphRole, 'data-morph-color': FILL[color] } : {})}>
       {p > 0.001 && (

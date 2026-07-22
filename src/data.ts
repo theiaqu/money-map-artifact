@@ -1775,7 +1775,9 @@ export interface PbiGroupedPanel { id: string; x: number; y: number; w: number; 
 export function pbiGroupedPanelsFor(dataset: Dataset): PbiGroupedPanel[] {
   const rows = dataset === 'optimizer' ? pbiRowTopOptimizer : pbiRowTop;
   const lastGoal = dataset === 'optimizer' ? rows.brokerage : rows.ef6;
-  const PAD_T = 10; // top breathing room above a card
+  const PAD_T = 4; // top breathing room above the Core card — trimmed from 10 so the
+  // mint band starts 4px above Core, leaving a clean 8px section gap to the yellow
+  // Income band above it (whose card now carries a symmetric 4px of yellow below it).
   const CARD_H = 76; // rendered pbi-card height (8 pad + 20 name + 8 gap + 32 bar + 8 pad)
   const PAD_B = 8; // extra below a card
   const GAP = 8; // clean, symmetric visible separation between the mint and pink panels

@@ -928,6 +928,7 @@ export default function Card({
             refill={refillVisual && node.kind === 'account'}
             now={now}
             refillOverride={node.kind === 'account' ? refillOverride?.[node.id] : undefined}
+            refillMaxMonth={Math.floor(animMonths(dataset, mode))}
             morphRole={node.kind === 'goal' ? 'goals' : node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : undefined}
             perMonth={node.kind === 'account'}
           />

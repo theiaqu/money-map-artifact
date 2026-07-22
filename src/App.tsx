@@ -1683,7 +1683,11 @@ export default function App() {
           <div
             className="pbi-grouped-panel pbi-grouped-panel--yellow"
             data-morph-band="income"
-            style={{ left: 8, top: PBI_INCOME_CARD_TOP - 10, width: 386, height: 88 }}
+            /* symmetric 4px of yellow above AND below the 76px Direct-deposit card
+               (card top − 4, height 76 + 4 + 4 = 84) so the card sits vertically
+               centered in its band; the 4px below + an 8px section gap + 4px mint top
+               together fill the 16px between the income card and the Core card. */
+            style={{ left: 8, top: PBI_INCOME_CARD_TOP - 4, width: 386, height: 84 }}
           />
         )}
         {/* Section plus label (pbi-only): same teal/pink panels, WITH top-left section labels. */}
