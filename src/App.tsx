@@ -11,7 +11,7 @@ import { SheetChrome } from './components/SheetCard';
 import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
-import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, PBI_INCOME_LEFT, HOME_BALANCES, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
+import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode, CarouselInteraction } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
 
@@ -925,6 +925,48 @@ export default function App() {
     [dataset, effMode],
   );
 
+  // TAP interaction: tapping a month pill PLAYS the money-flow animation exactly
+  // ONCE — a single forward pass of the waterfall / comet / branch-flow fill from
+  // the current frame up to the tapped month — then SETTLES (paused) on it. It
+  // never loops. If the tapped month is at or before the current frame we rewind
+  // to 0 first so a tap always plays a clean forward pass INTO the selection.
+  // (Scrub mode is untouched: it keeps using scrubTo, which parks instantly on
+  // every drag delta with no auto-play.) User-initiated, so it's allowed even in
+  // the otherwise-static home/map flow.
+  const playToMonth = useCallback(
+    (nowMonths: number) => {
+      cancelAnimationFrame(raf.current);
+      const span = onboardRef.current !== null ? Math.max(animMonths(dataset, effMode), 10) : animMonths(dataset, effMode);
+      const target = Math.max(0, Math.min(nowMonths, span)) * monthSecs(effMode);
+      let from = elapsedRef.current;
+      if (from >= target - 1e-3) from = 0; // tapped an earlier/equal month → replay from the start
+      elapsedRef.current = from;
+      setT(from);
+      setPlaying(true);
+      setPaused(false);
+      setHasPlayed(true);
+      lastTick.current = performance.now();
+      const loop = (p: number) => {
+        const dt = (p - lastTick.current) / 1000;
+        lastTick.current = p;
+        const e = elapsedRef.current + dt * speedRef.current;
+        if (e >= target) {
+          // arrived: hold the tapped frame, settle paused (Play resumes from here)
+          elapsedRef.current = target;
+          setT(target);
+          setPlaying(false);
+          setPaused(true);
+          return;
+        }
+        elapsedRef.current = e;
+        setT(e);
+        raf.current = requestAnimationFrame(loop);
+      };
+      raf.current = requestAnimationFrame(loop);
+    },
+    [dataset, effMode],
+  );
+
   // Scrub horizon (in months). The live sim freezes at animMonths, but the HOME
   // flow is a scrubbable "real app" snapshot, so we expose AT LEAST 10 future
   // months to scrub through there (extending the timeline past the sim end). The
@@ -1284,9 +1326,17 @@ export default function App() {
     pots: 44,
   };
   const treeShift = usesHeader ? TREE_SHIFT[style] ?? 0 : 0;
-  // the paycheck carousel always spans the full device width (left-anchored at
-  // PBI_INCOME_LEFT); no per-gate shift, so it never clips on the Gradient gate.
-  const headerIncomeLeft = PBI_INCOME_LEFT;
+  // Center the ACTIVE (leftmost, yellow) carousel pill directly over the tree's
+  // main vertical spine so the income visually flows down from under the active
+  // month. The active pill sits at the row's left edge, so its center = left +
+  // half-pill; solving for left = spineX − halfPill. The pbi spine sits at board
+  // x≈50 for both datasets, and the pill is 76px wide → left = 50 − 38 = 12.
+  // (Was a flat PBI_INCOME_LEFT=16, which nudged the pill a few px right of the
+  // spine / made it hug the device's left edge.) No per-gate shift, so it never
+  // clips on the Gradient gate.
+  const CAROUSEL_SPINE_X = 50; // pbi main spine x (board coords), same across datasets
+  const CAROUSEL_PILL_HALF = 38; // half of the 76px carousel pill
+  const headerIncomeLeft = CAROUSEL_SPINE_X - CAROUSEL_PILL_HALF;
   // in-prototype "Monthly split" simplified view (Figma 907:13144) — offered on
   // the Progress-bar-inside style via the on-screen Full system / Monthly split
   // toggle. Replaces the tree with a single take-home-pay → Bills/Spend/Goals split.
@@ -1344,7 +1394,7 @@ export default function App() {
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
           carousel is the income element (each style's income node is hidden). */}
       {!monthlyView && usesHeader && (
-        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} interaction={carouselInteraction} onboarding={boardOnboard} />
+        <ArtifactHeader dataset={dataset} mode={effMode} now={now} onScrub={carouselInteraction === 'tap' ? playToMonth : scrubTo} incomeLeft={headerIncomeLeft} carouselMode={carouselMode} interaction={carouselInteraction} onboarding={boardOnboard} />
       )}
 
       {/* the prototype tree, shifted DOWN so it clears the header */}
