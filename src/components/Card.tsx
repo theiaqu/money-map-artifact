@@ -321,27 +321,24 @@ export function IncomeAccountCard({
           <span className="pbi-card-name">Direct deposit</span>
         </div>
         {slide ? (
-          /* PUSH/SLIDE squeeze/clip (Figma 1110:17627): the OLD bar holds its position
-             with its text ANCHORED at the left; on each fire a NEW yellow bar slides in
-             from the RIGHT and CLIPS the old one out (overlap-and-hide) rather than
-             conveying it off-screen. `p` (0→1) drives the incoming bar's cover in exact
-             lockstep with the deposit comet card→gate. The new bar's own text is
-             counter-translated so it too stays anchored at the left, revealed only where
-             the advancing bar has covered — so at full cover it lands exactly over the
-             old text (seamless swap). At rest (not active) the new bar fully covers,
-             showing a single settled bar. */
+          /* PUSH/SLIDE (Figma 1110:18698): the OLD bar holds its position with its text
+             anchored at the left; on each fire a NEW yellow bar slides IN from the RIGHT
+             carrying its OWN amount label, sliding OVER the old bar until it fully covers
+             it (settled). `p` (0→1) drives the incoming bar's cover in exact lockstep with
+             the deposit comet card→gate: p=0 the new bar is fully off to the right (old bar
+             showing), p=1 it has fully covered (single settled bar). Mid-slide you briefly
+             see BOTH labels — the old at the left and the new riding in from the right —
+             exactly as the Figma frames show. (The label MUST ride with the incoming bar;
+             counter-translating it back to the left anchor made both labels identical and
+             the slide invisible — the earlier bug.) At rest (not active) the new bar fully
+             covers, showing a single settled bar. */
           <div className="pbi-bar pbi-bar--income pbi-bar--income-push">
             <div className="pbi-push-old">{amtLabel}</div>
             <div
               className="pbi-push-new"
               style={{ transform: `translateX(${slide.active ? (1 - slide.p) * 100 : 0}%)` }}
             >
-              <div
-                className="pbi-push-new-inner"
-                style={{ transform: `translateX(${slide.active ? -(1 - slide.p) * 100 : 0}%)` }}
-              >
-                {amtLabel}
-              </div>
+              <div className="pbi-push-new-inner">{amtLabel}</div>
             </div>
           </div>
         ) : (

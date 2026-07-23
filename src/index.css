@@ -2609,15 +2609,15 @@ body.is-dragging-noselect * {
   background: linear-gradient(to left, #eccb52 0%, #ddb42e 100%);
 }
 
-/* "Push/slide" income animation (Figma 1110:17627) — SQUEEZE/CLIP variant. The OLD
-   yellow bar stays put with its text anchored at the left; on each income fire a NEW
-   yellow bar slides in from the RIGHT (z-above) and progressively CLIPS the old one
-   out (overlap-and-hide) instead of conveying it off-screen. The incoming bar's own
-   text is counter-translated so it is likewise pinned to the left anchor and revealed
-   only where the bar has advanced — so at full cover it sits exactly over the old
-   text (seamless). Both transforms are driven inline by feederPushSlide's `p` (0→1),
-   in exact lockstep with the deposit comet card→gate (no CSS transition — the sim
-   clock IS the value, like the comet/depletion). */
+/* "Push/slide" income animation (Figma 1110:18698). The OLD yellow bar stays put with
+   its text anchored at the left; on each income fire a NEW yellow bar slides in from
+   the RIGHT (z-above) carrying its OWN amount label and slides OVER the old one until
+   it fully covers it. Mid-slide BOTH labels are briefly visible (old at the left, new
+   riding in from the right), matching the Figma frames. The new bar's translate is
+   driven inline by feederPushSlide's `p` (0→1) in exact lockstep with the deposit comet
+   card→gate (no CSS transition — the sim clock IS the value, like the comet/depletion).
+   NOTE: the label rides WITH the incoming bar (no counter-translate) — pinning it back
+   to the left anchor made both labels identical and the slide invisible. */
 .pbi-bar--income-push {
   /* inherits the gray track + overflow:hidden from .pbi-bar / .pbi-bar--income */
   padding-left: 0;
@@ -2632,14 +2632,15 @@ body.is-dragging-noselect * {
   padding-left: 12px;
   box-sizing: border-box;
   border-radius: 8px;
-  background: #f6dc72;
   will-change: transform;
 }
 .pbi-push-old {
-  z-index: 1; /* stationary previous bar — anchored, gets clipped away */
+  z-index: 1; /* stationary previous bar — the LIGHTER lemon, revealed as a left sliver */
+  background: #fbedb8; /* secondary/yellow/lemon-light (Figma 1110:18029) — the "previous" bar */
 }
 .pbi-push-new {
-  z-index: 2; /* advancing bar covers the old one */
+  z-index: 2; /* advancing bar (brighter lemon) covers the old one as it slides in */
+  background: #f6dc72; /* secondary/yellow/lemon (Figma 1110:18031) — the incoming deposit */
   overflow: hidden; /* clips the counter-translated inner text to the covered region */
   padding-left: 0; /* inner carries the text padding */
   /* soft leading-edge shadow so the advancing bar reads as covering the old bar */
@@ -2652,7 +2653,6 @@ body.is-dragging-noselect * {
   align-items: center;
   padding-left: 12px;
   box-sizing: border-box;
-  will-change: transform;
 }
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to
