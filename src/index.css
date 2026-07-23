@@ -1917,6 +1917,13 @@ body {
   top: 0;
   overflow: visible;
 }
+/* the net-worth line's forward PROJECTION past the last goal — same trajectory,
+   rendered dashed + slightly lighter so it clearly reads as a projection, not a
+   funded goal (Figma 1146:3715). */
+.msplit-nw-proj {
+  stroke-dasharray: 5 7;
+  opacity: 0.75;
+}
 .msplit-nw-tick {
   position: absolute;
   transform: translateX(-50%);

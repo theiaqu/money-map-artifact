@@ -296,17 +296,21 @@ export default function MonthlySplit({
   // ---- FIXED net-worth-graph axes (independent of the live slider) ----
   // The x-axis (time) and y-axis (net worth) are frozen to the dataset's DEFAULT
   // allocation, so dragging the Spend↔Goals slider MOVES the goal points ALONG the
-  // graph (as their completion timing changes) WITHOUT rescaling the axis. maxM is
-  // the furthest default-funded goal's month; maxNW is the total of all goal targets
-  // (targets don't change with allocation, so y stays put — only x shifts). Points
-  // whose timing runs past maxM clamp to the right edge and bunch there.
+  // graph (as their completion timing changes) WITHOUT rescaling the axis. The furthest
+  // default-funded goal's month + the total of all goal targets set the reference span;
+  // points whose timing runs past it clamp to the right edge and bunch there.
+  // We then pad BOTH axes with PROJECT_HEADROOM so the furthest goal sits comfortably
+  // INSIDE the plot with room up-and-right — that headroom is where the net-worth line
+  // continues as a dashed projection past the last goal (Figma 1146:3715), instead of
+  // topping out at the last point and dropping off.
+  const PROJECT_HEADROOM = 1.32;
   const axisRef = useMemo(() => {
     const dGoals = Math.max(0, cfg.income - cfg.coreMax - cfg.spendMax); // default Goals $/mo
     const dSteps = goalWaterfall(cfg, dGoals);
     const finite = dSteps.filter((s) => isFinite(s.months)).map((s) => s.months);
-    const maxM = Math.max(1, ...finite);
+    const lastM = Math.max(1, ...finite);
     const totalNW = dSteps.reduce((sum, s) => sum + s.target, 0);
-    return { maxM, maxNW: Math.max(1, totalNW) };
+    return { maxM: lastM * PROJECT_HEADROOM, maxNW: Math.max(1, totalNW) * PROJECT_HEADROOM };
   }, [cfg]);
 
   // ---- selecting a graph goal smooth-scrolls to its calendar-list row ----
@@ -497,7 +501,26 @@ export default function MonthlySplit({
               const yOf = (nw: number) => GH - PADB - (Math.min(nw, maxNW) / maxNW) * (GH - PADT - PADB);
               const curve = [{ x: xOf(0), y: yOf(0) }, ...pts.map((p) => ({ x: xOf(p.months), y: yOf(p.networth) }))];
               const linePath = smoothPath(curve);
-              const areaPath = pts.length ? `${linePath} L ${xOf(maxM).toFixed(1)} ${(GH - PADB).toFixed(1)} L ${xOf(0).toFixed(1)} ${(GH - PADB).toFixed(1)} Z` : '';
+              // ---- dashed PROJECTION past the last goal (Figma 1146:3715) ----
+              // Continue the net-worth line from the final goal point to the right edge,
+              // extending the last segment's slope (clamped inside the plot), drawn DASHED
+              // so it clearly reads as a forward projection rather than real, funded goals.
+              const edgeX = GW - PADR; // == xOf(maxM); the plot's right edge
+              const lastP = curve[curve.length - 1];
+              const prevP = curve[curve.length - 2] ?? lastP;
+              const dx = lastP.x - prevP.x;
+              const dy = lastP.y - prevP.y;
+              const t = dx > 0.01 ? (edgeX - lastP.x) / dx : 0;
+              const edgeY = Math.max(PADT, Math.min(GH - PADB, lastP.y + dy * t));
+              const hasProj = pts.length > 0 && edgeX > lastP.x + 0.5;
+              const projPath = hasProj ? `M ${lastP.x.toFixed(1)} ${lastP.y.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
+              // area fill hugs the solid line, THEN the projection, then drops to the
+              // baseline at the right edge — so there's no abrupt diagonal drop-off at
+              // the last goal (the old disliked end). Falls back to a straight top when
+              // there's no projection room.
+              const areaPath = pts.length
+                ? `${linePath}${hasProj ? ` L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : ''} L ${edgeX.toFixed(1)} ${(GH - PADB).toFixed(1)} L ${xOf(0).toFixed(1)} ${(GH - PADB).toFixed(1)} Z`
+                : '';
               // x-axis ticks: TODAY at the origin + each January boundary within range
               const allTicks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
               for (let m = 1; m <= Math.ceil(maxM); m++) {
@@ -560,6 +583,16 @@ export default function MonthlySplit({
                           </linearGradient>
                         </defs>
                         <path d={linePath} stroke="#c9c9c9" strokeWidth={2} strokeLinecap="round" />
+                        {projPath && (
+                          <path
+                            className="msplit-nw-proj"
+                            d={projPath}
+                            stroke="#c9c9c9"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            fill="none"
+                          />
+                        )}
                       </svg>
                       {ticks.map((t, i) => (
                         <span className="msplit-nw-tick" key={`${t.label}-${i}`} style={{ left: t.x, top: GH - PADB + 8 }}>
