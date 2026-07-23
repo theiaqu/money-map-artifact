@@ -24,7 +24,9 @@ import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset
 // the way back (split).
 type MorphRect = { left: number; top: number; width: number; height: number; color: string; radius: string };
 type MorphMap = Record<string, MorphRect[]>;
-type Ghost = { id: string; from: MorphRect; to: MorphRect };
+// `mid` is the optional intermediate keyframe used only by the forward "Sections"
+// two-stage Phase 1 (start → mid = collapse to columns, mid → to = slide to bars).
+type Ghost = { id: string; from: MorphRect; to: MorphRect; mid?: MorphRect };
 const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
 // Morph geometry duration, keyed by the TARGET view. Full system → Monthly split
 // stays calm/long; the RETURN (Monthly split → Full system) is noticeably snappier.
@@ -37,6 +39,22 @@ const MORPH_MS: Record<'full' | 'monthly', number> = { full: 760, monthly: 1200 
 // already fading in just BEFORE the pill reaches its resting spot, then settles
 // exactly on arrival (no hard swap / end pop). Fed to CSS via the --reveal-ms var.
 const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 380, monthly: 480 };
+// Two-stage Phase 1 for the FORWARD "Sections" morph (Full system → Monthly split).
+// Instead of the section-band ghosts flying straight to their final monthly-split
+// slots, Phase 1 now plays in two sequential sub-stages:
+//   STAGE 1a (collapse):  each band ghost moves to its final COLUMN x/width but stays
+//                         at its SOURCE band's vertical position (staggered) and
+//                         crossfades to its vivid column color — the intermediate
+//                         arrangement in Figma 1128-16248.
+//   STAGE 1b (slide):     those blocks then slide DOWN into the baseline-aligned,
+//                         side-by-side monthly-split columns — Figma 1132-16444.
+// 1a settles, a brief hold hands off, then 1b slides. The post-squeeze phases (2-4:
+// take-home text/trunk, logo wave, bills→spend→goals flows) re-anchor automatically
+// because MonthlySplit keys them off squeezeMs = the full two-stage duration below.
+const SECTION_STAGE_A_MS = 620; // 1a: bands collapse to the intermediate columns
+const SECTION_STAGE_B_MS = 660; // 1b: blocks slide down side-by-side into final bars
+const SECTION_STAGE_GAP_MS = 110; // clean handoff hold between 1a and 1b
+const SECTION_PHASE1_MS = SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS + SECTION_STAGE_B_MS;
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
@@ -640,7 +658,7 @@ export default function App() {
   const boardRef = useRef<HTMLDivElement>(null);
   const pendingMorphRef = useRef<{ sources: MorphMap } | null>(null); // source rects captured just before a view switch
   const [ghosts, setGhosts] = useState<Ghost[] | null>(null); // active morph ghosts (null = idle)
-  const [ghostPhase, setGhostPhase] = useState<'start' | 'end'>('start');
+  const [ghostPhase, setGhostPhase] = useState<'start' | 'mid' | 'end'>('start');
   const [morphReveal, setMorphReveal] = useState(false); // tail crossfade: real targets fade in / ghosts fade out
   const [morphDur, setMorphDur] = useState<{ morph: number; reveal: number }>({ morph: MORPH_MS.monthly, reveal: REVEAL_MS.monthly }); // active (direction-aware) durations, fed to CSS vars
 
@@ -862,6 +880,11 @@ export default function App() {
     const board = boardRef.current;
     if (!board) return;
     const targets = measureView(board, systemView);
+    // Forward "Sections" morph (Full→Monthly with real bands) plays Phase 1 in TWO
+    // sub-stages via an intermediate `mid` keyframe; everything else keeps the single
+    // start→end flight. `enterSeq` is set synchronously in switchView for exactly this
+    // case, so it's already current on this post-switch layout pass.
+    const twoStage = enterSeq;
     const gs: Ghost[] = [];
     for (const role of MORPH_ROLES) {
       const src = pending.sources[role] ?? [];
@@ -869,7 +892,16 @@ export default function App() {
       if (!src.length || !dst.length) continue;
       const n = Math.max(src.length, dst.length);
       for (let i = 0; i < n; i++) {
-        gs.push({ id: `${role}-${i}`, from: src[Math.min(i, src.length - 1)], to: dst[Math.min(i, dst.length - 1)] });
+        const from = src[Math.min(i, src.length - 1)];
+        const to = dst[Math.min(i, dst.length - 1)];
+        // STAGE 1a intermediate (collapse to columns): take the block to its FINAL
+        // column x/width + vivid color, but hold it at its SOURCE band's vertical
+        // position (staggered) — Figma 1128-16248. STAGE 1b then slides top/height
+        // down to `to` (baseline columns, Figma 1132-16444).
+        const mid = twoStage
+          ? { left: to.left, top: from.top, width: to.width, height: from.height, color: to.color, radius: to.radius }
+          : undefined;
+        gs.push({ id: `${role}-${i}`, from, to, mid });
       }
     }
     if (!gs.length) return;
@@ -877,10 +909,37 @@ export default function App() {
     // Monthly split → Full system return, monthly = the calm forward morph.
     const morphMs = MORPH_MS[systemView];
     const revealMs = REVEAL_MS[systemView];
-    setMorphDur({ morph: morphMs, reveal: revealMs });
     setGhosts(gs);
     setGhostPhase('start');
     setMorphReveal(false);
+    if (twoStage) {
+      // ── Two-stage Phase 1 ──────────────────────────────────────────────────────
+      // 1a: mount at source, next frame glide to the intermediate `mid` over A.
+      setMorphDur({ morph: SECTION_STAGE_A_MS, reveal: revealMs });
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setGhostPhase('mid'));
+      });
+      // 1b: after 1a + a short hold, swap the transition to B and slide mid→final.
+      const slide = window.setTimeout(() => {
+        setMorphDur({ morph: SECTION_STAGE_B_MS, reveal: revealMs });
+        requestAnimationFrame(() => setGhostPhase('end'));
+      }, SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS);
+      // reveal the real bars as 1b settles; drop the ghosts once it lands.
+      const reveal = window.setTimeout(() => setMorphReveal(true), Math.max(0, SECTION_PHASE1_MS - revealMs));
+      const done = window.setTimeout(() => {
+        setGhosts(null);
+        setMorphReveal(false);
+      }, SECTION_PHASE1_MS + 60);
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+        window.clearTimeout(slide);
+        window.clearTimeout(reveal);
+        window.clearTimeout(done);
+      };
+    }
+    setMorphDur({ morph: morphMs, reveal: revealMs });
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => setGhostPhase('end'));
@@ -1690,7 +1749,7 @@ export default function App() {
       {ghosts && (
         <div className="msplit-morph-layer">
           {ghosts.map((g) => {
-            const r = ghostPhase === 'start' ? g.from : g.to;
+            const r = ghostPhase === 'start' ? g.from : ghostPhase === 'mid' ? (g.mid ?? g.to) : g.to;
             return (
               <div
                 key={g.id}
@@ -1701,7 +1760,7 @@ export default function App() {
                   width: r.width,
                   height: r.height,
                   borderRadius: r.radius,
-                  background: ghostPhase === 'start' ? g.from.color : g.to.color,
+                  background: ghostPhase === 'start' ? g.from.color : ghostPhase === 'mid' ? (g.mid?.color ?? g.to.color) : g.to.color,
                 }}
               />
             );
@@ -1709,7 +1768,7 @@ export default function App() {
         </div>
       )}
 
-      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} transitionSeq={enterSeq} squeezeMs={MORPH_MS.monthly} />}
+      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} transitionSeq={enterSeq} squeezeMs={enterSeq ? SECTION_PHASE1_MS : MORPH_MS.monthly} />}
 
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
