@@ -2626,13 +2626,17 @@ body.is-dragging-noselect * {
   will-change: transform;
 }
 .pbi-push-old {
-  z-index: 1; /* stationary previous bar — the LIGHTER lemon, revealed as a left sliver */
-  background: #fbedb8; /* secondary/yellow/lemon-light (Figma 1110:18029) — the "previous" bar */
+  z-index: 1; /* stationary previous bar, revealed as a left sliver as it's pushed out */
+  /* background set inline: ACTIVE lemon before the 50% crossover, PALE after (Figma
+     stage A 1110:17883 → stage B 1110:18011). The value here is only a fallback. */
+  background: #fbedb8;
 }
 .pbi-push-new {
-  z-index: 2; /* advancing bar (brighter lemon) covers the old one as it slides in */
-  background: #f6dc72; /* secondary/yellow/lemon (Figma 1110:18031) — the incoming deposit */
-  overflow: hidden; /* clips the counter-translated inner text to the covered region */
+  z-index: 2; /* advancing bar covers the old one as it slides in from the right */
+  /* background set inline: PALE/light yellow before the 50% crossover, ACTIVE lemon
+     after (and at rest). The value here is only a fallback. */
+  background: #f6dc72;
+  overflow: hidden; /* clips the inner text to the covered region */
   padding-left: 0; /* inner carries the text padding */
   /* soft leading-edge shadow so the advancing bar reads as covering the old bar */
   box-shadow: -8px 0 14px -3px rgba(0, 0, 0, 0.22);

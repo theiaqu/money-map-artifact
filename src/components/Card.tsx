@@ -333,10 +333,27 @@ export function IncomeAccountCard({
              the slide invisible — the earlier bug.) At rest (not active) the new bar fully
              covers, showing a single settled bar. */
           <div className="pbi-bar pbi-bar--income pbi-bar--income-push">
-            <div className="pbi-push-old">{amtLabel}</div>
+            {/* COLOR CROSSOVER at the 50% mark (Figma stage A 1110:17883 → stage B
+                1110:18011), keyed to feederPushSlide's `p`:
+                • before 50% — the incoming (new) bar is the LIGHT/pale yellow (#fbedb8)
+                  and the outgoing (old) bar stays the ACTIVE lemon (#f6dc72): the pale
+                  new bar pushes the still-active old bar across.
+                • past 50% (and at rest) — the incoming bar flips to the ACTIVE lemon and
+                  the outgoing bar turns PALE as it's pushed out until gone.
+                So the "active" lemon always belongs to whichever bar owns >50% of the
+                width, and it settles on a single lemon bar at rest. */}
+            <div
+              className="pbi-push-old"
+              style={{ background: slide.active && slide.p < 0.5 ? '#f6dc72' : '#fbedb8' }}
+            >
+              {amtLabel}
+            </div>
             <div
               className="pbi-push-new"
-              style={{ transform: `translateX(${slide.active ? (1 - slide.p) * 100 : 0}%)` }}
+              style={{
+                background: !slide.active || slide.p >= 0.5 ? '#f6dc72' : '#fbedb8',
+                transform: `translateX(${slide.active ? (1 - slide.p) * 100 : 0}%)`,
+              }}
             >
               <div className="pbi-push-new-inner">{amtLabel}</div>
             </div>
