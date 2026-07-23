@@ -1437,6 +1437,10 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* "Goal representation" is HIDDEN from the panel (same as Preview/Gate-style):
+            the `dateMode` state + its default drive the labels, but the selector is no
+            longer rendered/selectable. */}
+        {false && (
         <div className="config-row">
           <span className="config-label">Goal representation</span>
           <div className="mode-toggle" role="tablist" aria-label="Goal representation">
@@ -1453,6 +1457,7 @@ export default function App() {
             ))}
           </div>
         </div>
+        )}
         {/* Header carousel + Timeline interaction only apply to the paycheck-pill
             carousel, which only exists in "Individual pills" income mode. In the
             default "Account-style card" mode there is no carousel, so hide both. */}
@@ -1492,6 +1497,10 @@ export default function App() {
             </div>
           </>
         )}
+        {/* "Core/Spend refill visual" is HIDDEN from the panel (same as Preview/Gate-style):
+            the `refillVisual` state + its default (On) still drive the account-card
+            overlay, but the toggle is no longer rendered/selectable. */}
+        {false && (
         <div className="config-row">
           <span className="config-label">Core/Spend refill visual</span>
           <div className="mode-toggle" role="tablist" aria-label="Core/Spend refill visual">
@@ -1513,6 +1522,7 @@ export default function App() {
             </button>
           </div>
         </div>
+        )}
         {style === 'progress' && (
           <div className="config-row">
             <span className="config-label">Income</span>
@@ -1556,7 +1566,10 @@ export default function App() {
             expose the Monthly-split toggle (progress / pills). "Sections" (default)
             morphs the colored section bands into the split columns; "Progress bars"
             keeps the original per-bar morph. */}
-        {(style === 'progress' || style === 'pills') && (
+        {/* "Transition animation" is HIDDEN from the panel (same as Preview/Gate-style):
+            the `transitionAnim` state + its default (Sections) still drive the morph,
+            but the toggle is no longer rendered/selectable. */}
+        {false && (style === 'progress' || style === 'pills') && (
           <div className="config-row">
             <span className="config-label">Transition animation</span>
             <div className="mode-toggle" role="tablist" aria-label="Transition animation">
@@ -1597,7 +1610,10 @@ export default function App() {
         {/* How the GOALS section under the monthly-split graphic is represented.
             Offered on the styles that expose the Monthly-split view (progress / pills):
             calendar list (default) vs. income-split style vs. interactive net-worth graph. */}
-        {(style === 'progress' || style === 'pills') && (
+        {/* "Goals section" is HIDDEN from the panel (same as Preview/Gate-style): the
+            `goalsView` state + its default (Net worth graph + calendar list) still drive
+            the monthly-split goals section, but the toggle is no longer rendered. */}
+        {false && (style === 'progress' || style === 'pills') && (
           <div className="config-row">
             <span className="config-label">Goals section</span>
             <div className="mode-toggle" role="tablist" aria-label="Goals section representation">
