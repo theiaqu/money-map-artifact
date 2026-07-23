@@ -1629,7 +1629,6 @@ body {
   height: 18px;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -2633,10 +2632,16 @@ body.is-dragging-noselect * {
    NOTE: the label rides WITH the incoming bar (no counter-translate) — pinning it back
    to the left anchor made both labels identical and the slide invisible. */
 .pbi-bar--income-push {
-  /* inherits the gray track + overflow:hidden from .pbi-bar / .pbi-bar--income */
+  /* inherits overflow:hidden from .pbi-bar (clips the off-track pills). Transparent
+     track so the GAP between the two pills reveals the card behind them (Figma
+     1110:17640), not a gray fill. */
   padding-left: 0;
   padding-right: 0;
+  background: transparent;
 }
+/* Two separate full-track-width rounded pills. Each is translated inline (by the sim
+   clock via feederPushSlide's `p`) so the pair slides left with a CONSTANT gap between
+   them — no overlap, no drop shadow; the gap alone separates the bars. */
 .pbi-push-old,
 .pbi-push-new {
   position: absolute;
@@ -2649,28 +2654,16 @@ body.is-dragging-noselect * {
   will-change: transform;
 }
 .pbi-push-old {
-  z-index: 1; /* stationary previous bar, revealed as a left sliver as it's pushed out */
+  z-index: 1;
   /* background set inline: ACTIVE lemon before the 50% crossover, PALE after (Figma
      stage A 1110:17883 → stage B 1110:18011). The value here is only a fallback. */
   background: #fbedb8;
 }
 .pbi-push-new {
-  z-index: 2; /* advancing bar covers the old one as it slides in from the right */
+  z-index: 2;
   /* background set inline: PALE/light yellow before the 50% crossover, ACTIVE lemon
      after (and at rest). The value here is only a fallback. */
   background: #f6dc72;
-  overflow: hidden; /* clips the inner text to the covered region */
-  padding-left: 0; /* inner carries the text padding */
-  /* soft leading-edge shadow so the advancing bar reads as covering the old bar */
-  box-shadow: -8px 0 14px -3px rgba(0, 0, 0, 0.22);
-}
-.pbi-push-new-inner {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  padding-left: 12px;
-  box-sizing: border-box;
 }
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to

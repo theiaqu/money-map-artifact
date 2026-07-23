@@ -20,7 +20,7 @@ export default function IlloWallet({ className }: { className?: string }) {
       style={{ display: 'block', width: '100%', height: 'auto', overflow: 'visible' }}
       aria-hidden
     >
-      <g filter="url(#illo-wallet-shadow)">
+      <g>
         {/* pocket BACK + dashed inner border + opening band (static) */}
         <rect x="4.22656" y="14.3125" width="51.524" height="29.9375" rx="3.15131" fill="#E8F5EB" />
         <rect x="6.19695" y="16.1257" width="47.4273" height="26.3135" rx="1.96957" stroke="#B0DDBA" strokeWidth="0.157566" strokeDasharray="0.63 0.63" />
@@ -49,23 +49,6 @@ export default function IlloWallet({ className }: { className?: string }) {
         {/* pocket FRONT panel (static) — clips the lower half of the card */}
         <path d="M22.0845 20.457H6.43359V40.783H53.2306V20.457H37.6576L29.871 21.9815L22.0845 20.457Z" fill="#E8F5EB" />
       </g>
-      <defs>
-        {/* filter region extended well ABOVE the art (negative y + extra height) so
-            the credit card, when it rises above the viewBox top on peek, stays inside
-            the filter region and is NOT clipped by it. The drop-shadow filter would
-            otherwise crop anything outside its region even though the svg root is
-            overflow:visible. */}
-        <filter id="illo-wallet-shadow" x="-4" y="-16" width="68" height="68" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
-          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-          <feOffset />
-          <feGaussianBlur stdDeviation="2.11347" />
-          <feComposite in2="hardAlpha" operator="out" />
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.15 0" />
-          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
-          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
-        </filter>
-      </defs>
     </svg>
   );
 }

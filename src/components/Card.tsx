@@ -307,6 +307,9 @@ export function IncomeAccountCard({
   // PUSH/SLIDE mode (standard app only): drive one bar-push per income fire off the
   // SAME feeder clock as the comet + depletion. Onboarding keeps its slow scrub drain.
   const push = incomeAnim === 'push' && !onboarding;
+  // gap (px) held BETWEEN the outgoing + incoming push pills throughout the slide, so
+  // they read as two separate bars with space between them (Figma 1110:17640).
+  const PUSH_GAP = 10;
   const slide = push ? feederPushSlide(dataset, mode, now, feederTravelMonths(mode)) : null;
   const depSweep = onboarding || push ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederTravelMonths(mode));
   const amount = DATASETS[dataset].incomeAmount;
@@ -333,18 +336,27 @@ export function IncomeAccountCard({
              the slide invisible — the earlier bug.) At rest (not active) the new bar fully
              covers, showing a single settled bar. */
           <div className="pbi-bar pbi-bar--income pbi-bar--income-push">
-            {/* COLOR CROSSOVER at the 50% mark (Figma stage A 1110:17883 → stage B
+            {/* TWO DISTINCT PILLS WITH A CONSTANT GAP (Figma 1110:17640): the outgoing
+                (old) and incoming (new) bars are separate rounded pills that move LEFT
+                together, always separated by PUSH_GAP px — never flush/overlapping. Each
+                is a full-track-width pill; the pair shifts by (100% + gap), so:
+                • p=0 (fire) — old fills the track, new is fully off to the right.
+                • mid-push — old exits left, a gap shows the card behind, new enters right.
+                • p=1 (rest) — new fills the track (single settled bar), old is off-left.
+                COLOR CROSSOVER at the 50% mark (Figma stage A 1110:17883 → stage B
                 1110:18011), keyed to feederPushSlide's `p`:
                 • before 50% — the incoming (new) bar is the LIGHT/pale yellow (#fbedb8)
-                  and the outgoing (old) bar stays the ACTIVE lemon (#f6dc72): the pale
-                  new bar pushes the still-active old bar across.
+                  and the outgoing (old) bar stays the ACTIVE lemon (#f6dc72).
                 • past 50% (and at rest) — the incoming bar flips to the ACTIVE lemon and
-                  the outgoing bar turns PALE as it's pushed out until gone.
-                So the "active" lemon always belongs to whichever bar owns >50% of the
-                width, and it settles on a single lemon bar at rest. */}
+                  the outgoing bar turns PALE as it's pushed out. So the "active" lemon
+                  always belongs to whichever bar owns >50% of the track. No drop shadow —
+                  the gap alone separates the two bars. */}
             <div
               className="pbi-push-old"
-              style={{ background: slide.active && slide.p < 0.5 ? '#f6dc72' : '#fbedb8' }}
+              style={{
+                background: slide.active && slide.p < 0.5 ? '#f6dc72' : '#fbedb8',
+                transform: `translateX(calc(${(-slide.p).toFixed(4)} * (100% + ${PUSH_GAP}px)))`,
+              }}
             >
               {amtLabel}
             </div>
@@ -352,10 +364,10 @@ export function IncomeAccountCard({
               className="pbi-push-new"
               style={{
                 background: !slide.active || slide.p >= 0.5 ? '#f6dc72' : '#fbedb8',
-                transform: `translateX(${slide.active ? (1 - slide.p) * 100 : 0}%)`,
+                transform: `translateX(calc(${(1 - slide.p).toFixed(4)} * (100% + ${PUSH_GAP}px)))`,
               }}
             >
-              <div className="pbi-push-new-inner">{amtLabel}</div>
+              {amtLabel}
             </div>
           </div>
         ) : (

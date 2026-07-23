@@ -51,7 +51,7 @@ export default function IlloCalendar({ className, markers = true }: { className?
       style={{ display: 'block', width: '100%', height: 'auto' }}
       aria-hidden
     >
-      <g filter="url(#illo-cal-shadow)">
+      <g>
         {/* white body + rounded blue header band */}
         <rect x="4.28418" y="6.45312" width="46.0947" height="39.8584" rx="5.42291" fill="white" />
         <path
@@ -95,26 +95,6 @@ export default function IlloCalendar({ className, markers = true }: { className?
           </g>
         ))}
       </g>
-      <defs>
-        <filter
-          id="illo-cal-shadow"
-          x="0"
-          y="0"
-          width="54.6629"
-          height="50.5955"
-          filterUnits="userSpaceOnUse"
-          colorInterpolationFilters="sRGB"
-        >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
-          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-          <feOffset />
-          <feGaussianBlur stdDeviation="2.14205" />
-          <feComposite in2="hardAlpha" operator="out" />
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0" />
-          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
-          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
-        </filter>
-      </defs>
     </svg>
   );
 }
