@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Umbrella, PiggyBank, Home, Plane, TrendingUp, ArrowDown, type LucideIcon } from 'lucide-react';
 import FruitfulLogo from './FruitfulLogo';
 import { heroHeadline, goalWaterfall, waterfallDate, DATASETS, type Dataset } from '../scenario';
@@ -88,12 +88,17 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-export type GoalsView = 'list' | 'split' | 'networth';
+// How the GOALS section under the monthly split is represented:
+//  • 'networth' — (default) the "Goals accounts over time" net-worth graph on top
+//    with the year-grouped calendar list stacked UNDERNEATH it (Figma 1146:3465).
+//    Selecting a goal on the graph smooth-scrolls to + highlights its row in the list.
+//  • 'split'    — the "Like our income split" contribution-card waterfall (Figma 1079:12915).
+export type GoalsView = 'networth' | 'split';
 
 export default function MonthlySplit({
   dataset,
   onboarding = false,
-  goalsView = 'list',
+  goalsView = 'networth',
   transitionSeq = false,
   squeezeMs = 1200,
 }: {
@@ -252,7 +257,30 @@ export default function MonthlySplit({
     setSelectedGoal(null);
   }, [dataset]);
   const activeGoalId = selectedGoal ?? (flow[0]?.id ?? null);
-  const activeGoal = flow.find((f) => f.id === activeGoalId) ?? flow[0];
+
+  // ---- FIXED net-worth-graph axes (independent of the live slider) ----
+  // The x-axis (time) and y-axis (net worth) are frozen to the dataset's DEFAULT
+  // allocation, so dragging the Spend↔Goals slider MOVES the goal points ALONG the
+  // graph (as their completion timing changes) WITHOUT rescaling the axis. maxM is
+  // the furthest default-funded goal's month; maxNW is the total of all goal targets
+  // (targets don't change with allocation, so y stays put — only x shifts). Points
+  // whose timing runs past maxM clamp to the right edge and bunch there.
+  const axisRef = useMemo(() => {
+    const dGoals = Math.max(0, cfg.income - cfg.coreMax - cfg.spendMax); // default Goals $/mo
+    const dSteps = goalWaterfall(cfg, dGoals);
+    const finite = dSteps.filter((s) => isFinite(s.months)).map((s) => s.months);
+    const maxM = Math.max(1, ...finite);
+    const totalNW = dSteps.reduce((sum, s) => sum + s.target, 0);
+    return { maxM, maxNW: Math.max(1, totalNW) };
+  }, [cfg]);
+
+  // ---- selecting a graph goal smooth-scrolls to its calendar-list row ----
+  const rowRefs = useRef<Record<string, HTMLElement | null>>({});
+  useEffect(() => {
+    if (!selectedGoal || goalsView !== 'networth') return;
+    const el = rowRefs.current[selectedGoal];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [selectedGoal, goalsView]);
 
   return (
     <div className={`msplit${onboarding ? ' msplit--onboard' : ''}${seq ? ' msplit--seq' : ''}`} style={{ width: BOARD_W }}>
@@ -368,40 +396,6 @@ export default function MonthlySplit({
             </div>
           </div>
 
-          {/* ---- (a) Calendar list — year-grouped goals waterfall (default) ---- */}
-          {goalsView === 'list' && (
-            <div className="msplit-goals">
-              {yearGroups.map((g) => (
-                <div className="msplit-goals-group" key={g.label}>
-                  <div className="msplit-goals-year">{g.label}</div>
-                  {g.rows.map((row) => {
-                    const Icon = goalIcon(row.title);
-                    const d = durParts(row.months);
-                    const date = waterfallDate(row.months).label;
-                    return (
-                      <div className="msplit-goal" key={row.id}>
-                        <div className="msplit-goal-time">
-                          <span className="msplit-goal-time-val">{d.value}</span>
-                          {d.unit && <span className="msplit-goal-time-unit">{d.unit}</span>}
-                        </div>
-                        <div className="msplit-goal-main">
-                          <div className="msplit-goal-info">
-                            <div className="msplit-goal-name">
-                              <Icon size={16} strokeWidth={1.75} color="#111" />
-                              <span>{row.title}</span>
-                            </div>
-                            <span className="msplit-goal-amt">Goal: {money(row.target)}</span>
-                          </div>
-                          <span className="msplit-goal-date">{date}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* ---- (b) "Like our income split" — a waterfall of contribution cards
                (Figma 1079:12915). Each goal shows its % share of the goals money, its
                destination account, and the balance it funds up to — mirroring how the
@@ -446,9 +440,11 @@ export default function MonthlySplit({
             </div>
           )}
 
-          {/* ---- (c) Net worth graph — an interactive timeline (Figma 1099:15988).
-               The rising curve plots cumulative net worth; each goal is a clickable
-               point that highlights the goal + shows its detail card below. ---- */}
+          {/* ---- (a) DEFAULT combined view — "Goals accounts over time" net-worth graph
+               on top + the year-grouped calendar list stacked UNDERNEATH (Figma 1146:3465).
+               The axes are FIXED (axisRef), so moving the Spend↔Goals slider slides the
+               goal points ALONG the graph (and they bunch when close) without rescaling
+               the axis. Clicking a graph goal smooth-scrolls to + highlights its list row. ---- */}
           {goalsView === 'networth' &&
             (() => {
               const GW = 330;
@@ -458,10 +454,12 @@ export default function MonthlySplit({
               const PADT = 20;
               const PADB = 30;
               const pts = flow.filter((f) => isFinite(f.months));
-              const maxM = Math.max(1, ...pts.map((p) => p.months));
-              const maxNW = Math.max(1, ...pts.map((p) => p.networth));
-              const xOf = (m: number) => PADL + (m / maxM) * (GW - PADL - PADR);
-              const yOf = (nw: number) => GH - PADB - (nw / maxNW) * (GH - PADT - PADB);
+              // FROZEN axes (see axisRef): points move, the axis doesn't. Point timing
+              // beyond the default range clamps to the right edge (bunching there).
+              const maxM = axisRef.maxM;
+              const maxNW = axisRef.maxNW;
+              const xOf = (m: number) => PADL + (Math.min(m, maxM) / maxM) * (GW - PADL - PADR);
+              const yOf = (nw: number) => GH - PADB - (Math.min(nw, maxNW) / maxNW) * (GH - PADT - PADB);
               const curve = [{ x: xOf(0), y: yOf(0) }, ...pts.map((p) => ({ x: xOf(p.months), y: yOf(p.networth) }))];
               const linePath = smoothPath(curve);
               const areaPath = pts.length ? `${linePath} L ${xOf(maxM).toFixed(1)} ${(GH - PADB).toFixed(1)} L ${xOf(0).toFixed(1)} ${(GH - PADB).toFixed(1)} Z` : '';
@@ -486,6 +484,8 @@ export default function MonthlySplit({
               // CLUSTER_GAP) into a cluster, then fan each member out on a small ring
               // around the cluster's centroid so they read as an intentional overlapping
               // clump — every circle stays individually clickable/selectable.
+              // recomputed LIVE every render, so the clumping responds to the slider as
+              // goals slide closer/further along the fixed axis (Figma 1146:3714).
               const CLUSTER_GAP = 26; // ~one marker diameter
               const based = pts.map((p) => ({ ...p, bx: xOf(p.months), by: yOf(p.networth) }));
               const clusters: (typeof based)[] = [];
@@ -511,11 +511,9 @@ export default function MonthlySplit({
                 const offs = clusterOffsets(cl.length);
                 return cl.map((p, i) => ({ ...p, x: ax + offs[i].dx, y: ay + offs[i].dy, clustered: true }));
               });
-              const detailParts = activeGoal ? activeGoal.date.split(' ') : ['', ''];
-              const DetailIcon = activeGoal ? goalIcon(activeGoal.title) : Umbrella;
               return (
                 <div className="msplit-nw">
-                  <h2 className="msplit-goals-h">Your goals timeline</h2>
+                  <h2 className="msplit-goals-h">Goals accounts over time</h2>
                   <div className="msplit-nw-card">
                     <div className="msplit-nw-plot" style={{ width: GW, height: GH }}>
                       <svg width={GW} height={GH} viewBox={`0 0 ${GW} ${GH}`} fill="none" className="msplit-nw-svg">
@@ -552,21 +550,46 @@ export default function MonthlySplit({
                       })}
                     </div>
                   </div>
-                  {activeGoal && (
-                    <div className="msplit-nw-detail">
-                      <div className="msplit-nw-detail-date">
-                        <span className="msplit-nw-detail-mo">{detailParts[0]}</span>
-                        <span className="msplit-nw-detail-yr">{detailParts[1]}</span>
+
+                  {/* ---- calendar list, stacked UNDERNEATH the graph. The selected
+                       goal's row is highlighted + smooth-scrolled into view. ---- */}
+                  <div className="msplit-goals msplit-goals--under">
+                    {yearGroups.map((g) => (
+                      <div className="msplit-goals-group" key={g.label}>
+                        <div className="msplit-goals-year">{g.label}</div>
+                        {g.rows.map((row) => {
+                          const Icon = goalIcon(row.title);
+                          const d = durParts(row.months);
+                          const date = waterfallDate(row.months).label;
+                          const sel = row.id === activeGoalId;
+                          return (
+                            <div
+                              className={`msplit-goal${sel ? ' msplit-goal--sel' : ''}`}
+                              key={row.id}
+                              ref={(el) => {
+                                rowRefs.current[row.id] = el;
+                              }}
+                            >
+                              <div className="msplit-goal-time">
+                                <span className="msplit-goal-time-val">{d.value}</span>
+                                {d.unit && <span className="msplit-goal-time-unit">{d.unit}</span>}
+                              </div>
+                              <div className="msplit-goal-main">
+                                <div className="msplit-goal-info">
+                                  <div className="msplit-goal-name">
+                                    <Icon size={16} strokeWidth={1.75} color="#111" />
+                                    <span>{row.title}</span>
+                                  </div>
+                                  <span className="msplit-goal-amt">Goal: {money(row.target)}</span>
+                                </div>
+                                <span className="msplit-goal-date">{date}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="msplit-nw-detail-main">
-                        <div className="msplit-nw-detail-name">
-                          <DetailIcon size={16} strokeWidth={1.75} color="#111" />
-                          <span>{activeGoal.title}</span>
-                        </div>
-                        <span className="msplit-nw-detail-amt">Goal: {money(activeGoal.target)}</span>
-                      </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               );
             })()}

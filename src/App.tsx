@@ -303,17 +303,17 @@ const MONTHLY_BG_OPTS: { id: MonthlyBg; label: string }[] = [
 ];
 
 // How the GOALS section under the monthly-split graphic is represented:
-// 'list' = the year-grouped goals-waterfall calendar list (default, current);
+// 'networth' = (default) the "Goals accounts over time" net-worth graph on TOP with
+//   the year-grouped calendar list stacked UNDERNEATH it (Figma 1146:3465); selecting
+//   a goal on the graph smooth-scrolls to + highlights its row in the list. Points move
+//   live along a FIXED axis as the Spend↔Goals slider drags, bunching when they get close;
 // 'split' = an income-split-style waterfall (each goal shows its contribution %,
-//   destination account, and "until balance = $target"; Figma 1079:12915);
-// 'networth' = an interactive net-worth timeline graph where each goal is a point
-//   the user can click to highlight/select (Figma 1099:15988). All three recompute
-//   from the live Spend↔Goals simulation state inside MonthlySplit.
-type GoalsView = 'list' | 'split' | 'networth';
+//   destination account, and "until balance = $target"; Figma 1079:12915).
+// Both recompute from the live Spend↔Goals simulation state inside MonthlySplit.
+type GoalsView = 'networth' | 'split';
 const GOALS_VIEW_OPTS: { id: GoalsView; label: string }[] = [
-  { id: 'list', label: 'Calendar list' }, // default first
+  { id: 'networth', label: 'Net worth graph' }, // default first (graph + calendar list)
   { id: 'split', label: 'Like our income split' },
-  { id: 'networth', label: 'Net worth graph' },
 ];
 
 // "Data type" reparameterizes the whole scenario/data model (income, expense
@@ -614,7 +614,7 @@ export default function App() {
   // synchronously in switchView so it's correct on MonthlySplit's fresh mount.
   const [enterSeq, setEnterSeq] = useState(false);
   const [monthlyBg, setMonthlyBg] = useState<MonthlyBg>('teal'); // Monthly Expenses section background: teal (default) vs. blue→green gradient
-  const [goalsView, setGoalsView] = useState<GoalsView>('list'); // Goals section under the monthly split: calendar list (default) vs. income-split style vs. net-worth graph
+  const [goalsView, setGoalsView] = useState<GoalsView>('networth'); // Goals section under the monthly split: net-worth graph + calendar list (default) vs. income-split style
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
   // money map inside a mock Fruitful home page. null = normal configurator; 'home'
   // = mock home with the draggable sheet; 'map' = the money map with a compact

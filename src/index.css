@@ -1668,6 +1668,11 @@ body {
   flex-direction: column;
   gap: 13px;
 }
+/* the calendar list when stacked UNDERNEATH the net-worth graph (default combined
+   view) — a touch of separation from the graph card above it. */
+.msplit-goals--under {
+  margin-top: 6px;
+}
 .msplit-goals-group {
   display: flex;
   flex-direction: column;
@@ -1689,6 +1694,16 @@ body {
   border-radius: 16px;
   padding: 16px 12px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+  border: 2px solid transparent;
+  scroll-margin: 24px; /* leave breathing room when scrolled into view */
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+/* the goal currently selected on the net-worth graph — emphasized in the list and
+   smooth-scrolled into view (see rowRefs effect in MonthlySplit). */
+.msplit-goal--sel {
+  border-color: #d17ea3;
+  background: #fdf4f8;
+  box-shadow: 0 6px 16px rgba(180, 90, 130, 0.18), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .msplit-goal-time {
   width: 60px;
@@ -1916,7 +1931,10 @@ body {
   padding: 0;
   cursor: pointer;
   z-index: 1;
-  transition: width 0.18s ease, height 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  /* left/top are transitioned so points GLIDE to their new spot as the Spend↔Goals
+     slider drags them along the fixed axis (bunching/spreading live). */
+  transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1), top 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.18s ease, height 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 /* clumped markers (close-together goals): a crisper white ring + a touch more
    shadow so overlapping circles stay separable, and they sit above lone points. */
