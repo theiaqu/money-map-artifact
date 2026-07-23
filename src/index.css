@@ -1743,17 +1743,26 @@ body {
 }
 .msplit-goal-name {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* top-align the icon so it stays put when the title wraps */
   gap: 6px;
   font-family: var(--font-family);
   font-size: 14px;
   font-weight: 500;
   color: #000000;
 }
+.msplit-goal-name svg {
+  flex-shrink: 0; /* keep the glyph its full size; never squeeze it to fit text */
+  margin-top: 1px;
+}
+/* Goal titles WRAP instead of truncating — the row/card grows taller to fit the full
+   text (no ellipsis / no fixed-height clip). The card is align-items:center so the
+   time + date columns stay centered against the taller content. */
 .msplit-goal-name span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.3;
+  word-break: break-word;
 }
 .msplit-goal-amt {
   font-family: var(--font-family);
@@ -2154,6 +2163,14 @@ body {
 }
 
 /* the slider + goals controls rise in once the diagram has finished building */
+/* Suppress the generic `.msplit-below` mount fade during the choreography. Otherwise
+   that fade (msplit-fade, fill: both) overrides the --pending opacity:0 and shows the
+   whole below block EARLY during the squeeze, then phase 6's msplit-seq-rise snaps it
+   back to 0 and re-animates it — a visible "reload/flicker" of the calculator + list.
+   With it off, the below simply stays hidden until phase 6 rises it in exactly ONCE. */
+.msplit--seq .msplit-below {
+  animation: none;
+}
 .msplit--seq .msplit-below--pending {
   opacity: 0;
 }
