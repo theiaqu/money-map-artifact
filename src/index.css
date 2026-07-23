@@ -1918,13 +1918,20 @@ body {
   z-index: 1;
   transition: width 0.18s ease, height 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
+/* clumped markers (close-together goals): a crisper white ring + a touch more
+   shadow so overlapping circles stay separable, and they sit above lone points. */
+.msplit-nw-pt--clustered {
+  border-width: 2.5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+  z-index: 3;
+}
 .msplit-nw-pt--on {
   width: 36px;
   height: 36px;
   background: #d17ea3;
   border-width: 3px;
   box-shadow: 0 5px 12px rgba(180, 90, 130, 0.4);
-  z-index: 2;
+  z-index: 6;
 }
 .msplit-nw-detail {
   display: flex;

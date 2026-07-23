@@ -432,6 +432,37 @@ export default function MonthlySplit({
                 for (let i = 0; i < MAX_TICKS; i++) idxs.add(Math.round((i * (allTicks.length - 1)) / (MAX_TICKS - 1)));
                 ticks = [...idxs].sort((a, b) => a - b).map((i) => allTicks[i]);
               }
+              // ---- clump close-together goals (Figma 1099:15988) ----
+              // Goals landing near each other in time would overlap into a cramped
+              // pile. Instead, chain neighbours whose markers would collide (2D gap <
+              // CLUSTER_GAP) into a cluster, then fan each member out on a small ring
+              // around the cluster's centroid so they read as an intentional overlapping
+              // clump — every circle stays individually clickable/selectable.
+              const CLUSTER_GAP = 26; // ~one marker diameter
+              const based = pts.map((p) => ({ ...p, bx: xOf(p.months), by: yOf(p.networth) }));
+              const clusters: (typeof based)[] = [];
+              for (const p of based) {
+                const cl = clusters[clusters.length - 1];
+                const prev = cl?.[cl.length - 1];
+                if (cl && prev && Math.hypot(p.bx - prev.bx, p.by - prev.by) < CLUSTER_GAP) cl.push(p);
+                else clusters.push([p]);
+              }
+              const clusterOffsets = (n: number): { dx: number; dy: number }[] => {
+                if (n <= 1) return [{ dx: 0, dy: 0 }];
+                if (n === 2) return [{ dx: -8, dy: -9 }, { dx: 8, dy: 9 }];
+                const R = 12 + Math.max(0, n - 3) * 3;
+                return Array.from({ length: n }, (_, i) => {
+                  const a = -Math.PI / 2 + (i * 2 * Math.PI) / n; // start at top, go round
+                  return { dx: R * Math.cos(a), dy: R * Math.sin(a) };
+                });
+              };
+              const positioned = clusters.flatMap((cl) => {
+                if (cl.length === 1) return [{ ...cl[0], x: cl[0].bx, y: cl[0].by, clustered: false }];
+                const ax = cl.reduce((s, p) => s + p.bx, 0) / cl.length;
+                const ay = cl.reduce((s, p) => s + p.by, 0) / cl.length;
+                const offs = clusterOffsets(cl.length);
+                return cl.map((p, i) => ({ ...p, x: ax + offs[i].dx, y: ay + offs[i].dy, clustered: true }));
+              });
               const detailParts = activeGoal ? activeGoal.date.split(' ') : ['', ''];
               const DetailIcon = activeGoal ? goalIcon(activeGoal.title) : Umbrella;
               return (
@@ -454,15 +485,15 @@ export default function MonthlySplit({
                           {t.label}
                         </span>
                       ))}
-                      {pts.map((p) => {
+                      {positioned.map((p) => {
                         const PtIcon = goalIcon(p.title);
                         const on = p.id === activeGoalId;
                         return (
                           <button
                             key={p.id}
                             type="button"
-                            className={`msplit-nw-pt${on ? ' msplit-nw-pt--on' : ''}`}
-                            style={{ left: xOf(p.months), top: yOf(p.networth) }}
+                            className={`msplit-nw-pt${p.clustered ? ' msplit-nw-pt--clustered' : ''}${on ? ' msplit-nw-pt--on' : ''}`}
+                            style={{ left: p.x, top: p.y }}
                             onClick={() => setSelectedGoal(p.id)}
                             aria-label={`${p.title} — ${p.date}`}
                             aria-pressed={on}
