@@ -1900,11 +1900,28 @@ body {
 .msplit-nw-card {
   background: #ffffff;
   border-radius: 16px;
-  padding: 10px 12px 4px;
+  /* no horizontal padding: the plot fills the full card width so the net-worth
+     line runs edge-to-edge (Figma 1146:3511). overflow:hidden clips the line's
+     bleed + any steep projection cleanly at the rounded card edges. */
+  padding: 0;
+  overflow: hidden;
   box-shadow: none;
 }
 .msplit-nw-plot {
   position: relative;
+}
+/* chart title sitting INSIDE the graph, top-left (Figma 1146:3526) */
+.msplit-nw-title {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 2;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #7d7d7d;
+  pointer-events: none;
 }
 .msplit-nw-svg {
   position: absolute;
@@ -1919,17 +1936,23 @@ body {
   stroke-dasharray: 5 7;
   opacity: 0.75;
 }
-.msplit-nw-tick {
+/* x-axis label row — evenly spaced across the full plot width with a 16px inset,
+   anchored below the baseline (Figma 1146:3513). */
+.msplit-nw-ticks {
   position: absolute;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.msplit-nw-tick {
   font-family: var(--font-family);
-  font-size: 11px;
-  font-weight: 500;
-  color: #adadad;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7d7d7d;
   white-space: nowrap;
-  /* glide horizontally when the axis rescales/zooms as goals bunch (Figma 1146:3797),
-     matching the point-marker glide so the whole axis re-scale reads smoothly. */
-  transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .msplit-nw-pt {
   position: absolute;

@@ -490,10 +490,15 @@ export default function MonthlySplit({
                the axis. Clicking a graph goal smooth-scrolls to + highlights its list row. ---- */}
           {goalsView === 'networth' &&
             (() => {
-              const GW = 330;
+              // GW spans the FULL card width (card has no horizontal padding) and the
+              // horizontal plot padding is 0, so the net-worth line + its dashed
+              // projection run EDGE-TO-EDGE with no inset gap (Figma 1146:3511): the
+              // origin (TODAY) sits on the left card edge and the projection reaches the
+              // right card edge. PADT/PADB keep room for the title / x-axis labels.
+              const GW = 354;
               const GH = 188;
-              const PADL = 16;
-              const PADR = 26;
+              const PADL = 0;
+              const PADR = 0;
               const PADT = 20;
               const PADB = 30;
               const pts = flow.filter((f) => isFinite(f.months));
@@ -522,8 +527,10 @@ export default function MonthlySplit({
               const xf = pts.map((p) => PADL + (Math.min(p.months, frozenMaxM) / frozenMaxM) * PLOTW);
               let tight3 = Infinity;
               for (let i = 2; i < xf.length; i++) tight3 = Math.min(tight3, xf[i] - xf[i - 2]);
-              const TIGHT3_NONE = 46; // 3 goals spanning ≥46px read fine → frozen axis
-              const TIGHT3_FULL = 26; // 3 goals within 26px are crowded → full zoom to fit
+              // px thresholds scale with the (now full-width) plot so the bunching
+              // sensitivity is unchanged from the previous narrower plot (PLOTW 288→354).
+              const TIGHT3_NONE = 57; // 3 goals spanning ≥57px read fine → frozen axis
+              const TIGHT3_FULL = 32; // 3 goals within 32px are crowded → full zoom to fit
               const zoomT =
                 xf.length >= 3
                   ? Math.max(0, Math.min(1, (TIGHT3_NONE - tight3) / (TIGHT3_NONE - TIGHT3_FULL)))
@@ -571,7 +578,13 @@ export default function MonthlySplit({
               // Continue the SAME gentle slope from the last goal to the right edge, drawn
               // DASHED so it reads as a forward projection rather than real, funded goals.
               const slope = -((y0 - yTop) / spanX) * (1 + ARCH); // dCurveY/dx at x = xLast
-              const edgeY = Math.max(PADT, Math.min(GH - PADB, yTop + slope * (edgeX - xLast)));
+              // Continue at the EXACT tangent slope of the solid line's final segment so
+              // the dashed projection is a straight, tangent-continuous extension of the
+              // goals line (same angle, not a shallower one). We do NOT clamp edgeY — an
+              // earlier top/bottom clamp changed the endpoint's y while keeping its x, which
+              // FLATTENED the drawn slope. If the projection would exit the top it simply
+              // bleeds off and the card's overflow:hidden clips it, preserving the slope.
+              const edgeY = yTop + slope * (edgeX - xLast);
               const hasProj = pts.length > 0 && edgeX > xLast + 0.5;
               const projPath = hasProj ? `M ${xLast.toFixed(1)} ${yTop.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
               // area fill hugs the solid line, THEN the projection, then drops to the
@@ -630,9 +643,15 @@ export default function MonthlySplit({
               });
               return (
                 <div className="msplit-nw">
-                  <h2 className="msplit-goals-h">Goals accounts over time</h2>
                   <div className="msplit-nw-card">
-                    <div className="msplit-nw-plot" style={{ width: GW, height: GH }}>
+                    {/* clicking anywhere in the plot that ISN'T a goal circle DESELECTS
+                        the current goal (the point buttons stopPropagation, so they still
+                        select / switch selection). */}
+                    <div
+                      className="msplit-nw-plot"
+                      style={{ width: GW, height: GH }}
+                      onClick={() => setSelectedGoal(null)}
+                    >
                       <svg width={GW} height={GH} viewBox={`0 0 ${GW} ${GH}`} fill="none" className="msplit-nw-svg">
                         {areaPath && <path d={areaPath} fill="url(#nwfill)" />}
                         <defs>
@@ -653,11 +672,21 @@ export default function MonthlySplit({
                           />
                         )}
                       </svg>
-                      {ticks.map((t, i) => (
-                        <span className="msplit-nw-tick" key={`${t.label}-${i}`} style={{ left: t.x, top: GH - PADB + 8 }}>
-                          {t.label}
-                        </span>
-                      ))}
+                      {/* chart title INSIDE the card, top-left (Figma 1146:3526):
+                          12px medium, secondary gray (#7d7d7d). */}
+                      <span className="msplit-nw-title">Goals accounts over time</span>
+                      {/* x-axis labels: the ≤4 range labels (TODAY + the January years
+                          within the — possibly rescaled — range) are laid out EVENLY across
+                          the full width (Figma 1146:3513, justify-between + 16px inset), so
+                          they never collide or clip at the edges while still reflecting the
+                          current axis range. */}
+                      <div className="msplit-nw-ticks" style={{ top: GH - PADB + 8 }}>
+                        {ticks.map((t, i) => (
+                          <span className="msplit-nw-tick" key={`${t.label}-${i}`}>
+                            {t.label}
+                          </span>
+                        ))}
+                      </div>
                       {positioned.map((p) => {
                         const PtIcon = goalIcon(p.title);
                         const on = p.id === selectedGoal;
@@ -667,7 +696,10 @@ export default function MonthlySplit({
                             type="button"
                             className={`msplit-nw-pt${p.clustered ? ' msplit-nw-pt--clustered' : ''}${on ? ' msplit-nw-pt--on' : ''}`}
                             style={{ left: p.x, top: p.y }}
-                            onClick={() => setSelectedGoal(p.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGoal(p.id);
+                            }}
                             aria-label={`${p.title} — ${p.date}`}
                             aria-pressed={on}
                           >
