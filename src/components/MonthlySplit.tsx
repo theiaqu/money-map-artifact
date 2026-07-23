@@ -497,9 +497,41 @@ export default function MonthlySplit({
               const PADT = 20;
               const PADB = 30;
               const pts = flow.filter((f) => isFinite(f.months));
-              // FROZEN axes (see axisRef): points move, the axis doesn't. Point timing
-              // beyond the default range clamps to the right edge (bunching there).
-              const maxM = axisRef.maxM;
+              // ---- ADAPTIVE x-axis — frozen by default, ZOOMS IN when goals bunch
+              //      (Figma 1146:3797) ----
+              // Normally the time axis stays FROZEN to the dataset's default allocation, so
+              // dragging the slider just moves the points along it (bunching/clustering as
+              // before). But once the goals compress into the left of the plot — dragging
+              // toward Goals makes them all complete much sooner than the default, so ~3+
+              // markers pile together — we ZOOM the axis into that compressed time range so
+              // the goals spread back out and stay legible, updating the ≤4 year labels to
+              // the new range. `fill` (how much of the frozen span the live goals occupy)
+              // drives the zoom; it depends ONLY on the data (not on rendered positions), so
+              // there's no feedback loop with the clustering and it can't oscillate.
+              // Dragging back toward Spend grows the range past the frozen span again → we
+              // hold the frozen axis (points clamp/bunch at the right edge as before).
+              const frozenMaxM = axisRef.maxM;
+              const liveLastM = pts.length ? Math.max(1, ...pts.map((p) => p.months)) : 1;
+              const zoomedMaxM = liveLastM * PROJECT_HEADROOM; // range that just fits the goals
+              // Crowding gate: measure how tightly the closest THREE consecutive goals pack
+              // on the FROZEN axis (a fixed reference, so the gate depends only on the data —
+              // never on the zoom we apply — and therefore can't oscillate). When ~3 markers
+              // crowd into a small window, ramp `zoomT` up to fit the live range and spread
+              // them back out; when they're comfortably apart, stay on the frozen axis.
+              const PLOTW = GW - PADL - PADR;
+              const xf = pts.map((p) => PADL + (Math.min(p.months, frozenMaxM) / frozenMaxM) * PLOTW);
+              let tight3 = Infinity;
+              for (let i = 2; i < xf.length; i++) tight3 = Math.min(tight3, xf[i] - xf[i - 2]);
+              const TIGHT3_NONE = 46; // 3 goals spanning ≥46px read fine → frozen axis
+              const TIGHT3_FULL = 26; // 3 goals within 26px are crowded → full zoom to fit
+              const zoomT =
+                xf.length >= 3
+                  ? Math.max(0, Math.min(1, (TIGHT3_NONE - tight3) / (TIGHT3_NONE - TIGHT3_FULL)))
+                  : 0;
+              // blend frozen → zoomed. zoomT=0 keeps the frozen axis (points clamp/bunch at
+              // the right toward Spend, exactly as before); zoomT=1 zooms into the compressed
+              // range so the bunched goals spread across the plot again (Figma 1146:3797).
+              const maxM = frozenMaxM + (zoomedMaxM - frozenMaxM) * zoomT;
               const maxNW = axisRef.maxNW;
               const xOf = (m: number) => PADL + (Math.min(m, maxM) / maxM) * (GW - PADL - PADR);
               const yOf = (nw: number) => GH - PADB - (Math.min(nw, maxNW) / maxNW) * (GH - PADT - PADB);

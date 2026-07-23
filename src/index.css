@@ -1927,6 +1927,9 @@ body {
   font-weight: 500;
   color: #adadad;
   white-space: nowrap;
+  /* glide horizontally when the axis rescales/zooms as goals bunch (Figma 1146:3797),
+     matching the point-marker glide so the whole axis re-scale reads smoothly. */
+  transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .msplit-nw-pt {
   position: absolute;
