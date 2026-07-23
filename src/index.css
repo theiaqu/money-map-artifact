@@ -2447,7 +2447,10 @@ body.is-dragging-noselect * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  /* wider horizontal padding so multi-word / two-line labels ("FINANCIAL HEALTH",
+     "MONTHLY EXPENSES") have comfortable breathing room; the pill is centered on the
+     spine (translateX -50%) so it stays aligned with the connectors as it grows. */
+  padding: 6px 12px;
   border-radius: 4px;
   background: #ffffff;
   color: #111111;
