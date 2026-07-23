@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, Landmark, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiIncomeSectionPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletionSweep, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletionSweep, feederPushSlide, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -38,6 +38,13 @@ export type CarouselInteraction = 'scrub' | 'tap';
 //  • 'card'  — an account-style card (Figma 1054:10928) whose bar DEPLETES backwards
 //    (drains right→left) to show the month's income being spent down over time.
 export type IncomeRep = 'pills' | 'card';
+
+// Full-system income ANIMATION on the account-style Direct-deposit card:
+//  • 'push'   — (default) each income fire slides a NEW bar in from the right that
+//    pushes the current bar out to the left (Figma 1110:17627), synced 1:1 to the
+//    feeder comet card→gate via feederPushSlide.
+//  • 'refill' — the subtle right→left depletion OVERLAY sweep (feederDepletionSweep).
+export type IncomeAnim = 'push' | 'refill';
 
 // "Card style" configuration. `standard` keeps the label + amount layout;
 // `tertiary` (Figma "Title tertiary") shows a title pill over the graph and one
@@ -279,12 +286,14 @@ export function IncomeAccountCard({
   now,
   top = PBI_INCOME_TOP,
   onboarding = false,
+  incomeAnim = 'push',
 }: {
   dataset: Dataset;
   mode: Mode;
   now: number;
   top?: number; // board-coord row top; the branch/gate income mode places it in the card column
   onboarding?: boolean;
+  incomeAnim?: IncomeAnim; // full-system income animation: 'push' slide (default) vs. 'refill' overlay sweep
 }) {
   // STANDARD app: the base yellow bar stays FULL (the $8k deposit) and does NOT drain
   // to empty on every fire. Instead a subtle depletion OVERLAY (the mirror of the
@@ -295,8 +304,15 @@ export function IncomeAccountCard({
   const total = Math.max(animMonths(dataset, mode), 10);
   const onboardRemaining = total > 0 ? 1 - now / total : 1;
   const remaining = onboarding ? Math.max(0, Math.min(1, onboardRemaining)) : 1;
-  const depSweep = onboarding ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederTravelMonths(mode));
+  // PUSH/SLIDE mode (standard app only): drive one bar-push per income fire off the
+  // SAME feeder clock as the comet + depletion. Onboarding keeps its slow scrub drain.
+  const push = incomeAnim === 'push' && !onboarding;
+  const slide = push ? feederPushSlide(dataset, mode, now, feederTravelMonths(mode)) : null;
+  const depSweep = onboarding || push ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederTravelMonths(mode));
   const amount = DATASETS[dataset].incomeAmount;
+  const amtLabel = (
+    <span className="pbi-bar-amount">{amount}<span className="pbi-bar-amount-suffix"> per month</span></span>
+  );
   return (
     <div className="node" style={{ left: PBI_CARD_LEFT, top, width: PBI_CARD_W }}>
       <div className="pbi-card">
@@ -304,17 +320,35 @@ export function IncomeAccountCard({
           <Landmark className="pbi-icon" size={16} strokeWidth={1.5} color="#191919" />
           <span className="pbi-card-name">Direct deposit</span>
         </div>
-        {/* GRAY track + solid-lemon fill (the yellow-over-gray base look). The base
-            stays full; the depletion OVERLAY (.pbi-bar-deplete) is the subtle outflow
-            indicator, right-anchored so its leading edge sweeps LEFT toward the gate
-            on each fire (mirror of the refill overlay), then fades before the next. */}
-        <div className="pbi-bar pbi-bar--income">
-          <div className="pbi-bar-fill pbi-bar-fill--income" style={{ width: `${remaining * 100}%` }} />
-          {depSweep.op > 0.001 && depSweep.w > 0.001 && (
-            <div className="pbi-bar-deplete" style={{ width: `${depSweep.w * 100}%`, opacity: depSweep.op }} />
-          )}
-          <span className="pbi-bar-amount">{amount}<span className="pbi-bar-amount-suffix"> per month</span></span>
-        </div>
+        {slide ? (
+          /* PUSH/SLIDE (Figma 1110:17627): a GRAY track holding a 2-chip conveyor. On
+             each fire a NEW yellow bar slides in from the right and pushes the current
+             one out the left — the track shifts left by one chip (+6px seam) as `p`
+             runs 0→1 in lockstep with the deposit pulse card→gate. At rest (not active)
+             the track sits at 0 showing a single settled bar; because the two chips are
+             identical the active→settled hand-off is seamless. */
+          <div className="pbi-bar pbi-bar--income pbi-bar--income-push">
+            <div
+              className="pbi-push-track"
+              style={{ transform: `translateX(calc((100% + 6px) * ${slide.active ? -slide.p : 0}))` }}
+            >
+              <div className="pbi-push-chip">{amtLabel}</div>
+              <div className="pbi-push-chip">{amtLabel}</div>
+            </div>
+          </div>
+        ) : (
+          /* GRAY track + solid-lemon fill (the yellow-over-gray base look). The base
+             stays full; the depletion OVERLAY (.pbi-bar-deplete) is the subtle outflow
+             indicator, right-anchored so its leading edge sweeps LEFT toward the gate
+             on each fire (mirror of the refill overlay), then fades before the next. */
+          <div className="pbi-bar pbi-bar--income">
+            <div className="pbi-bar-fill pbi-bar-fill--income" style={{ width: `${remaining * 100}%` }} />
+            {depSweep.op > 0.001 && depSweep.w > 0.001 && (
+              <div className="pbi-bar-deplete" style={{ width: `${depSweep.w * 100}%`, opacity: depSweep.op }} />
+            )}
+            {amtLabel}
+          </div>
+        )}
       </div>
     </div>
   );

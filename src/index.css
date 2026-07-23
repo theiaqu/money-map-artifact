@@ -2493,6 +2493,37 @@ body.is-dragging-noselect * {
   background: linear-gradient(to left, #eccb52 0%, #ddb42e 100%);
 }
 
+/* "Push/slide" income animation (Figma 1110:17627): the GRAY income track holds a
+   horizontal conveyor of identical yellow bar-chips. Each income fire slides a NEW
+   chip in from the right that pushes the current one out to the left. The track's
+   translateX is driven inline by feederPushSlide's `p` (0→1) so it stays in exact
+   lockstep with the deposit comet card→gate; the 6px flex gap shows the gray track
+   as the seam sweeps across, reading as one bar replacing another. */
+.pbi-bar--income-push {
+  /* inherits the gray track + overflow:hidden from .pbi-bar / .pbi-bar--income */
+  padding-left: 0;
+  padding-right: 0;
+}
+.pbi-push-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 6px;
+  will-change: transform;
+  /* the transform has no CSS transition — its value is the sim clock itself
+     (feederPushSlide), matching how the comet/depletion are frame-driven. */
+}
+.pbi-push-chip {
+  flex: 0 0 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #f6dc72;
+}
+
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to
    the LEFT of the bold white spine (right-aligned, ending just left of x=84), and
    a soft vertical gold→green→pink page gradient behind the tree ---- */

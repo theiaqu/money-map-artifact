@@ -950,6 +950,39 @@ export function feederDepletionSweep(dataset: Dataset, mode: Mode, now: number, 
   return best;
 }
 
+/* pbi "Account-style card" income PUSH/SLIDE — the alternative to the refill-overlay
+   depletion (feederDepletionSweep). On each income fire a NEW income bar slides in
+   from the RIGHT and pushes the current bar OUT to the LEFT, replacing it. Keyed to
+   the EXACT SAME income events + feeder `travel` the card→gate comet + depletion use
+   (`dep` = gate-depth departure offset, `tr` = feederTravelMonths), so the push
+   travels in lockstep with the deposit pulse: p=0 the instant the deposit fires (old
+   bar in place), p=1 as the pulse lands at the gate (new bar fully settled). `active`
+   is true ONLY while a pulse is mid-flight (0..travel) — one push per monthly income
+   event; between fires a single settled bar is shown. `travel` is feederTravelMonths(mode). */
+export function feederPushSlide(dataset: Dataset, mode: Mode, now: number, travel: number): { p: number; active: boolean } {
+  const sc = getScenario(dataset, mode);
+  const events = sc.eventActive;
+  const meta = BRANCH_TIMING['c-income-monthly'] ?? { gateDepth: 0, kind: 'spine' as BranchKind };
+  const dep = meta.gateDepth * SPINE_TRAVEL_BY_MODE[mode];
+  const tr = travel > 0 ? travel : BRANCH_PACING[mode].travel;
+  let p = 1; // default: a single settled bar (no pulse currently in flight)
+  let active = false;
+  for (const t of sc.income) {
+    if (t > now + 1e-9) break;
+    if (!events[t]?.has('c-income-monthly')) continue;
+    const local = now - (t + dep);
+    if (local < 0) continue;
+    if (local <= tr) {
+      p = smootherstep(clamp(local / tr));
+      active = true;
+    } else {
+      p = 1;
+      active = false;
+    } // newest pulse decides: mid-flight → pushing; landed → settled
+  }
+  return { p, active };
+}
+
 /* ---------- "Sheet" style branch-assembly growth windows ----------
    The Sheet account style ONLY: instead of showing the whole map at once, the
    near-black spine + elbow arms DRAW IN progressively as the sim plays, and each

@@ -12,7 +12,7 @@ import { IlloCircle } from './components/IlloCard';
 import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, PBI_INCOME_CARD_TOP, PBI_INCOME_GATE_Y, type BranchStyle, type MapStyle } from './data';
-import type { ChartStyle, CarouselMode, CarouselInteraction, IncomeRep } from './components/Card';
+import type { ChartStyle, CarouselMode, CarouselInteraction, IncomeRep, IncomeAnim } from './components/Card';
 import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
 
 // ---- "Monthly split" shared-element morph (Figma 907:13144) ----
@@ -272,6 +272,15 @@ const INTERACTION_OPTS: { id: CarouselInteraction; label: string }[] = [
 const INCOME_OPTS: { id: IncomeRep; label: string }[] = [
   { id: 'card', label: 'Account-style card' }, // default first
   { id: 'pills', label: 'Individual pills' },
+];
+
+// Full-system income ANIMATION on the account-style Direct-deposit card. 'push'
+// (default first) slides a new bar in from the right pushing the old bar out left on
+// each income fire (Figma 1110:17627); 'refill' is the subtle depletion overlay sweep.
+// Both are synced to the same feeder comet card→gate clock.
+const INCOME_ANIM_OPTS: { id: IncomeAnim; label: string }[] = [
+  { id: 'push', label: 'Push/slide' }, // default first
+  { id: 'refill', label: 'Refill visual' },
 ];
 
 // "Transition animation" chooses HOW the Full system → Monthly split morph plays:
@@ -594,6 +603,7 @@ export default function App() {
   const [carouselMode, setCarouselMode] = useState<CarouselMode>('timeline'); // header carousel: month timeline (default) vs. Paycheck pills
   const [carouselInteraction, setCarouselInteraction] = useState<CarouselInteraction>('scrub'); // timeline interaction: relative drag-scrub (default) vs. tap-to-select a month
   const [incomeRep, setIncomeRep] = useState<IncomeRep>('card'); // income representation: account-style reverse-depleting card (default) vs. paycheck pills
+  const [incomeAnim, setIncomeAnim] = useState<IncomeAnim>('push'); // account-style income animation: push/slide (default) vs. refill-overlay depletion
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const [transitionAnim, setTransitionAnim] = useState<TransitionAnim>('sections'); // Full↔Monthly morph style: section-band split (default) vs. progress-bar morph
@@ -1386,6 +1396,27 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* Income animation — ONLY for the account-style Direct-deposit card (progress
+            style + 'card' income). 'Push/slide' (default) slides a new bar in from the
+            right pushing the old out on each fire; 'Refill visual' is the overlay sweep. */}
+        {style === 'progress' && incomeRep === 'card' && (
+          <div className="config-row">
+            <span className="config-label">Income animation</span>
+            <div className="mode-toggle" role="tablist" aria-label="Income animation">
+              {INCOME_ANIM_OPTS.map((o) => (
+                <button
+                  key={o.id}
+                  role="tab"
+                  aria-selected={incomeAnim === o.id}
+                  className={`mode-opt${incomeAnim === o.id ? ' active' : ''}`}
+                  onClick={() => setIncomeAnim(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* How the Full system → Monthly split morph plays. Offered on the styles that
             expose the Monthly-split toggle (progress / pills). "Sections" (default)
             morphs the colored section bands into the split columns; "Progress bars"
@@ -1735,7 +1766,7 @@ export default function App() {
             real tree node in the card column that FEEDS the income gate via the
             reversed feeder branch (rendered by Connectors). */}
         {usesIncomeCard && (
-          <IncomeAccountCard dataset={dataset} mode={effMode} now={now} top={PBI_INCOME_CARD_TOP} onboarding={boardOnboard} />
+          <IncomeAccountCard dataset={dataset} mode={effMode} now={now} top={PBI_INCOME_CARD_TOP} onboarding={boardOnboard} incomeAnim={incomeAnim} />
         )}
 
         {style === 'icons' && branch === 'skinny-line' && (
