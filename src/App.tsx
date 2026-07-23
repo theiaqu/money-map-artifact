@@ -597,6 +597,12 @@ export default function App() {
   const [refillVisual, setRefillVisual] = useState(true); // show the Core/Spend monthly refill gradient bars (default ON)
   const [systemView, setSystemView] = useState<'full' | 'monthly'>('full'); // in-prototype Full system vs Monthly split view
   const [transitionAnim, setTransitionAnim] = useState<TransitionAnim>('sections'); // Full↔Monthly morph style: section-band split (default) vs. progress-bar morph
+  // When TRUE, the forward Full→Monthly transition is a "Sections" morph that has
+  // measurable section bands, so MonthlySplit runs the 4-phase choreography (squeeze
+  // → take-home text + trunk → Fruitful logo → flows out to bills/spend/goals). Any
+  // other entry (progress-bars mode, no bands) renders the split immediately. Set
+  // synchronously in switchView so it's correct on MonthlySplit's fresh mount.
+  const [enterSeq, setEnterSeq] = useState(false);
   const [monthlyBg, setMonthlyBg] = useState<MonthlyBg>('teal'); // Monthly Expenses section background: teal (default) vs. blue→green gradient
   const [goalsView, setGoalsView] = useState<GoalsView>('list'); // Goals section under the monthly split: calendar list (default) vs. income-split style vs. net-worth graph
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
@@ -647,7 +653,19 @@ export default function App() {
   const switchView = (to: 'full' | 'monthly') => {
     if (to === systemView) return;
     const board = boardRef.current;
-    if (board) pendingMorphRef.current = { sources: measureView(board, systemView) };
+    let seq = false;
+    if (board) {
+      const sources = measureView(board, systemView);
+      pendingMorphRef.current = { sources };
+      // Forward Full→Monthly in "Sections" mode with real section bands → run the
+      // choreographed 4-phase entrance. (The squeeze itself IS the existing ghost
+      // FLIP; MonthlySplit sequences the post-squeeze phases off the same clock.)
+      seq =
+        to === 'monthly' &&
+        transitionAnim === 'sections' &&
+        !!((sources.bills && sources.bills.length) || (sources.goals && sources.goals.length));
+    }
+    setEnterSeq(seq);
     setSystemView(to);
   };
 
@@ -1660,7 +1678,7 @@ export default function App() {
         </div>
       )}
 
-      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} />}
+      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} transitionSeq={enterSeq} squeezeMs={MORPH_MS.monthly} />}
 
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The

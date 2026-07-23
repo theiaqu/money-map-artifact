@@ -2041,6 +2041,103 @@ body {
     opacity var(--reveal-ms, 340ms) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ---- 4-phase choreographed Full→Monthly ("Sections") entrance ---- */
+/* When MonthlySplit is entered via the Sections morph it builds the diagram one phase
+   at a time (see MonthlySplit's `phase` machine). Elements start hidden and each
+   fades/draws in the moment React adds `.is-in` (its phase is reached). The legacy
+   mount animations (circle pop, branch fade) are suppressed under `.msplit--seq` so
+   they can't fire early or replay when the sequence settles.
+     phase 1 SQUEEZE   — App's section-band ghosts fly into the card + bars,
+     phase 2 TAKE-HOME — the "Take-home pay" text pops in + the yellow trunk draws,
+     phase 3 LOGO      — the Fruitful circle pops in and waves,
+     phase 4→6 FLOWS   — bills, then spend, then goals branch each draws out, its bar
+                         amount + label fading in as the flow lands. */
+
+/* phase 2 — take-home text (the yellow card itself lands during the squeeze) */
+.msplit--seq .msplit-takehome-lead,
+.msplit--seq .msplit-takehome-amt {
+  opacity: 0;
+}
+.msplit--seq .msplit-takehome--text-in .msplit-takehome-lead {
+  animation: msplit-seq-textin 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.msplit--seq .msplit-takehome--text-in .msplit-takehome-amt {
+  animation: msplit-seq-textin 460ms cubic-bezier(0.22, 1, 0.36, 1) 70ms both;
+}
+
+/* phase 2 — the yellow trunk/stem draws downward out of the card */
+.msplit--seq .msplit-stem {
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: 50% 0%;
+}
+.msplit--seq .msplit-stem.is-in {
+  animation: msplit-seq-stem 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* phase 3 — the Fruitful circle pops + waves (reuse the existing pop/wave keyframes) */
+.msplit--seq .msplit-circle {
+  opacity: 0;
+  animation: none;
+}
+.msplit--seq .msplit-circle.is-in {
+  animation: msplit-logo-pop 560ms cubic-bezier(0.34, 1.45, 0.5, 1) both;
+}
+.msplit--seq .msplit-logo-wave--circle {
+  animation: none;
+}
+.msplit--seq .msplit-circle.is-in .msplit-logo-wave--circle {
+  animation: msplit-logo-wave 1000ms cubic-bezier(0.36, 0.66, 0.35, 1) 380ms both;
+}
+
+/* phase 4 — branches draw out one after another (bills → spend → goals) via a
+   pathLength=1-normalized stroke-dashoffset sweep from the logo toward each bar */
+.msplit--seq .msplit-branches {
+  animation: none;
+  opacity: 1;
+}
+.msplit--seq .msplit-branch {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.msplit--seq .msplit-branch.is-in {
+  animation: msplit-seq-draw 520ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* bar amounts + column labels fade in with their flow (not during the squeeze) */
+.msplit--seq .msplit-bar-amt,
+.msplit--seq .msplit-col-label {
+  opacity: 0;
+}
+.msplit--seq .msplit-bar-amt.is-in,
+.msplit--seq .msplit-col-label.is-in {
+  animation: msplit-seq-textin 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* the slider + goals controls rise in once the diagram has finished building */
+.msplit--seq .msplit-below--pending {
+  opacity: 0;
+}
+.msplit--seq .msplit-below.is-in {
+  animation: msplit-seq-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes msplit-seq-textin {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes msplit-seq-stem {
+  from { transform: translateX(-50%) scaleY(0); }
+  to { transform: translateX(-50%) scaleY(1); }
+}
+@keyframes msplit-seq-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes msplit-seq-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* in-prototype view toggle sitting right under the hero header. It is
    `position: absolute` within the SCROLLING board (not fixed to the device), so it
    scrolls away with the rest of the page instead of staying pinned. `top` is in

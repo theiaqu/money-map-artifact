@@ -94,16 +94,58 @@ export default function MonthlySplit({
   dataset,
   onboarding = false,
   goalsView = 'list',
+  transitionSeq = false,
+  squeezeMs = 1200,
 }: {
   dataset: Dataset;
   onboarding?: boolean;
   goalsView?: GoalsView;
+  // When true, this mount was entered via the "Sections" Full→Monthly morph, so the
+  // diagram builds itself in a 4-phase choreography off the shared morph clock:
+  //   1 SQUEEZE   — the section-band ghosts fly into the take-home card + bars (owned
+  //                 by App; here we just keep text/branches/logo hidden meanwhile),
+  //   2 TAKE-HOME — the "Take-home pay" text pops in + the yellow trunk/stem draws,
+  //   3 LOGO      — the Fruitful circle pops in and waves,
+  //   4→6 FLOWS   — the bills, then spend, then goals branch each draws out in turn
+  //                 (with its bar amount + label fading in as the flow lands).
+  // squeezeMs is the App squeeze (ghost) duration so phase 2 starts right as it settles.
+  transitionSeq?: boolean;
+  squeezeMs?: number;
 }) {
   const cfg = DATASETS[dataset];
   const hero = heroHeadline(dataset);
   const bills = cfg.coreMax;
   const pool = Math.max(0, cfg.income - cfg.coreMax); // splittable between Spend + Goals
   const takeHome = cfg.income;
+
+  // ---- 4-phase entrance choreography (Sections Full→Monthly morph) ----
+  // phase 0 = "off" (not a sequenced entry → render immediately with the legacy mount
+  // animations). 1..6 = live phases; 7 = "rest" (everything shown, no further motion).
+  // Runs ONCE per mount (MonthlySplit remounts on every monthly entry), so slider /
+  // dataset re-renders never replay it, and it stays sticky at rest afterwards.
+  const [phase, setPhase] = useState<number>(transitionSeq ? 1 : 0);
+  useEffect(() => {
+    if (!transitionSeq) return;
+    const timers: number[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    const P2 = squeezeMs + 140; // take-home text + trunk, just after the squeeze settles
+    const P3 = P2 + 540; // Fruitful logo pop + wave
+    const P4b = P3 + 620; // bills flow
+    const P4s = P4b + 560; // spend flow
+    const P4g = P4s + 560; // goals flow
+    const DONE = P4g + 620; // settle into the resting Monthly split
+    at(P2, () => setPhase(2));
+    at(P3, () => setPhase(3));
+    at(P4b, () => setPhase(4));
+    at(P4s, () => setPhase(5));
+    at(P4g, () => setPhase(6));
+    at(DONE, () => setPhase(7));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const seq = transitionSeq; // choreography regime for this mount (gates legacy anims)
+  // element for choreography step `p` is revealed (and animates in) once phase >= p
+  const inAt = (p: number) => seq && phase >= p;
 
   // LOCAL simulation state — the user drags the Spend↔Goals slider to try different
   // allocations. Resets to the dataset default whenever the dataset changes so the
@@ -213,7 +255,7 @@ export default function MonthlySplit({
   const activeGoal = flow.find((f) => f.id === activeGoalId) ?? flow[0];
 
   return (
-    <div className={`msplit${onboarding ? ' msplit--onboard' : ''}`} style={{ width: BOARD_W }}>
+    <div className={`msplit${onboarding ? ' msplit--onboard' : ''}${seq ? ' msplit--seq' : ''}`} style={{ width: BOARD_W }}>
       {!onboarding && (
         <>
           <div className="pbi-hero-logo">
@@ -230,29 +272,34 @@ export default function MonthlySplit({
         </>
       )}
 
-      {/* Take-home pay pill (the active paycheck / income band morphs into this) */}
-      <div className="msplit-takehome" data-morph="income" data-morph-color="#f7dd6f">
+      {/* Take-home pay pill (the active paycheck / income band morphs into this). In
+          the choreography the yellow CARD lands during the squeeze (App ghost), then
+          its TEXT pops in at phase 2. */}
+      <div className={`msplit-takehome${inAt(2) ? ' msplit-takehome--text-in' : ''}`} data-morph="income" data-morph-color="#f7dd6f">
         <span className="msplit-takehome-lead">Take-home pay</span>
         <span className="msplit-takehome-amt">{money(takeHome)}</span>
       </div>
-      {/* short yellow connector down to the circle */}
-      <div className="msplit-stem" />
-      {/* green Fruitful node */}
-      <div className="msplit-circle" style={{ left: CIRCLE_CX - 22, top: CIRCLE_CY - 22 }}>
+      {/* short yellow connector down to the circle — the "trunk" that draws out at phase 2 */}
+      <div className={`msplit-stem${inAt(2) ? ' is-in' : ''}`} />
+      {/* green Fruitful node — pops in + waves at phase 3 */}
+      <div className={`msplit-circle${inAt(3) ? ' is-in' : ''}`} style={{ left: CIRCLE_CX - 22, top: CIRCLE_CY - 22 }}>
         <span className="msplit-logo-wave msplit-logo-wave--circle">
           <FruitfulLogo size={24} color="#ffffff" />
         </span>
       </div>
 
-      {/* curvy fan-out branches */}
+      {/* curvy fan-out branches — each draws out (stroke-dashoffset) in phase 4: bills
+          (i=0) → spend (i=1) → goals (i=2). pathLength normalizes every path to 1 so a
+          single dash covers it regardless of its real length. */}
       <svg className="msplit-branches" width={BOARD_W} height={BASELINE} viewBox={`0 0 ${BOARD_W} ${BASELINE}`} fill="none">
-        {cols.map((c) => (
+        {cols.map((c, i) => (
           <path
             key={c.id}
-            className={`msplit-branch msplit-branch--${c.cls}`}
+            className={`msplit-branch msplit-branch--${c.cls}${inAt(4 + i) ? ' is-in' : ''}`}
             d={path(c.cx, barTopY(c.amount))}
             strokeWidth={11}
             strokeLinecap="round"
+            pathLength={1}
           />
         ))}
       </svg>
@@ -268,9 +315,10 @@ export default function MonthlySplit({
               data-morph-color={c.hex}
               style={{ left: c.cx - COL_W / 2, top: BASELINE - h, width: COL_W, height: h, animationDelay: `${140 + i * 90}ms` }}
             >
-              <span className="msplit-bar-amt">{money(c.amount)}</span>
+              {/* amount fades in as this bar's flow lands (phase 4+i), not during the squeeze */}
+              <span className={`msplit-bar-amt${inAt(4 + i) ? ' is-in' : ''}`}>{money(c.amount)}</span>
             </div>
-            <span className="msplit-col-label" style={{ left: c.cx - COL_W / 2, top: BASELINE + 8, width: COL_W }}>
+            <span className={`msplit-col-label${inAt(4 + i) ? ' is-in' : ''}`} style={{ left: c.cx - COL_W / 2, top: BASELINE + 8, width: COL_W }}>
               {c.label}
             </span>
           </div>
@@ -279,7 +327,7 @@ export default function MonthlySplit({
 
       {/* ---- interactive Spend↔Goals calculator + goals waterfall (Figma 1082:15049) ---- */}
       {!onboarding && (
-        <div className="msplit-below">
+        <div className={`msplit-below${seq ? (inAt(6) ? ' is-in' : ' msplit-below--pending') : ''}`}>
           <div className="msplit-slider">
             <div className="msplit-slider-head">
               <span className="msplit-slider-tag">
