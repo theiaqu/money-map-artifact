@@ -503,27 +503,50 @@ export default function MonthlySplit({
               const maxNW = axisRef.maxNW;
               const xOf = (m: number) => PADL + (Math.min(m, maxM) / maxM) * (GW - PADL - PADR);
               const yOf = (nw: number) => GH - PADB - (Math.min(nw, maxNW) / maxNW) * (GH - PADT - PADB);
-              const curve = [{ x: xOf(0), y: yOf(0) }, ...pts.map((p) => ({ x: xOf(p.months), y: yOf(p.networth) }))];
-              const linePath = smoothPath(curve);
-              // ---- dashed PROJECTION past the last goal (Figma 1146:3715) ----
-              // Continue the net-worth line from the final goal point to the right edge,
-              // extending the last segment's slope (clamped inside the plot), drawn DASHED
-              // so it clearly reads as a forward projection rather than real, funded goals.
+              // ---- gentle, near-linear net-worth line (Figma 1146:3465) ----
+              // The line is drawn as ONE smooth function of x with an INSANELY SUBTLE
+              // upward bow (interest/growth) — nowhere near an exaggerated exponential —
+              // and the goal MARKERS RIDE this line at their x position. Deriving the line
+              // from a single monotonic function (instead of a Catmull-Rom through each
+              // goal's cumulative-networth point) means it never kinks or overshoots the
+              // plot when goals bunch/clamp at the right edge at low goals $$ (the old
+              // breakdown): the curve just rises gently and the markers cluster along it.
+              const ARCH = 0.2; // 0 = perfectly straight; small = barely-there accelerating bow
+              const shape = (u: number) => {
+                const c = Math.max(0, Math.min(1, u));
+                return (1 - ARCH) * c + ARCH * c * c; // monotonic, f(0)=0, f(1)=1, gently concave-up
+              };
+              const x0 = xOf(0);
+              const y0 = yOf(0);
               const edgeX = GW - PADR; // == xOf(maxM); the plot's right edge
-              const lastP = curve[curve.length - 1];
-              const prevP = curve[curve.length - 2] ?? lastP;
-              const dx = lastP.x - prevP.x;
-              const dy = lastP.y - prevP.y;
-              const t = dx > 0.01 ? (edgeX - lastP.x) / dx : 0;
-              const edgeY = Math.max(PADT, Math.min(GH - PADB, lastP.y + dy * t));
-              const hasProj = pts.length > 0 && edgeX > lastP.x + 0.5;
-              const projPath = hasProj ? `M ${lastP.x.toFixed(1)} ${lastP.y.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
+              // top of the SOLID line = the last funded goal's cumulative net worth, at its
+              // (clamped) x. Everything to its right is the dashed projection.
+              const topNW = pts.length ? pts[pts.length - 1].networth : 0;
+              const yTop = yOf(topNW);
+              const xLast = pts.length ? xOf(pts[pts.length - 1].months) : x0;
+              const spanX = Math.max(1, xLast - x0);
+              const curveY = (x: number) => y0 - (y0 - yTop) * shape((x - x0) / spanX);
+              // sample the gentle curve densely so smoothPath stays overshoot-free
+              const NSAMP = 40;
+              const solid = pts.length
+                ? Array.from({ length: NSAMP + 1 }, (_, i) => {
+                    const x = x0 + spanX * (i / NSAMP);
+                    return { x, y: curveY(x) };
+                  })
+                : [{ x: x0, y: y0 }];
+              const linePath = smoothPath(solid);
+              // ---- dashed PROJECTION past the last goal (Figma 1146:3715) ----
+              // Continue the SAME gentle slope from the last goal to the right edge, drawn
+              // DASHED so it reads as a forward projection rather than real, funded goals.
+              const slope = -((y0 - yTop) / spanX) * (1 + ARCH); // dCurveY/dx at x = xLast
+              const edgeY = Math.max(PADT, Math.min(GH - PADB, yTop + slope * (edgeX - xLast)));
+              const hasProj = pts.length > 0 && edgeX > xLast + 0.5;
+              const projPath = hasProj ? `M ${xLast.toFixed(1)} ${yTop.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
               // area fill hugs the solid line, THEN the projection, then drops to the
               // baseline at the right edge — so there's no abrupt diagonal drop-off at
-              // the last goal (the old disliked end). Falls back to a straight top when
-              // there's no projection room.
+              // the last goal. Falls back to a straight top when there's no projection room.
               const areaPath = pts.length
-                ? `${linePath}${hasProj ? ` L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : ''} L ${edgeX.toFixed(1)} ${(GH - PADB).toFixed(1)} L ${xOf(0).toFixed(1)} ${(GH - PADB).toFixed(1)} Z`
+                ? `${linePath}${hasProj ? ` L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : ''} L ${edgeX.toFixed(1)} ${(GH - PADB).toFixed(1)} L ${x0.toFixed(1)} ${(GH - PADB).toFixed(1)} Z`
                 : '';
               // x-axis ticks: TODAY at the origin + each January boundary within range
               const allTicks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
@@ -549,7 +572,7 @@ export default function MonthlySplit({
               // recomputed LIVE every render, so the clumping responds to the slider as
               // goals slide closer/further along the fixed axis (Figma 1146:3714).
               const CLUSTER_GAP = 26; // ~one marker diameter
-              const based = pts.map((p) => ({ ...p, bx: xOf(p.months), by: yOf(p.networth) }));
+              const based = pts.map((p) => { const bx = xOf(p.months); return { ...p, bx, by: curveY(bx) }; });
               const clusters: (typeof based)[] = [];
               for (const p of based) {
                 const cl = clusters[clusters.length - 1];

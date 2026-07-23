@@ -74,11 +74,10 @@ body {
   padding: 14px;
   border-radius: 66px;
   background: linear-gradient(145deg, #2b2b2f, #101012 55%, #17171a);
+  /* bezel edge only — no ground drop shadow (flat) */
   box-shadow:
     0 2px 0 1px rgba(255, 255, 255, 0.14) inset,
-    0 0 0 2px #050506,
-    0 44px 90px rgba(0, 0, 0, 0.4),
-    0 12px 30px rgba(0, 0, 0, 0.3);
+    0 0 0 2px #050506;
 }
 /* subtle titanium edge highlight */
 .device::before {
@@ -200,7 +199,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.2px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
   transition: transform 0.12s ease, opacity 0.12s ease;
 }
 .ctrl-btn.primary {
@@ -226,7 +225,6 @@ body {
   height: 15px;
   border-radius: 50%;
   background: #111114;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 .speed-slider::-moz-range-thumb {
   width: 15px;
@@ -234,7 +232,6 @@ body {
   border: none;
   border-radius: 50%;
   background: #111114;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 /* ---------- config toggles (left rail, outside the phone) ---------- */
@@ -331,7 +328,7 @@ body {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 .mode-opt {
   padding: 6px 12px;
@@ -351,7 +348,6 @@ body {
 .mode-opt.active {
   background: #111114;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 .mode-opt:disabled { opacity: 0.35; cursor: default; }
 
@@ -372,7 +368,7 @@ body {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
   cursor: pointer;
   font-family: var(--font-family);
   transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease,
@@ -385,7 +381,7 @@ body {
 .style-tile.active {
   border-color: #111114;
   background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14), inset 0 0 0 1.5px #111114;
+  box-shadow: inset 0 0 0 1.5px #111114;
 }
 .style-tile:focus-visible {
   outline: 2px solid #49c7ef;
@@ -853,7 +849,7 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid #ffffff;
-  box-shadow: 0 2px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   font-family: var(--font-family);
   font-weight: 600;
   font-size: 12px;
@@ -961,7 +957,6 @@ body {
   height: 52%;
   background: #054f31;
   border-radius: 9%;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   z-index: 2;
   transform-origin: 50% 100%;
   transition: transform 320ms cubic-bezier(0.22, 0.7, 0.16, 1);
@@ -1128,7 +1123,7 @@ body {
 }
 .convo-card--tappable:hover {
   border-color: #d3d3d3;
-  box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.02), 0 4px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
 }
 
 /* ---------- convo tap-to-expand detail modal (Figma 731:10200) ---------- */
@@ -1136,7 +1131,7 @@ body {
 .convo-card--expanded {
   width: 356px;
   border-radius: 18px;
-  box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.02), 0 4px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
   cursor: default;
 }
 .convo-card--expanded .convo-slot { width: 116px; height: 116px; }
@@ -1189,7 +1184,7 @@ body {
   transform: translateX(-50%);
   background: #fff;
   border-radius: 32px;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02), 0 4px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
   overflow: hidden;
   z-index: 2;
   /* bottom sheet slides up in sync with the morph, and drops away in sync on close */
@@ -1438,7 +1433,6 @@ body {
   padding: 12px 24px;
   border-radius: 16px;
   background: #f7dd6f;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   z-index: 5;
   /* no entrance animation: the income ghost morphs into this rect, then hands off */
 }
@@ -1475,7 +1469,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(47, 143, 78, 0.32);
+  box-shadow: none;
   z-index: 5;
   /* cuter entrance: fade in from 0 + a little upward reveal "pop" (overshoot then
      settle). Delayed slightly so it lands as the morph settles, not fighting it. */
@@ -1578,7 +1572,7 @@ body {
   background: #ffffff;
   border-radius: 16px;
   padding: 12px 16px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
 }
 .msplit-slider-head {
   display: flex;
@@ -1678,22 +1672,24 @@ body {
   flex-direction: column;
   gap: 13px;
 }
-.msplit-goals-group + .msplit-goals-group { margin-top: 16px; }
+.msplit-goals-group + .msplit-goals-group { margin-top: 20px; }
+/* year header — matches Figma 1146:3509 (Heading/Size-S 20px, semibold, black,
+   line-height 24) rather than the previous oversized 28px. */
 .msplit-goals-year {
   font-family: var(--font-family);
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 36px;
+  line-height: 24px;
   color: #000000;
 }
 .msplit-goal {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   background: #ffffff;
   border-radius: 16px;
   padding: 16px 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
   border: 2px solid transparent;
   scroll-margin: 24px; /* leave breathing room when scrolled into view */
   transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
@@ -1703,7 +1699,6 @@ body {
 .msplit-goal--sel {
   border-color: #d17ea3;
   background: #fdf4f8;
-  box-shadow: 0 6px 16px rgba(180, 90, 130, 0.18), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .msplit-goal-time {
   width: 60px;
@@ -1715,16 +1710,16 @@ body {
 }
 .msplit-goal-time-val {
   font-family: var(--font-family);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 24px;
   color: #000000;
 }
 .msplit-goal-time-unit {
   font-family: var(--font-family);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 24px;
+  font-size: 14px;
+  font-weight: 450;
+  line-height: 20px;
   color: #adadad;
 }
 .msplit-goal-main {
@@ -1809,7 +1804,7 @@ body {
   background: #ffffff;
   border-radius: 20px;
   padding: 16px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
 }
 .msplit-wf-head {
   display: flex;
@@ -1906,7 +1901,7 @@ body {
   background: #ffffff;
   border-radius: 16px;
   padding: 10px 12px 4px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
 }
 .msplit-nw-plot {
   position: relative;
@@ -1943,7 +1938,6 @@ body {
   border-radius: 50%;
   background: #f0cddc;
   border: 2px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
   padding: 0;
   cursor: pointer;
   z-index: 1;
@@ -1956,7 +1950,6 @@ body {
    shadow so overlapping circles stay separable, and they sit above lone points. */
 .msplit-nw-pt--clustered {
   border-width: 2.5px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
   z-index: 3;
 }
 .msplit-nw-pt--on {
@@ -1964,7 +1957,6 @@ body {
   height: 36px;
   background: #d17ea3;
   border-width: 3px;
-  box-shadow: 0 5px 12px rgba(180, 90, 130, 0.4);
   z-index: 6;
 }
 .msplit-nw-detail {
@@ -1975,7 +1967,6 @@ body {
   border: 1px solid #e4e4e4;
   border-radius: 16px;
   padding: 14px 16px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
 }
 .msplit-nw-detail-date {
   display: flex;
@@ -2267,7 +2258,6 @@ body {
   border-radius: 999px;
   background: rgba(238, 239, 241, 0.92);
   backdrop-filter: blur(6px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   z-index: 40;
 }
 /* full-system content sits ~8px below the toggle: shift the carousel down by the
@@ -2289,7 +2279,6 @@ body {
 .msplit-toggle button.active {
   background: #ffffff;
   color: #111111;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 /* ---- income pill row (INCOME yellow + white PAYCHECK pills) on the spine top ---- */
@@ -2474,7 +2463,6 @@ body.is-dragging-noselect * {
   border-radius: 50%;
   background: #ffffff;
   border: 2px solid rgba(56, 195, 203, 0.6);
-  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.12);
   transform: translate(-50%, -50%);
 }
 
@@ -2956,7 +2944,6 @@ body.is-dragging-noselect * {
 .pot-pct {
   color: #111111;
   border: 1px solid #d9d9de;
-  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.06);
 }
 .pot-pct-check {
   display: inline-flex;
@@ -3608,7 +3595,7 @@ body.is-dragging-noselect * {
   gap: 8px;
 }
 .mobile-controls .mobile-pills .ctrl-btn {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 /* circular menu button — opens the config drawer */
 .mobile-menu-btn {
@@ -3623,7 +3610,7 @@ body.is-dragging-noselect * {
   background: #111114;
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   transition: transform 0.12s ease, background 0.18s ease;
 }
 .mobile-menu-btn:active { transform: scale(0.94); }
@@ -3653,7 +3640,6 @@ body.is-dragging-noselect * {
   padding: 10px 18px calc(24px + env(safe-area-inset-bottom, 0px));
   border-radius: 22px 22px 0 0;
   background: #f6f7f9;
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.28);
   transform: translateY(100%);
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -3715,7 +3701,6 @@ body.is-dragging-noselect * {
   background: #fff;
   border-radius: 10.435px;
   padding: 10px 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 .sheet-income-label {
   font-family: var(--font-family);
@@ -4061,7 +4046,7 @@ body.is-dragging-noselect * {
 
 /* tap-to-expand affordance (accounts) + hide the resting card during the morph */
 .illo-card--tappable { cursor: pointer; transition: transform 0.12s ease, box-shadow 0.18s ease; }
-.illo-card--tappable:hover { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }
+.illo-card--tappable:hover { box-shadow: none; }
 .illo-card--hidden { visibility: hidden; }
 
 @keyframes illo-pop {
@@ -4106,7 +4091,7 @@ body.is-dragging-noselect * {
   transform: translateX(-50%);
   background: #fff;
   border-radius: 32px;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02), 0 8px 28px rgba(0, 0, 0, 0.10);
+  box-shadow: none;
   overflow: hidden;
   z-index: 2;
   animation: illo-card-in 340ms cubic-bezier(0.22, 0.7, 0.16, 1) both;
@@ -4402,7 +4387,6 @@ body.is-dragging-noselect * {
   background: #ffffff;
   border-radius: 12px;
   z-index: 2;
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
 }
 .pills-section-label {
   position: absolute;
@@ -4412,7 +4396,6 @@ body.is-dragging-noselect * {
   padding: 4px 6px;
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
   font-family: var(--font-family);
   font-size: 12px;
   line-height: 16px;
@@ -4635,7 +4618,6 @@ body.is-dragging-noselect * {
   padding: 0 16px 24px;
   border-radius: 28px 28px 0 0;
   background: #f4f5f6;
-  box-shadow: 0 -8px 30px rgba(20, 40, 25, 0.12);
   z-index: 3;
   touch-action: none;
   user-select: none;
@@ -4654,7 +4636,6 @@ body.is-dragging-noselect * {
   padding: 20px;
   border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 4px 16px rgba(20, 40, 25, 0.05);
 }
 .home-card + .home-card { margin-top: 16px; }
 .home-card--ghost { height: 96px; background: #f0f1f2; box-shadow: none; }
