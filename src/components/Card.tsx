@@ -321,19 +321,27 @@ export function IncomeAccountCard({
           <span className="pbi-card-name">Direct deposit</span>
         </div>
         {slide ? (
-          /* PUSH/SLIDE (Figma 1110:17627): a GRAY track holding a 2-chip conveyor. On
-             each fire a NEW yellow bar slides in from the right and pushes the current
-             one out the left — the track shifts left by one chip (+6px seam) as `p`
-             runs 0→1 in lockstep with the deposit pulse card→gate. At rest (not active)
-             the track sits at 0 showing a single settled bar; because the two chips are
-             identical the active→settled hand-off is seamless. */
+          /* PUSH/SLIDE squeeze/clip (Figma 1110:17627): the OLD bar holds its position
+             with its text ANCHORED at the left; on each fire a NEW yellow bar slides in
+             from the RIGHT and CLIPS the old one out (overlap-and-hide) rather than
+             conveying it off-screen. `p` (0→1) drives the incoming bar's cover in exact
+             lockstep with the deposit comet card→gate. The new bar's own text is
+             counter-translated so it too stays anchored at the left, revealed only where
+             the advancing bar has covered — so at full cover it lands exactly over the
+             old text (seamless swap). At rest (not active) the new bar fully covers,
+             showing a single settled bar. */
           <div className="pbi-bar pbi-bar--income pbi-bar--income-push">
+            <div className="pbi-push-old">{amtLabel}</div>
             <div
-              className="pbi-push-track"
-              style={{ transform: `translateX(calc((100% + 6px) * ${slide.active ? -slide.p : 0}))` }}
+              className="pbi-push-new"
+              style={{ transform: `translateX(${slide.active ? (1 - slide.p) * 100 : 0}%)` }}
             >
-              <div className="pbi-push-chip">{amtLabel}</div>
-              <div className="pbi-push-chip">{amtLabel}</div>
+              <div
+                className="pbi-push-new-inner"
+                style={{ transform: `translateX(${slide.active ? -(1 - slide.p) * 100 : 0}%)` }}
+              >
+                {amtLabel}
+              </div>
             </div>
           </div>
         ) : (

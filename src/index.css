@@ -2128,8 +2128,14 @@ body {
 .msplit--seq .msplit-branch {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
+  /* fully hidden while undrawn: a round stroke-linecap on a zero-length dash renders
+     a small colored DOT at the branch origin, which otherwise shows during the
+     squeeze/ghost-flight phases. Opacity 0 suppresses that stray dot until the branch
+     actually begins drawing (its is-in phase). */
+  opacity: 0;
 }
 .msplit--seq .msplit-branch.is-in {
+  opacity: 1;
   animation: msplit-seq-draw 520ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
@@ -2206,8 +2212,11 @@ body {
   to { opacity: 0; transform: scale(0.82); }
 }
 @keyframes msplit-seq-undraw {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: 1; }
+  /* retract the branch, then fade out at the very end so the round-cap dot at the
+     origin never lingers once fully undrawn (reverse transition). */
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  85% { opacity: 1; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
 }
 @keyframes msplit-seq-fall {
   from { opacity: 1; transform: translateY(0); }
@@ -2569,35 +2578,50 @@ body.is-dragging-noselect * {
   background: linear-gradient(to left, #eccb52 0%, #ddb42e 100%);
 }
 
-/* "Push/slide" income animation (Figma 1110:17627): the GRAY income track holds a
-   horizontal conveyor of identical yellow bar-chips. Each income fire slides a NEW
-   chip in from the right that pushes the current one out to the left. The track's
-   translateX is driven inline by feederPushSlide's `p` (0→1) so it stays in exact
-   lockstep with the deposit comet card→gate; the 6px flex gap shows the gray track
-   as the seam sweeps across, reading as one bar replacing another. */
+/* "Push/slide" income animation (Figma 1110:17627) — SQUEEZE/CLIP variant. The OLD
+   yellow bar stays put with its text anchored at the left; on each income fire a NEW
+   yellow bar slides in from the RIGHT (z-above) and progressively CLIPS the old one
+   out (overlap-and-hide) instead of conveying it off-screen. The incoming bar's own
+   text is counter-translated so it is likewise pinned to the left anchor and revealed
+   only where the bar has advanced — so at full cover it sits exactly over the old
+   text (seamless). Both transforms are driven inline by feederPushSlide's `p` (0→1),
+   in exact lockstep with the deposit comet card→gate (no CSS transition — the sim
+   clock IS the value, like the comet/depletion). */
 .pbi-bar--income-push {
   /* inherits the gray track + overflow:hidden from .pbi-bar / .pbi-bar--income */
   padding-left: 0;
   padding-right: 0;
 }
-.pbi-push-track {
+.pbi-push-old,
+.pbi-push-new {
   position: absolute;
   inset: 0;
-  display: flex;
-  gap: 6px;
-  will-change: transform;
-  /* the transform has no CSS transition — its value is the sim clock itself
-     (feederPushSlide), matching how the comet/depletion are frame-driven. */
-}
-.pbi-push-chip {
-  flex: 0 0 100%;
-  height: 100%;
   display: flex;
   align-items: center;
   padding-left: 12px;
   box-sizing: border-box;
   border-radius: 8px;
   background: #f6dc72;
+  will-change: transform;
+}
+.pbi-push-old {
+  z-index: 1; /* stationary previous bar — anchored, gets clipped away */
+}
+.pbi-push-new {
+  z-index: 2; /* advancing bar covers the old one */
+  overflow: hidden; /* clips the counter-translated inner text to the covered region */
+  padding-left: 0; /* inner carries the text padding */
+  /* soft leading-edge shadow so the advancing bar reads as covering the old bar */
+  box-shadow: -8px 0 14px -3px rgba(0, 0, 0, 0.22);
+}
+.pbi-push-new-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  box-sizing: border-box;
+  will-change: transform;
 }
 
 /* ---- "Locked path" gate (Figma 802:10378): plain title-case gray text labels to
