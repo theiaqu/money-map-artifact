@@ -2035,6 +2035,18 @@ body {
 .board.is-morphing.morph-reveal .msplit-ghost {
   opacity: 0;
 }
+/* REVERSE "Sections" morph only: the real section BACKGROUND bands are the ghosts'
+   destination, so hide them while the ghosts fly back UP + OUT and reveal them exactly
+   as the ghosts settle (otherwise the full-system bands would sit visible underneath
+   the whole flight). Forward morph is untouched (no reverse class; monthly view has
+   no bands anyway). */
+.board.is-morphing.board--morph-reverse [data-morph-band] {
+  opacity: 0;
+  transition: opacity var(--reveal-ms, 340ms) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.board.is-morphing.board--morph-reverse.morph-reveal [data-morph-band] {
+  opacity: 1;
+}
 .msplit-morph-layer {
   position: absolute;
   inset: 0;
@@ -2154,6 +2166,52 @@ body {
 @keyframes msplit-seq-rise {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- reverse exit (Monthly split → Full system): retract the choreography ---- */
+/* Each element plays its OUT animation once the exit cascade reaches its step (see
+   MonthlySplit `outAt`): goals → spend → bills flows undraw, the Fruitful logo scales
+   out, then the take-home text + trunk retract. Declared AFTER the `.is-in` rules so
+   `.is-out` wins when both classes are present (the diagram sits at rest, phase 7). */
+.msplit--seq .msplit-takehome--text-out .msplit-takehome-lead,
+.msplit--seq .msplit-takehome--text-out .msplit-takehome-amt {
+  animation: msplit-seq-textout 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.msplit--seq .msplit-stem.is-out {
+  animation: msplit-seq-stem-out 300ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.msplit--seq .msplit-circle.is-out {
+  animation: msplit-seq-logo-out 340ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.msplit--seq .msplit-branch.is-out {
+  animation: msplit-seq-undraw 460ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.msplit--seq .msplit-bar-amt.is-out,
+.msplit--seq .msplit-col-label.is-out {
+  animation: msplit-seq-textout 280ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.msplit--seq .msplit-below.is-out {
+  animation: msplit-seq-fall 380ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes msplit-seq-textout {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(6px); }
+}
+@keyframes msplit-seq-stem-out {
+  from { transform: translateX(-50%) scaleY(1); }
+  to { transform: translateX(-50%) scaleY(0); }
+}
+@keyframes msplit-seq-logo-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.82); }
+}
+@keyframes msplit-seq-undraw {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 1; }
+}
+@keyframes msplit-seq-fall {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(14px); }
 }
 
 /* in-prototype view toggle sitting right under the hero header. It is

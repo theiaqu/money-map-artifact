@@ -101,6 +101,8 @@ export default function MonthlySplit({
   goalsView = 'networth',
   transitionSeq = false,
   squeezeMs = 1200,
+  exitSeq = false,
+  exitMs = 1500,
 }: {
   dataset: Dataset;
   onboarding?: boolean;
@@ -116,6 +118,13 @@ export default function MonthlySplit({
   // squeezeMs is the App squeeze (ghost) duration so phase 2 starts right as it settles.
   transitionSeq?: boolean;
   squeezeMs?: number;
+  // REVERSE (Monthly split → Full system): when exitSeq flips true the diagram plays
+  // its choreography BACKWARDS — the phase-4 flows undraw goals→spend→bills, the
+  // Fruitful logo reverses out, then the take-home text + trunk retract — before App
+  // swaps to the full view and flies the bars back into the section bands. exitMs is
+  // the window App gives this retract before the hand-off (keeps the clocks in sync).
+  exitSeq?: boolean;
+  exitMs?: number;
 }) {
   const cfg = DATASETS[dataset];
   const hero = heroHeadline(dataset);
@@ -148,9 +157,33 @@ export default function MonthlySplit({
     return () => timers.forEach((t) => window.clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // ---- reverse exit choreography (Monthly split → Full system) ----
+  // exitStep counts DOWN through the same steps as the forward build, retracting each
+  // element in reverse order: 6 goals → 5 spend → 4 bills → 3 logo → 2 text/trunk. An
+  // element for step p plays its OUT animation once exitStep <= p (see `outAt`). We
+  // fit the cascade inside App's `exitMs` window so the bars are bare at the hand-off.
+  const EXIT_TOP = 99; // sentinel: nothing retracted yet
+  const [exitStep, setExitStep] = useState<number>(EXIT_TOP);
+  useEffect(() => {
+    if (!exitSeq) return;
+    const timers: number[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    // spread five retract beats across the window, leaving room for the last OUT anim.
+    const span = Math.max(0, exitMs - 360); // reserve ~1 out-anim of tail
+    const beat = span / 5;
+    at(beat * 0, () => setExitStep(6)); // goals flow + below fade out
+    at(beat * 1, () => setExitStep(5)); // spend flow
+    at(beat * 2, () => setExitStep(4)); // bills flow
+    at(beat * 3, () => setExitStep(3)); // Fruitful logo out
+    at(beat * 4, () => setExitStep(2)); // take-home text + trunk retract
+    return () => timers.forEach((t) => window.clearTimeout(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exitSeq]);
   const seq = transitionSeq; // choreography regime for this mount (gates legacy anims)
   // element for choreography step `p` is revealed (and animates in) once phase >= p
   const inAt = (p: number) => seq && phase >= p;
+  // element for step `p` plays its reverse OUT animation once the exit cascade reaches it
+  const outAt = (p: number) => exitSeq && exitStep <= p;
 
   // LOCAL simulation state — the user drags the Spend↔Goals slider to try different
   // allocations. Resets to the dataset default whenever the dataset changes so the
@@ -303,14 +336,14 @@ export default function MonthlySplit({
       {/* Take-home pay pill (the active paycheck / income band morphs into this). In
           the choreography the yellow CARD lands during the squeeze (App ghost), then
           its TEXT pops in at phase 2. */}
-      <div className={`msplit-takehome${inAt(2) ? ' msplit-takehome--text-in' : ''}`} data-morph="income" data-morph-color="#f7dd6f">
+      <div className={`msplit-takehome${inAt(2) ? ' msplit-takehome--text-in' : ''}${outAt(2) ? ' msplit-takehome--text-out' : ''}`} data-morph="income" data-morph-color="#f7dd6f">
         <span className="msplit-takehome-lead">Take-home pay</span>
         <span className="msplit-takehome-amt">{money(takeHome)}</span>
       </div>
       {/* short yellow connector down to the circle — the "trunk" that draws out at phase 2 */}
-      <div className={`msplit-stem${inAt(2) ? ' is-in' : ''}`} />
+      <div className={`msplit-stem${inAt(2) ? ' is-in' : ''}${outAt(2) ? ' is-out' : ''}`} />
       {/* green Fruitful node — pops in + waves at phase 3 */}
-      <div className={`msplit-circle${inAt(3) ? ' is-in' : ''}`} style={{ left: CIRCLE_CX - 22, top: CIRCLE_CY - 22 }}>
+      <div className={`msplit-circle${inAt(3) ? ' is-in' : ''}${outAt(3) ? ' is-out' : ''}`} style={{ left: CIRCLE_CX - 22, top: CIRCLE_CY - 22 }}>
         <span className="msplit-logo-wave msplit-logo-wave--circle">
           <FruitfulLogo size={24} color="#ffffff" />
         </span>
@@ -323,7 +356,7 @@ export default function MonthlySplit({
         {cols.map((c, i) => (
           <path
             key={c.id}
-            className={`msplit-branch msplit-branch--${c.cls}${inAt(4 + i) ? ' is-in' : ''}`}
+            className={`msplit-branch msplit-branch--${c.cls}${inAt(4 + i) ? ' is-in' : ''}${outAt(4 + i) ? ' is-out' : ''}`}
             d={path(c.cx, barTopY(c.amount))}
             strokeWidth={11}
             strokeLinecap="round"
@@ -344,9 +377,9 @@ export default function MonthlySplit({
               style={{ left: c.cx - COL_W / 2, top: BASELINE - h, width: COL_W, height: h, animationDelay: `${140 + i * 90}ms` }}
             >
               {/* amount fades in as this bar's flow lands (phase 4+i), not during the squeeze */}
-              <span className={`msplit-bar-amt${inAt(4 + i) ? ' is-in' : ''}`}>{money(c.amount)}</span>
+              <span className={`msplit-bar-amt${inAt(4 + i) ? ' is-in' : ''}${outAt(4 + i) ? ' is-out' : ''}`}>{money(c.amount)}</span>
             </div>
-            <span className={`msplit-col-label${inAt(4 + i) ? ' is-in' : ''}`} style={{ left: c.cx - COL_W / 2, top: BASELINE + 8, width: COL_W }}>
+            <span className={`msplit-col-label${inAt(4 + i) ? ' is-in' : ''}${outAt(4 + i) ? ' is-out' : ''}`} style={{ left: c.cx - COL_W / 2, top: BASELINE + 8, width: COL_W }}>
               {c.label}
             </span>
           </div>
@@ -355,7 +388,7 @@ export default function MonthlySplit({
 
       {/* ---- interactive Spend↔Goals calculator + goals waterfall (Figma 1082:15049) ---- */}
       {!onboarding && (
-        <div className={`msplit-below${seq ? (inAt(6) ? ' is-in' : ' msplit-below--pending') : ''}`}>
+        <div className={`msplit-below${seq ? (inAt(6) ? ' is-in' : ' msplit-below--pending') : ''}${outAt(6) ? ' is-out' : ''}`}>
           <div className="msplit-slider">
             <div className="msplit-slider-head">
               <span className="msplit-slider-tag">

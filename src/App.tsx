@@ -55,6 +55,16 @@ const SECTION_STAGE_A_MS = 620; // 1a: bands collapse to the intermediate column
 const SECTION_STAGE_B_MS = 660; // 1b: blocks slide down side-by-side into final bars
 const SECTION_STAGE_GAP_MS = 110; // clean handoff hold between 1a and 1b
 const SECTION_PHASE1_MS = SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS + SECTION_STAGE_B_MS;
+// REVERSE (Monthly split → Full system) mirrors the forward sequence backwards:
+//   1) MonthlySplit retracts its content — the phase-4 flows undraw goals→spend→bills,
+//      the Fruitful logo reverses out, the take-home text + trunk retract. This plays
+//      while MonthlySplit is still mounted; App defers the actual view swap until it
+//      finishes (SECTION_EXIT_CONTENT_MS — kept in sync with MonthlySplit's exit clock).
+//   2) The bars then slide back UP to the staggered intermediate (reverse of 1b), then
+//      EXPAND out into the full-system section bands (reverse of 1a), crossfading the
+//      vivid column colors back to the faded band tints. Same start→mid→end ghost
+//      infra, just run with monthly bars as the source and bands as the target.
+const SECTION_EXIT_CONTENT_MS = 1500; // MonthlySplit content-retract before the bar hand-off
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
@@ -631,6 +641,16 @@ export default function App() {
   // other entry (progress-bars mode, no bands) renders the split immediately. Set
   // synchronously in switchView so it's correct on MonthlySplit's fresh mount.
   const [enterSeq, setEnterSeq] = useState(false);
+  // REVERSE "Sections" morph (Monthly split → Full system): while true, MonthlySplit
+  // plays its content-retract exit (flows undraw goals→spend→bills, logo out, text +
+  // trunk retract) BEFORE App swaps to the full view and flies the bars back up +
+  // out into the section bands. `reverseSeqRef` flags the pending morph as the reverse
+  // two-stage (so the layout effect runs end→mid→start geometry); `morphReverse`
+  // classes the board so the real section bands stay hidden until the ghosts land.
+  const [exitSeq, setExitSeq] = useState(false);
+  const [morphReverse, setMorphReverse] = useState(false);
+  const reverseSeqRef = useRef(false);
+  const exitTimerRef = useRef<number | null>(null);
   const [monthlyBg, setMonthlyBg] = useState<MonthlyBg>('teal'); // Monthly Expenses section background: teal (default) vs. blue→green gradient
   const [goalsView, setGoalsView] = useState<GoalsView>('networth'); // Goals section under the monthly split: net-worth graph + calendar list (default) vs. income-split style
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
@@ -679,8 +699,26 @@ export default function App() {
   // CURRENT view's source rects synchronously (before the DOM swaps), then let the
   // layout effect below measure the new view and fly the ghosts.
   const switchView = (to: 'full' | 'monthly') => {
-    if (to === systemView) return;
+    if (to === systemView || exitSeq) return; // ignore re-entry mid reverse-exit
     const board = boardRef.current;
+    // ── Reverse "Sections" morph (Monthly split → Full system) ──────────────────
+    // Only when the current monthly view was entered via the sequenced Sections morph
+    // (enterSeq). Play MonthlySplit's content-retract FIRST (it stays mounted because
+    // systemView is still 'monthly'), then swap + fly the bars back up/out via the
+    // reverse two-stage ghost flight.
+    if (to === 'full' && transitionAnim === 'sections' && enterSeq && board) {
+      reverseSeqRef.current = true;
+      setExitSeq(true);
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = window.setTimeout(() => {
+        const b = boardRef.current;
+        if (b) pendingMorphRef.current = { sources: measureView(b, 'monthly') };
+        setExitSeq(false);
+        setEnterSeq(false);
+        setSystemView('full');
+      }, SECTION_EXIT_CONTENT_MS);
+      return;
+    }
     let seq = false;
     if (board) {
       const sources = measureView(board, systemView);
@@ -880,11 +918,18 @@ export default function App() {
     const board = boardRef.current;
     if (!board) return;
     const targets = measureView(board, systemView);
-    // Forward "Sections" morph (Full→Monthly with real bands) plays Phase 1 in TWO
-    // sub-stages via an intermediate `mid` keyframe; everything else keeps the single
-    // start→end flight. `enterSeq` is set synchronously in switchView for exactly this
-    // case, so it's already current on this post-switch layout pass.
-    const twoStage = enterSeq;
+    // Two-stage Phase 1 runs in BOTH directions of the "Sections" morph:
+    //   • FORWARD  (Full→Monthly, enterSeq): bands COLLAPSE to columns (1a) → SLIDE
+    //     down into the baseline bars (1b). Target = monthly bars.
+    //   • REVERSE  (Monthly→Full, reverseSeqRef): bars SLIDE UP to the intermediate
+    //     (reverse 1b) → EXPAND out into the section bands (reverse 1a). Target = bands.
+    // Both use the same start→mid→end ghost keyframes; only the mid geometry, the
+    // stage durations, and the crossfade direction differ. `enterSeq` (forward) is set
+    // synchronously in switchView; `reverseSeqRef` is armed just before the reverse swap.
+    const reverse = reverseSeqRef.current;
+    reverseSeqRef.current = false;
+    const twoStage = enterSeq || reverse;
+    const toBars = systemView === 'monthly'; // forward target is the monthly bars
     const gs: Ghost[] = [];
     for (const role of MORPH_ROLES) {
       const src = pending.sources[role] ?? [];
@@ -894,12 +939,13 @@ export default function App() {
       for (let i = 0; i < n; i++) {
         const from = src[Math.min(i, src.length - 1)];
         const to = dst[Math.min(i, dst.length - 1)];
-        // STAGE 1a intermediate (collapse to columns): take the block to its FINAL
-        // column x/width + vivid color, but hold it at its SOURCE band's vertical
-        // position (staggered) — Figma 1128-16248. STAGE 1b then slides top/height
-        // down to `to` (baseline columns, Figma 1132-16444).
+        // Intermediate = the narrow COLUMN (bar) x/width at the BAND's vertical band
+        // position, in the vivid column color (Figma 1128-16248). Forward: bar = `to`;
+        // reverse: bar = `from`. So the staggered stage is identical in both directions.
+        const bar = toBars ? to : from;
+        const band = toBars ? from : to;
         const mid = twoStage
-          ? { left: to.left, top: from.top, width: to.width, height: from.height, color: to.color, radius: to.radius }
+          ? { left: bar.left, top: band.top, width: bar.width, height: band.height, color: bar.color, radius: bar.radius }
           : undefined;
         gs.push({ id: `${role}-${i}`, from, to, mid });
       }
@@ -912,25 +958,31 @@ export default function App() {
     setGhosts(gs);
     setGhostPhase('start');
     setMorphReveal(false);
+    setMorphReverse(reverse);
     if (twoStage) {
-      // ── Two-stage Phase 1 ──────────────────────────────────────────────────────
-      // 1a: mount at source, next frame glide to the intermediate `mid` over A.
-      setMorphDur({ morph: SECTION_STAGE_A_MS, reveal: revealMs });
+      // Stage durations, mirrored per direction. Forward: collapse (A) then slide (B).
+      // Reverse: slide-up (B) then expand (A) — so the handoffs read as a clean rewind.
+      const dur1 = toBars ? SECTION_STAGE_A_MS : SECTION_STAGE_B_MS; // start → mid
+      const dur2 = toBars ? SECTION_STAGE_B_MS : SECTION_STAGE_A_MS; // mid → end
+      const total = dur1 + SECTION_STAGE_GAP_MS + dur2;
+      // 1a: mount at source, next frame glide to the intermediate `mid` over dur1.
+      setMorphDur({ morph: dur1, reveal: revealMs });
       let raf2 = 0;
       const raf1 = requestAnimationFrame(() => {
         raf2 = requestAnimationFrame(() => setGhostPhase('mid'));
       });
-      // 1b: after 1a + a short hold, swap the transition to B and slide mid→final.
+      // 1b: after stage 1 + a short hold, swap the transition to dur2 and glide mid→end.
       const slide = window.setTimeout(() => {
-        setMorphDur({ morph: SECTION_STAGE_B_MS, reveal: revealMs });
+        setMorphDur({ morph: dur2, reveal: revealMs });
         requestAnimationFrame(() => setGhostPhase('end'));
-      }, SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS);
-      // reveal the real bars as 1b settles; drop the ghosts once it lands.
-      const reveal = window.setTimeout(() => setMorphReveal(true), Math.max(0, SECTION_PHASE1_MS - revealMs));
+      }, dur1 + SECTION_STAGE_GAP_MS);
+      // reveal the real targets as the last stage settles; drop the ghosts once landed.
+      const reveal = window.setTimeout(() => setMorphReveal(true), Math.max(0, total - revealMs));
       const done = window.setTimeout(() => {
         setGhosts(null);
         setMorphReveal(false);
-      }, SECTION_PHASE1_MS + 60);
+        setMorphReverse(false);
+      }, total + 60);
       return () => {
         cancelAnimationFrame(raf1);
         cancelAnimationFrame(raf2);
@@ -1723,7 +1775,7 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${showsTopToggle ? ' board--toptoggle' : ''}${monthlyBg === 'gradient' ? ' board--monthly-gradient' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${showsTopToggle ? ' board--toptoggle' : ''}${monthlyBg === 'gradient' ? ' board--monthly-gradient' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}${morphReverse ? ' board--morph-reverse' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
       {/* Onboarding money-map screen (Figma 977:12246): compact home-style top bar
           — back (→ home) · "Money Map" · Done (→ exit) — replacing the big hero. */}
       {onboardMap && (
@@ -1768,7 +1820,7 @@ export default function App() {
         </div>
       )}
 
-      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} transitionSeq={enterSeq} squeezeMs={enterSeq ? SECTION_PHASE1_MS : MORPH_MS.monthly} />}
+      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} transitionSeq={enterSeq} squeezeMs={enterSeq ? SECTION_PHASE1_MS : MORPH_MS.monthly} exitSeq={exitSeq} exitMs={SECTION_EXIT_CONTENT_MS} />}
 
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
