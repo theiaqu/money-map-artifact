@@ -142,12 +142,14 @@ export default function MonthlySplit({
     if (!transitionSeq) return;
     const timers: number[] = [];
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
-    const P2 = squeezeMs + 140; // take-home text + trunk, just after the squeeze settles
-    const P3 = P2 + 540; // Fruitful logo pop + wave
-    const P4b = P3 + 620; // bills flow
-    const P4s = P4b + 560; // spend flow
-    const P4g = P4s + 560; // goals flow
-    const DONE = P4g + 620; // settle into the resting Monthly split
+    // Tighter, smoother cadence (trimmed handoff gaps) so the build feels fluid, not
+    // sluggish — no phase removed, just quicker beats + snappier per-element anims.
+    const P2 = squeezeMs + 90; // take-home text + trunk, just after the squeeze settles
+    const P3 = P2 + 400; // Fruitful logo pop + wave
+    const P4b = P3 + 440; // bills flow
+    const P4s = P4b + 380; // spend flow
+    const P4g = P4s + 380; // goals flow
+    const DONE = P4g + 440; // settle into the resting Monthly split
     at(P2, () => setPhase(2));
     at(P3, () => setPhase(3));
     at(P4b, () => setPhase(4));

@@ -32,13 +32,13 @@ const MORPH_ROLES = ['income', 'bills', 'spend', 'goals'];
 // stays calm/long; the RETURN (Monthly split → Full system) is noticeably snappier.
 // The active value is fed to the ghost + data-morph CSS via the --morph-ms var so
 // the JS cleanup timers and the CSS transition can never drift apart.
-const MORPH_MS: Record<'full' | 'monthly', number> = { full: 760, monthly: 1200 };
+const MORPH_MS: Record<'full' | 'monthly', number> = { full: 600, monthly: 980 };
 // Destination crossfade WINDOW, keyed by target view: the real text-bearing target
 // elements fade IN while the ghosts fade OUT, pixel-aligned. The window ENDS as the
 // ghost arrives, so it BEGINS at (duration - window) — i.e. the text/amount is
 // already fading in just BEFORE the pill reaches its resting spot, then settles
 // exactly on arrival (no hard swap / end pop). Fed to CSS via the --reveal-ms var.
-const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 380, monthly: 480 };
+const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 360, monthly: 440 };
 // Two-stage Phase 1 for the FORWARD "Sections" morph (Full system → Monthly split).
 // Instead of the section-band ghosts flying straight to their final monthly-split
 // slots, Phase 1 now plays in two sequential sub-stages:
@@ -51,10 +51,15 @@ const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 380, monthly: 480 
 // 1a settles, a brief hold hands off, then 1b slides. The post-squeeze phases (2-4:
 // take-home text/trunk, logo wave, bills→spend→goals flows) re-anchor automatically
 // because MonthlySplit keys them off squeezeMs = the full two-stage duration below.
-const SECTION_STAGE_A_MS = 620; // 1a: bands collapse to the intermediate columns
-const SECTION_STAGE_B_MS = 660; // 1b: blocks slide down side-by-side into final bars
-const SECTION_STAGE_GAP_MS = 110; // clean handoff hold between 1a and 1b
+const SECTION_STAGE_A_MS = 440; // 1a: bands collapse to the intermediate columns
+const SECTION_STAGE_B_MS = 480; // 1b: blocks slide down side-by-side into final bars
+const SECTION_STAGE_GAP_MS = 60; // clean handoff hold between 1a and 1b
 const SECTION_PHASE1_MS = SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS + SECTION_STAGE_B_MS;
+// REVERSE stage timing is deliberately SNAPPIER than the forward squeeze so Monthly
+// split → Full system rewinds quicker (slide the bars up, then expand into the bands).
+const SECTION_REV_STAGE1_MS = 360; // reverse: bars slide UP to the staggered intermediate
+const SECTION_REV_STAGE2_MS = 380; // reverse: blocks EXPAND out into the section bands
+const SECTION_REV_GAP_MS = 40; // reverse handoff hold
 // REVERSE (Monthly split → Full system) mirrors the forward sequence backwards:
 //   1) MonthlySplit retracts its content — the phase-4 flows undraw goals→spend→bills,
 //      the Fruitful logo reverses out, the take-home text + trunk retract. This plays
@@ -64,7 +69,7 @@ const SECTION_PHASE1_MS = SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS + SECTION_ST
 //      EXPAND out into the full-system section bands (reverse of 1a), crossfading the
 //      vivid column colors back to the faded band tints. Same start→mid→end ghost
 //      infra, just run with monthly bars as the source and bands as the target.
-const SECTION_EXIT_CONTENT_MS = 1500; // MonthlySplit content-retract before the bar hand-off
+const SECTION_EXIT_CONTENT_MS = 900; // MonthlySplit content-retract before the bar hand-off (snappy rewind)
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
@@ -708,6 +713,10 @@ export default function App() {
     // reverse two-stage ghost flight.
     if (to === 'full' && transitionAnim === 'sections' && enterSeq && board) {
       reverseSeqRef.current = true;
+      // Arm the reverse band-hide NOW so the full view's FIRST frame already has the
+      // section bands hidden — otherwise they flash in at opacity 1 for a frame before
+      // the ghosts take over (the pop the reverse used to show). They reveal at the end.
+      setMorphReverse(true);
       setExitSeq(true);
       if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
       exitTimerRef.current = window.setTimeout(() => {
@@ -960,11 +969,13 @@ export default function App() {
     setMorphReveal(false);
     setMorphReverse(reverse);
     if (twoStage) {
-      // Stage durations, mirrored per direction. Forward: collapse (A) then slide (B).
-      // Reverse: slide-up (B) then expand (A) — so the handoffs read as a clean rewind.
-      const dur1 = toBars ? SECTION_STAGE_A_MS : SECTION_STAGE_B_MS; // start → mid
-      const dur2 = toBars ? SECTION_STAGE_B_MS : SECTION_STAGE_A_MS; // mid → end
-      const total = dur1 + SECTION_STAGE_GAP_MS + dur2;
+      // Stage durations, per direction. Forward: collapse (A) then slide (B). Reverse
+      // uses its own SNAPPIER pair (slide-up then expand) so split→system rewinds
+      // noticeably quicker while still reading as a clean two-stage handoff.
+      const dur1 = toBars ? SECTION_STAGE_A_MS : SECTION_REV_STAGE1_MS; // start → mid
+      const dur2 = toBars ? SECTION_STAGE_B_MS : SECTION_REV_STAGE2_MS; // mid → end
+      const gap = toBars ? SECTION_STAGE_GAP_MS : SECTION_REV_GAP_MS;
+      const total = dur1 + gap + dur2;
       // 1a: mount at source, next frame glide to the intermediate `mid` over dur1.
       setMorphDur({ morph: dur1, reveal: revealMs });
       let raf2 = 0;
@@ -975,7 +986,7 @@ export default function App() {
       const slide = window.setTimeout(() => {
         setMorphDur({ morph: dur2, reveal: revealMs });
         requestAnimationFrame(() => setGhostPhase('end'));
-      }, dur1 + SECTION_STAGE_GAP_MS);
+      }, dur1 + gap);
       // reveal the real targets as the last stage settles; drop the ghosts once landed.
       const reveal = window.setTimeout(() => setMorphReveal(true), Math.max(0, total - revealMs));
       const done = window.setTimeout(() => {
