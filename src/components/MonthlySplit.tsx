@@ -285,13 +285,13 @@ export default function MonthlySplit({
   });
 
   // ---- interactive net-worth graph selection ----
-  // Which goal point is highlighted (defaults to the FIRST-funding goal). Reset when
-  // the dataset changes so a stale id from the other dataset never lingers.
+  // Which goal point is highlighted. Starts with NOTHING selected — no point or
+  // calendar row is highlighted until the user taps a graph point. Reset to none when
+  // the dataset OR goals-section view changes so a stale id never lingers.
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   useEffect(() => {
     setSelectedGoal(null);
-  }, [dataset]);
-  const activeGoalId = selectedGoal ?? (flow[0]?.id ?? null);
+  }, [dataset, goalsView]);
 
   // ---- FIXED net-worth-graph axes (independent of the live slider) ----
   // The x-axis (time) and y-axis (net worth) are frozen to the dataset's DEFAULT
@@ -601,7 +601,7 @@ export default function MonthlySplit({
                       ))}
                       {positioned.map((p) => {
                         const PtIcon = goalIcon(p.title);
-                        const on = p.id === activeGoalId;
+                        const on = p.id === selectedGoal;
                         return (
                           <button
                             key={p.id}
@@ -629,7 +629,7 @@ export default function MonthlySplit({
                           const Icon = goalIcon(row.title);
                           const d = durParts(row.months);
                           const date = waterfallDate(row.months).label;
-                          const sel = row.id === activeGoalId;
+                          const sel = row.id === selectedGoal;
                           return (
                             <div
                               className={`msplit-goal${sel ? ' msplit-goal--sel' : ''}`}

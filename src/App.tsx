@@ -53,13 +53,19 @@ const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 360, monthly: 440 
 // because MonthlySplit keys them off squeezeMs = the full two-stage duration below.
 const SECTION_STAGE_A_MS = 440; // 1a: bands collapse to the intermediate columns
 const SECTION_STAGE_B_MS = 480; // 1b: blocks slide down side-by-side into final bars
-const SECTION_STAGE_GAP_MS = 60; // clean handoff hold between 1a and 1b
+const SECTION_STAGE_GAP_MS = 0; // NO dwell at mid — 1a flows continuously into 1b as one motion
 const SECTION_PHASE1_MS = SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS + SECTION_STAGE_B_MS;
+// Chained easing so the two-stage squeeze reads as ONE fluid motion: stage A
+// ACCELERATES (near-zero start velocity, fast at the mid waypoint) and stage B picks
+// up that speed and DECELERATES to a soft stop — no deceleration-to-a-stop at mid, so
+// the blocks glide from collapsed straight into their side-by-side slots without pausing.
+const MORPH_EASE_IN = 'cubic-bezier(0.42, 0, 1, 0.6)'; // start → mid (accelerate into the waypoint)
+const MORPH_EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)'; // mid → end (fast start, gentle deceleration tail)
 // REVERSE stage timing is deliberately SNAPPIER than the forward squeeze so Monthly
 // split → Full system rewinds quicker (slide the bars up, then expand into the bands).
 const SECTION_REV_STAGE1_MS = 360; // reverse: bars slide UP to the staggered intermediate
 const SECTION_REV_STAGE2_MS = 380; // reverse: blocks EXPAND out into the section bands
-const SECTION_REV_GAP_MS = 40; // reverse handoff hold
+const SECTION_REV_GAP_MS = 0; // reverse also flows continuously (no dwell at the intermediate)
 // REVERSE (Monthly split → Full system) mirrors the forward sequence backwards:
 //   1) MonthlySplit retracts its content — the phase-4 flows undraw goals→spend→bills,
 //      the Fruitful logo reverses out, the take-home text + trunk retract. This plays
@@ -686,6 +692,7 @@ export default function App() {
   const [ghostPhase, setGhostPhase] = useState<'start' | 'mid' | 'end'>('start');
   const [morphReveal, setMorphReveal] = useState(false); // tail crossfade: real targets fade in / ghosts fade out
   const [morphDur, setMorphDur] = useState<{ morph: number; reveal: number }>({ morph: MORPH_MS.monthly, reveal: REVEAL_MS.monthly }); // active (direction-aware) durations, fed to CSS vars
+  const [morphEase, setMorphEase] = useState<string>(MORPH_EASE_OUT); // active ghost easing (chained accel→decel across the two-stage squeeze)
 
   // Measure one side of the Full↔Monthly morph. In "Sections" mode the FULL-system
   // side is measured from the colored section BANDS (Monthly Expenses splits into a
@@ -976,15 +983,20 @@ export default function App() {
       const dur2 = toBars ? SECTION_STAGE_B_MS : SECTION_REV_STAGE2_MS; // mid → end
       const gap = toBars ? SECTION_STAGE_GAP_MS : SECTION_REV_GAP_MS;
       const total = dur1 + gap + dur2;
-      // 1a: mount at source, next frame glide to the intermediate `mid` over dur1.
+      // 1a: mount at source, next frame glide to the intermediate `mid` over dur1 with
+      // an ACCELERATING curve so it's moving fast when it reaches the waypoint.
       setMorphDur({ morph: dur1, reveal: revealMs });
+      setMorphEase(MORPH_EASE_IN);
       let raf2 = 0;
       const raf1 = requestAnimationFrame(() => {
         raf2 = requestAnimationFrame(() => setGhostPhase('mid'));
       });
-      // 1b: after stage 1 + a short hold, swap the transition to dur2 and glide mid→end.
+      // 1b: with NO dwell at mid, swap to dur2 + a DECELERATING curve and glide mid→end.
+      // The accel→decel handoff keeps velocity continuous through the waypoint, so the
+      // squeeze and slide read as one fluid motion instead of stopping at the mid frame.
       const slide = window.setTimeout(() => {
         setMorphDur({ morph: dur2, reveal: revealMs });
+        setMorphEase(MORPH_EASE_OUT);
         requestAnimationFrame(() => setGhostPhase('end'));
       }, dur1 + gap);
       // reveal the real targets as the last stage settles; drop the ghosts once landed.
@@ -1003,6 +1015,7 @@ export default function App() {
       };
     }
     setMorphDur({ morph: morphMs, reveal: revealMs });
+    setMorphEase(MORPH_EASE_OUT); // single-stage morph keeps the soft-stop deceleration curve
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => setGhostPhase('end'));
@@ -1786,7 +1799,7 @@ export default function App() {
   const monthlyView = (style === 'progress' || style === 'pills') && systemView === 'monthly';
   const MSPLIT_H = 860;
   const boardEl = (
-    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${showsTopToggle ? ' board--toptoggle' : ''}${monthlyBg === 'gradient' ? ' board--monthly-gradient' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}${morphReverse ? ' board--morph-reverse' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms` } as CSSProperties}>
+    <div ref={boardRef} className={`board${style === 'convo' ? ' board-convo' : ''}${style === 'illo' ? ' board-illo' : ''}${style === 'icons' ? ' board-icons' : ''}${style === 'progress' ? ' board-pbi' : ''}${style === 'pills' ? ' board-pills' : ''}${style === 'pots' ? ' board-pots' : ''}${style === 'grid' ? ' board-grid' : ''}${boardOnboard ? ' board--onboard' : ''}${showsTopToggle ? ' board--toptoggle' : ''}${monthlyBg === 'gradient' ? ' board--monthly-gradient' : ''}${dragRelease === 'commit' ? ' cards-morphing' : ''}${dragRelease === 'commit' && dragReveal ? ' cards-reveal' : ''}${ghosts ? ' is-morphing' : ''}${morphReveal ? ' morph-reveal' : ''}${morphReverse ? ' board--morph-reverse' : ''}`} style={{ height: monthlyView ? MSPLIT_H : boardH + treeShift, ['--morph-ms' as string]: `${morphDur.morph}ms`, ['--reveal-ms' as string]: `${morphDur.reveal}ms`, ['--morph-ease' as string]: morphEase } as CSSProperties}>
       {/* Onboarding money-map screen (Figma 977:12246): compact home-style top bar
           — back (→ home) · "Money Map" · Done (→ exit) — replacing the big hero. */}
       {onboardMap && (
