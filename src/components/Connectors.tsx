@@ -33,31 +33,43 @@ interface FlowBranch {
   d: string;
 }
 
+// Deeper saturated pulse colours — kept ONLY for the illustrated "wave" style,
+// whose luminous head→tail sweep over a gray track reads best deep. Every other
+// tree now flows in its destination's bar colour (FLOW_* below).
 const YELLOW = '#efc63e';
 const BLUE = '#49c7ef';
 const GREEN = '#37d67a';
 const PINK = '#ff2d8e';
 
+// Full-system branch-flow pulse colours matched 1:1 to each DESTINATION card's
+// PROGRESS-BAR fill (Figma 1146:15954) — the money reads as the colour of where it
+// lands, instead of a darker/more-saturated pulse. Income lemon, Core water-blue,
+// Spend leaf-green, goals petal-pink (the exact card bar fills).
+const FLOW_INCOME = '#f6dc72'; // income — secondary/yellow/lemon (matches the DD bar)
+const FLOW_CORE = '#b0d9ff'; // Core — secondary/blue/water
+const FLOW_SPEND = '#61bc76'; // Spend — secondary/green/leaf
+const FLOW_GOALS = '#eebed4'; // goals — secondary/pink/petal
+
 // branch id -> comet colour; `d` is resolved per branch style. Per-branch timing
 // (spine vs arm, near-instant gate handoff) now lives in scenario's branchFlow.
 const FLOW_META: { id: string; color: string }[] = [
-  { id: 'c-income-monthly', color: YELLOW },
-  { id: 'c-monthly-core', color: BLUE },
-  { id: 'c-monthly-spend', color: GREEN },
-  { id: 'c-monthly-goals1', color: PINK },
-  { id: 'c-goals1-ef1', color: PINK },
-  { id: 'c-goals1-goals2', color: PINK },
-  { id: 'c-goals2-debt', color: PINK },
-  { id: 'c-goals2-ef6', color: PINK },
+  { id: 'c-income-monthly', color: FLOW_INCOME },
+  { id: 'c-monthly-core', color: FLOW_CORE },
+  { id: 'c-monthly-spend', color: FLOW_SPEND },
+  { id: 'c-monthly-goals1', color: FLOW_GOALS },
+  { id: 'c-goals1-ef1', color: FLOW_GOALS },
+  { id: 'c-goals1-goals2', color: FLOW_GOALS },
+  { id: 'c-goals2-debt', color: FLOW_GOALS },
+  { id: 'c-goals2-ef6', color: FLOW_GOALS },
   // spine continuing off the bottom edge toward the off-page 3rd-level goal gate
-  { id: 'c-goals2-down', color: PINK },
+  { id: 'c-goals2-down', color: FLOW_GOALS },
   // Optimizer 3rd gate: extra spine hop (goals2 -> goals3) + the two deepest goal
   // arms, plus the off-page continuation past the 3rd gate. (Simple never lights
   // these — its scenario emits no such events — so they stay dark for Simple.)
-  { id: 'c-goals2-goals3', color: PINK },
-  { id: 'c-goals3-travel', color: PINK },
-  { id: 'c-goals3-brokerage', color: PINK },
-  { id: 'c-goals3-down', color: PINK },
+  { id: 'c-goals2-goals3', color: FLOW_GOALS },
+  { id: 'c-goals3-travel', color: FLOW_GOALS },
+  { id: 'c-goals3-brokerage', color: FLOW_GOALS },
+  { id: 'c-goals3-down', color: FLOW_GOALS },
 ];
 
 // Each income event travels as a SHORT fixed-length pulse (a fraction of the
@@ -557,7 +569,7 @@ export default function Connectors({
         <path
           key={`feeder-${j}`}
           d={d}
-          stroke={YELLOW}
+          stroke={FLOW_INCOME}
           strokeWidth={strokeW}
           fill="none"
           strokeLinecap="round"
@@ -617,7 +629,7 @@ export default function Connectors({
                 key={`lock-${m.id}-${j}`}
                 d={d}
                 stroke={m.color}
-                strokeWidth={3.5}
+                strokeWidth={5}
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -628,7 +640,7 @@ export default function Connectors({
             );
           });
         })}
-        {feederComet(3.5)}
+        {feederComet(5)}
         {incomeGateNode}
         {lockDiscs}
       </svg>
@@ -668,7 +680,7 @@ export default function Connectors({
                 key={`grp-${m.id}-${j}`}
                 d={d}
                 stroke={m.color}
-                strokeWidth={2.5}
+                strokeWidth={4}
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -679,7 +691,7 @@ export default function Connectors({
             );
           });
         })}
-        {feederComet(2.5)}
+        {feederComet(4)}
         {incomeGateNode}
       </svg>
     );
@@ -728,7 +740,7 @@ export default function Connectors({
                 key={`grp2-${m.id}-${j}`}
                 d={d}
                 stroke={m.color}
-                strokeWidth={2.5}
+                strokeWidth={4}
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -739,7 +751,7 @@ export default function Connectors({
             );
           });
         })}
-        {feederComet(2.5)}
+        {feederComet(4)}
         {incomeGateNode}
         {lockDiscs}
       </svg>
@@ -856,7 +868,7 @@ export default function Connectors({
                 key={`sl-${m.id}-${j}`}
                 d={d}
                 stroke={m.color}
-                strokeWidth={2.5}
+                strokeWidth={4}
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -868,7 +880,7 @@ export default function Connectors({
           });
         })}
         {pctPills}
-        {feederComet(2.5)}
+        {feederComet(4)}
         {incomeGateNode}
       </svg>
     );

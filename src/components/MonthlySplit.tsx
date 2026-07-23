@@ -142,14 +142,18 @@ export default function MonthlySplit({
     if (!transitionSeq) return;
     const timers: number[] = [];
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
-    // Tighter, smoother cadence (trimmed handoff gaps) so the build feels fluid, not
-    // sluggish — no phase removed, just quicker beats + snappier per-element anims.
-    const P2 = squeezeMs + 90; // take-home text + trunk, just after the squeeze settles
-    const P3 = P2 + 400; // Fruitful logo pop + wave
-    const P4b = P3 + 440; // bills flow
-    const P4s = P4b + 380; // spend flow
-    const P4g = P4s + 380; // goals flow
-    const DONE = P4g + 440; // settle into the resting Monthly split
+    // OVERLAPPING cadence: each phase STARTS while the previous element is still
+    // mid-animation (its beat is SHORTER than the element's own CSS duration), so
+    // velocity carries continuously from one chunk into the next — no phase ever
+    // decelerates to a dead stop before the next begins. Paced comfortably (calmer
+    // than the over-tightened version) but still fluid. See the matching, slightly
+    // longer per-element durations in index.css (.msplit--seq …).
+    const P2 = Math.max(0, squeezeMs - 150); // take-home text/trunk begin AS the squeeze lands (carry momentum, no stop)
+    const P3 = P2 + 300; // Fruitful logo pops while the take-home text is still settling
+    const P4b = P3 + 320; // bills flow starts during the logo pop
+    const P4s = P4b + 340; // spend begins before bills finishes drawing
+    const P4g = P4s + 340; // goals begins before spend finishes drawing
+    const DONE = P4g + 620; // settle into the resting Monthly split
     at(P2, () => setPhase(2));
     at(P3, () => setPhase(3));
     at(P4b, () => setPhase(4));

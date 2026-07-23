@@ -51,8 +51,8 @@ const REVEAL_MS: Record<'full' | 'monthly', number> = { full: 360, monthly: 440 
 // 1a settles, a brief hold hands off, then 1b slides. The post-squeeze phases (2-4:
 // take-home text/trunk, logo wave, bills→spend→goals flows) re-anchor automatically
 // because MonthlySplit keys them off squeezeMs = the full two-stage duration below.
-const SECTION_STAGE_A_MS = 440; // 1a: bands collapse to the intermediate columns
-const SECTION_STAGE_B_MS = 480; // 1b: blocks slide down side-by-side into final bars
+const SECTION_STAGE_A_MS = 560; // 1a: bands collapse to the intermediate columns (calmer, legible pace)
+const SECTION_STAGE_B_MS = 620; // 1b: blocks slide down side-by-side into final bars
 const SECTION_STAGE_GAP_MS = 0; // NO dwell at mid — 1a flows continuously into 1b as one motion
 const SECTION_PHASE1_MS = SECTION_STAGE_A_MS + SECTION_STAGE_GAP_MS + SECTION_STAGE_B_MS;
 // Chained easing so the two-stage squeeze reads as ONE fluid motion: stage A
@@ -63,8 +63,8 @@ const MORPH_EASE_IN = 'cubic-bezier(0.42, 0, 1, 0.6)'; // start → mid (acceler
 const MORPH_EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)'; // mid → end (fast start, gentle deceleration tail)
 // REVERSE stage timing is deliberately SNAPPIER than the forward squeeze so Monthly
 // split → Full system rewinds quicker (slide the bars up, then expand into the bands).
-const SECTION_REV_STAGE1_MS = 360; // reverse: bars slide UP to the staggered intermediate
-const SECTION_REV_STAGE2_MS = 380; // reverse: blocks EXPAND out into the section bands
+const SECTION_REV_STAGE1_MS = 440; // reverse: bars slide UP to the staggered intermediate (kept snappier than forward)
+const SECTION_REV_STAGE2_MS = 460; // reverse: blocks EXPAND out into the section bands
 const SECTION_REV_GAP_MS = 0; // reverse also flows continuously (no dwell at the intermediate)
 // REVERSE (Monthly split → Full system) mirrors the forward sequence backwards:
 //   1) MonthlySplit retracts its content — the phase-4 flows undraw goals→spend→bills,
@@ -75,7 +75,7 @@ const SECTION_REV_GAP_MS = 0; // reverse also flows continuously (no dwell at th
 //      EXPAND out into the full-system section bands (reverse of 1a), crossfading the
 //      vivid column colors back to the faded band tints. Same start→mid→end ghost
 //      infra, just run with monthly bars as the source and bands as the target.
-const SECTION_EXIT_CONTENT_MS = 900; // MonthlySplit content-retract before the bar hand-off (snappy rewind)
+const SECTION_EXIT_CONTENT_MS = 1000; // MonthlySplit content-retract before the bar hand-off (snappy rewind)
 
 function measureMorph(board: HTMLElement): MorphMap {
   const br = board.getBoundingClientRect();
