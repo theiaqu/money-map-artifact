@@ -517,7 +517,7 @@ export default function MonthlySplit({
               // hold the frozen axis (points clamp/bunch at the right edge as before).
               const frozenMaxM = axisRef.maxM;
               const liveLastM = pts.length ? Math.max(1, ...pts.map((p) => p.months)) : 1;
-              const zoomedMaxM = liveLastM * PROJECT_HEADROOM; // range that just fits the goals
+              const zoomedMaxM = liveLastM * PROJECT_HEADROOM; // range that just fits the furthest goal + headroom
               // Crowding gate: measure how tightly the closest THREE consecutive goals pack
               // on the FROZEN axis (a fixed reference, so the gate depends only on the data —
               // never on the zoom we apply — and therefore can't oscillate). When ~3 markers
@@ -535,10 +535,21 @@ export default function MonthlySplit({
                 xf.length >= 3
                   ? Math.max(0, Math.min(1, (TIGHT3_NONE - tight3) / (TIGHT3_NONE - TIGHT3_FULL)))
                   : 0;
-              // blend frozen → zoomed. zoomT=0 keeps the frozen axis (points clamp/bunch at
-              // the right toward Spend, exactly as before); zoomT=1 zooms into the compressed
-              // range so the bunched goals spread across the plot again (Figma 1146:3797).
-              const maxM = frozenMaxM + (zoomedMaxM - frozenMaxM) * zoomT;
+              // AXIS RECALIBRATION — goals must NEVER fall off the chart (Figma 1146:3797):
+              //   • zoomedMaxM > frozenMaxM  → the furthest goal would push toward/off the
+              //     RIGHT edge (dragging toward Spend makes goals complete later). EXPAND the
+              //     axis to fit them + projection headroom, so every marker "bounces back"
+              //     inside the plot. Because liveLastM moves continuously with the slider,
+              //     this ramps smoothly (no snap) and holds the furthest goal ~inside the
+              //     headroom boundary rather than letting it clamp/pile at the edge.
+              //   • zoomedMaxM ≤ frozenMaxM  → the goals fit within the frozen span; keep the
+              //     frozen axis so points slide along it, and only zoom IN (via zoomT) when
+              //     ~3 markers bunch, spreading them back out.
+              // Both branches meet continuously at the crossover (zoomedMaxM == frozenMaxM).
+              const maxM =
+                zoomedMaxM > frozenMaxM
+                  ? zoomedMaxM
+                  : frozenMaxM + (zoomedMaxM - frozenMaxM) * zoomT;
               const maxNW = axisRef.maxNW;
               const xOf = (m: number) => PADL + (Math.min(m, maxM) / maxM) * (GW - PADL - PADR);
               const yOf = (nw: number) => GH - PADB - (Math.min(nw, maxNW) / maxNW) * (GH - PADT - PADB);
@@ -634,12 +645,19 @@ export default function MonthlySplit({
                   return { dx: R * Math.cos(a), dy: R * Math.sin(a) };
                 });
               };
+              // Final hard guarantee that NO marker (even a fanned-out cluster member near a
+              // boundary) renders outside the plot: clamp each center so the marker body stays
+              // fully inside the card (MARGIN ≈ marker radius). The axis recalibration above
+              // already keeps goals inside with headroom, so this only ever nudges edge cases.
+              const MARK_MARGIN = 14;
+              const clampX = (x: number) => Math.max(MARK_MARGIN, Math.min(GW - MARK_MARGIN, x));
+              const clampY = (y: number) => Math.max(MARK_MARGIN, Math.min(GH - MARK_MARGIN, y));
               const positioned = clusters.flatMap((cl) => {
-                if (cl.length === 1) return [{ ...cl[0], x: cl[0].bx, y: cl[0].by, clustered: false }];
+                if (cl.length === 1) return [{ ...cl[0], x: clampX(cl[0].bx), y: clampY(cl[0].by), clustered: false }];
                 const ax = cl.reduce((s, p) => s + p.bx, 0) / cl.length;
                 const ay = cl.reduce((s, p) => s + p.by, 0) / cl.length;
                 const offs = clusterOffsets(cl.length);
-                return cl.map((p, i) => ({ ...p, x: ax + offs[i].dx, y: ay + offs[i].dy, clustered: true }));
+                return cl.map((p, i) => ({ ...p, x: clampX(ax + offs[i].dx), y: clampY(ay + offs[i].dy), clustered: true }));
               });
               return (
                 <div className="msplit-nw">

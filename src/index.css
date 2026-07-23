@@ -2655,9 +2655,24 @@ body.is-dragging-noselect * {
 }
 .pbi-push-old {
   z-index: 1;
+  overflow: hidden; /* clips the anchored text as the bar's right edge recedes left */
+  padding-left: 0; /* the inner text wrapper carries the label padding */
   /* background set inline: ACTIVE lemon before the 50% crossover, PALE after (Figma
      stage A 1110:17883 → stage B 1110:18011). The value here is only a fallback. */
   background: #fbedb8;
+}
+/* OLD-bar amount label pinned in place (Figma 1110:17883 → 1110:18011): counter-
+   translated by the exact opposite of the old bar's slide so it stays screen-anchored
+   at the original left position; the parent's overflow:hidden then shears it off from
+   the right as the bar slides away. */
+.pbi-push-old-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  box-sizing: border-box;
+  will-change: transform;
 }
 .pbi-push-new {
   z-index: 2;

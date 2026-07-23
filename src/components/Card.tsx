@@ -324,25 +324,16 @@ export function IncomeAccountCard({
           <span className="pbi-card-name">Direct deposit</span>
         </div>
         {slide ? (
-          /* PUSH/SLIDE (Figma 1110:18698): the OLD bar holds its position with its text
-             anchored at the left; on each fire a NEW yellow bar slides IN from the RIGHT
-             carrying its OWN amount label, sliding OVER the old bar until it fully covers
-             it (settled). `p` (0→1) drives the incoming bar's cover in exact lockstep with
-             the deposit comet card→gate: p=0 the new bar is fully off to the right (old bar
-             showing), p=1 it has fully covered (single settled bar). Mid-slide you briefly
-             see BOTH labels — the old at the left and the new riding in from the right —
-             exactly as the Figma frames show. (The label MUST ride with the incoming bar;
-             counter-translating it back to the left anchor made both labels identical and
-             the slide invisible — the earlier bug.) At rest (not active) the new bar fully
-             covers, showing a single settled bar. */
+          /* PUSH/SLIDE (Figma 1110:17640 / 1110:17883 → 1110:18011): the outgoing (OLD)
+             and incoming (NEW) bars are two DISTINCT rounded pills that slide LEFT together
+             with a constant PUSH_GAP px gap between them. `p` (0→1) drives the pair in exact
+             lockstep with the deposit comet card→gate: p=0 the new bar is fully off to the
+             right (old bar fills the track), p=1 the new bar fills the track (single settled
+             bar) and the old is fully off-left. At rest (not active) a single settled bar. */
           <div className="pbi-bar pbi-bar--income pbi-bar--income-push">
-            {/* TWO DISTINCT PILLS WITH A CONSTANT GAP (Figma 1110:17640): the outgoing
-                (old) and incoming (new) bars are separate rounded pills that move LEFT
-                together, always separated by PUSH_GAP px — never flush/overlapping. Each
-                is a full-track-width pill; the pair shifts by (100% + gap), so:
-                • p=0 (fire) — old fills the track, new is fully off to the right.
-                • mid-push — old exits left, a gap shows the card behind, new enters right.
-                • p=1 (rest) — new fills the track (single settled bar), old is off-left.
+            {/* TWO DISTINCT PILLS WITH A CONSTANT GAP (Figma 1110:17640): each is a full-
+                track-width pill; the pair shifts by (100% + gap), always separated by
+                PUSH_GAP px — never flush/overlapping. The gap reveals the card behind.
                 COLOR CROSSOVER at the 50% mark (Figma stage A 1110:17883 → stage B
                 1110:18011), keyed to feederPushSlide's `p`:
                 • before 50% — the incoming (new) bar is the LIGHT/pale yellow (#fbedb8)
@@ -350,7 +341,14 @@ export function IncomeAccountCard({
                 • past 50% (and at rest) — the incoming bar flips to the ACTIVE lemon and
                   the outgoing bar turns PALE as it's pushed out. So the "active" lemon
                   always belongs to whichever bar owns >50% of the track. No drop shadow —
-                  the gap alone separates the two bars. */}
+                  the gap alone separates the two bars.
+                OLD-BAR TEXT ANCHORING (Figma 1110:17883 → 1110:18011): the old bar's amount
+                label stays PINNED in its original left position while the bar shape slides
+                left — it does NOT ride with the bar. It is counter-translated by the exact
+                opposite of the bar's transform, and the bar's own overflow:hidden clips it,
+                so the bar's receding RIGHT edge sweeps left across the text, shearing it off
+                right-to-left ("$8,000" → "$8," → gone) until fully clipped. The NEW bar's
+                text rides IN with the new bar (no counter-translate), per the Figma. */}
             <div
               className="pbi-push-old"
               style={{
@@ -358,7 +356,12 @@ export function IncomeAccountCard({
                 transform: `translateX(calc(${(-slide.p).toFixed(4)} * (100% + ${PUSH_GAP}px)))`,
               }}
             >
-              {amtLabel}
+              <div
+                className="pbi-push-old-text"
+                style={{ transform: `translateX(calc(${slide.p.toFixed(4)} * (100% + ${PUSH_GAP}px)))` }}
+              >
+                {amtLabel}
+              </div>
             </div>
             <div
               className="pbi-push-new"
