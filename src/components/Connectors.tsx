@@ -111,9 +111,16 @@ const ARM_CARD: Record<string, string> = {
 
 // a branch's card counts as "filled/decommissioned" when: goals have been reached
 // (arrival-aware), and the Core/Spend expense accounts have topped out (>= ~100%).
-function cardDone(dataset: Dataset, mode: Mode, cardId: string, now: number): boolean {
-  if (cardId === 'core' || cardId === 'spend') return progressAt(dataset, mode, cardId, now) >= 0.999;
-  return isReached(dataset, mode, cardId, now);
+// `delay` (CAUSAL CARD FILL): in the Account-style Direct-deposit income mode the
+// whole tree's fill is shifted back by one feeder travel (the deposit must reach
+// the income gate first). We read the fill/reached at `now - delay` so the section
+// "done" month — which floors the downstream waterfall gate — lines up with when
+// the cards VISUALLY top out (i.e. when their incoming comets have landed), keeping
+// the gate release in step with the delayed fills. `delay` is 0 in every other mode.
+function cardDone(dataset: Dataset, mode: Mode, cardId: string, now: number, delay = 0): boolean {
+  const t = now - delay;
+  if (cardId === 'core' || cardId === 'spend') return progressAt(dataset, mode, cardId, t) >= 0.999;
+  return isReached(dataset, mode, cardId, t);
 }
 
 // decommissioned-branch check badge (Figma 496-5733): a borderless disc whose
@@ -271,6 +278,9 @@ export default function Connectors({
   // deposit visibly ARRIVES at the gate before the rest of the tree starts flowing.
   const feederTravel = feederTravelMonths(mode);
   const incomeDelay = incomeGate ? { departDelay: feederTravel } : undefined;
+  // CAUSAL CARD FILL: same feeder travel the comets are delayed by, applied to the
+  // section-done gate so the waterfall release waits for the (delayed) fills.
+  const gateDelay = incomeGate ? feederTravel : 0;
   // reversed feeder pulse: reuses c-income-monthly's income events (fires every
   // income cadence) but travels the paced ARM span from card out to the gate.
   const feederFlows = incomeGate ? branchFlow(dataset, mode, now, 'c-income-monthly', -Infinity, { travel: feederTravel }) : [];
@@ -314,7 +324,7 @@ export default function Connectors({
   const checkBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
     const m = mids[armId];
     if (!m) return null;
-    const done = cardDone(dataset, mode, cardId, now);
+    const done = cardDone(dataset, mode, cardId, now, gateDelay);
     return (
       <g
         key={`chk-${armId}`}
@@ -520,7 +530,7 @@ export default function Connectors({
   const pbiGate: Record<string, number> = ((): Record<string, number> => {
     if (!pbiTree) return {};
     const doneMonth = (cardIds: string[]): number => {
-      const allDone = (t: number) => cardIds.every((c) => cardDone(dataset, mode, c, t));
+      const allDone = (t: number) => cardIds.every((c) => cardDone(dataset, mode, c, t, gateDelay));
       const hiCap = animMonths(dataset, mode);
       if (cardIds.length === 0 || !allDone(hiCap)) return Infinity;
       let lo = 0;
@@ -593,7 +603,7 @@ export default function Connectors({
   if (isPbiLocked) {
     const lockById = (id: string) => conns.find((c) => c.id === id)?.d;
     const lockDiscs = pbiLockDiscsFor(dataset).map((d) => {
-      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now));
+      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now, gateDelay));
       return (
         <g key={d.id} transform={`translate(${PBI_LOCK_SPINE_X} ${d.y})`}>
           <circle r={12} fill="#e6e7ea" stroke="#ffffff" strokeWidth={2} />
@@ -706,7 +716,7 @@ export default function Connectors({
   if (isPbiGrouped2) {
     const grp2ById = (id: string) => conns.find((c) => c.id === id)?.d;
     const lockDiscs = pbiGrouped2LockDiscsFor(dataset).map((d) => {
-      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now));
+      const unlocked = d.cards.every((c) => cardDone(dataset, mode, c, now, gateDelay));
       return (
         <g key={d.id} transform={`translate(${PBI_GROUPED2_RISER_X} ${d.y})`}>
           <circle r={12} fill="#ffffff" stroke="#e6e7ea" strokeWidth={1} />
@@ -896,7 +906,7 @@ export default function Connectors({
     const pbiBadges = Object.entries(ARM_CARD).map(([armId, cardId]) => {
       const m = mids[armId];
       if (!m) return null;
-      const done = cardDone(dataset, mode, cardId, now);
+      const done = cardDone(dataset, mode, cardId, now, gateDelay);
       return (
         <g
           key={`pbi-chk-${armId}`}

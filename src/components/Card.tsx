@@ -575,6 +575,7 @@ export default function Card({
   modalCardId = null,
   hideIncome = false,
   refillVisual = false,
+  fillDelay = 0,
   amountOverride,
   progressOverride,
   refillOverride,
@@ -598,6 +599,7 @@ export default function Card({
   modalCardId?: string | null; // "convo": id of the card whose morph modal is open (that resting card is hidden)
   hideIncome?: boolean; // styles that carry the shared ArtifactHeader render the carousel AS income, so the per-style income node is suppressed
   refillVisual?: boolean; // pbi "Core/Spend refill visual": two-tone capacity+balance bar (Figma 907:13009)
+  fillDelay?: number; // CAUSAL CARD FILL: months to delay this card's fill/reached so it only begins once its incoming branch comet touches its left edge (Account-style income feeder travel); 0 = no delay
   amountOverride?: Record<string, string>; // per-node id → amount string override (onboarding home→map: Core/Spend show the home balances for number continuity)
   progressOverride?: Record<string, number>; // per-node id → 0..1 fill override (onboarding full-system snapshot: bars reflect home balances / illustrative goal progress instead of the live sim)
   refillOverride?: Record<string, number>; // per-node id → 0..1 refill-overlay width (HOME flow: the scrub-driven Core/Spend refill overlay that leads the base bar to 100%)
@@ -605,6 +607,13 @@ export default function Card({
   // Styles that render the shared board-level ArtifactHeader use its paycheck
   // carousel as the income element, so the per-style income node is suppressed.
   if (node.kind === 'income' && hideIncome) return null;
+  // CAUSAL CARD FILL: read this card's funding fraction / reached state at a clock
+  // shifted back by `fillDelay`, so the bar sits at its prior level until its
+  // incoming branch comet actually touches the card's left edge, then starts
+  // filling. `fillDelay` is only non-zero for the Account-style Direct-deposit
+  // income tree (one feeder travel); it's 0 for every other style, so `fillNow`
+  // equals `now` and nothing else changes.
+  const fillNow = now - fillDelay;
   // Stocks Condensed sub-variant (Figma 522:6440): compact horizontal cards with
   // their OWN tighter row layout. Takes precedence over everything below.
   if (condensed && style === 'stocks') {
@@ -891,7 +900,7 @@ export default function Card({
   // "Today's money map" — pastel restyle; composes with both chart styles
   if (map === 'money-map') {
     // goal date text: grayed until the goal is funded, then black + a pink check
-    const goalReached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
+    const goalReached = node.kind === 'goal' && isReached(dataset, mode, node.id, fillNow);
     if (isPie) {
       const grey =
         node.kind === 'account'
@@ -902,7 +911,7 @@ export default function Card({
       return (
         <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: node.x, top: node.y }}>
           <div className="card card-pie money-map">
-            <PieChart color={node.graph} progress={progressAt(dataset, mode, node.id, now)} map="money-map" />
+            <PieChart color={node.graph} progress={progressAt(dataset, mode, node.id, fillNow)} map="money-map" />
             <div className="pie-text">
               <div className={`mm-pie-grey${goalReached ? ' reached' : ''}`}>
                 {goalReached && <Check size={12} strokeWidth={3} color={checkColor} />}
@@ -918,7 +927,7 @@ export default function Card({
     return (
       <div className={`node${dimmed ? ' dimmed' : ''}`} style={{ left: node.x, top: node.y }}>
         <div className="card money-map">
-          <GraphStrip id={node.id} color={node.graph} variant={variant} now={now} mode={mode} dataset={dataset} map="money-map" pill={node.pill} />
+          <GraphStrip id={node.id} color={node.graph} variant={variant} now={fillNow} mode={mode} dataset={dataset} map="money-map" pill={node.pill} />
           <Spacer h={8} />
           {node.kind === 'goal' ? (
             <div className={`mm-main${goalReached ? ' reached' : ''}`}>
@@ -952,8 +961,8 @@ export default function Card({
     // onboarding full-system snapshot: use the illustrative per-node fill override
     // (accounts reflect their home balances; goals show first-layer-full / second-
     // layer-in-progress) instead of the live simulation. Falls back to the sim.
-    const p = progressOverride?.[node.id] ?? progressAt(dataset, mode, node.id, now);
-    const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, now);
+    const p = progressOverride?.[node.id] ?? progressAt(dataset, mode, node.id, fillNow);
+    const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, fillNow);
     // every pbi gate (Text gates / Text gates + backgrounds / Indented) shares the
     // default uniform-pitch rows; the panels/tree are built around these same rows.
     const top = pbiRowTopFor(dataset)[node.id] ?? node.y;

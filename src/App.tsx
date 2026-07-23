@@ -13,7 +13,7 @@ import PillsBoard from './components/PillsBoard';
 import Device, { SCREEN_W } from './components/Device';
 import { cardsFor, sectionsFor, badgesFor, pbiSplitDividersFor, pillsLayoutFor, HOME_BALANCES, homeAccountFill, homeAccountAmount, PBI_INCOME_CARD_TOP, PBI_INCOME_GATE_Y, type BranchStyle, type MapStyle } from './data';
 import type { ChartStyle, CarouselMode, CarouselInteraction, IncomeRep, IncomeAnim } from './components/Card';
-import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, type Dataset, type Mode, type DateMode } from './scenario';
+import { animMonths, endSecs, monthSecs, dimmedNodes, homeGoalFill, feederTravelMonths, type Dataset, type Mode, type DateMode } from './scenario';
 
 // ---- "Monthly split" shared-element morph (Figma 907:13144) ----
 // Every morphable element in either view carries data-morph="<role>" (income /
@@ -1301,7 +1301,14 @@ export default function App() {
   const simSpan = animMonths(dataset, effMode);
   const scrubSpan = boardOnboard ? Math.max(simSpan, 10) : simSpan;
   const now = t < 0 ? 0 : Math.min(t / monthSecs(effMode), scrubSpan);
-  const dimmed = dimmedNodes(dataset, effMode, Math.min(now, simSpan));
+  // CAUSAL CARD FILL: in the Account-style Direct-deposit income mode, the whole
+  // gate→Monthly system is delayed by one feeder travel (the deposit must first
+  // reach the income gate — see incomeDelay in Connectors). The card FILLS + the
+  // reached/greyed states must wait for that same travel so a card only starts
+  // filling once its incoming comet actually touches its left edge. Everywhere the
+  // fill/reached is read, we shift `now` back by this delay to match the comets.
+  const fillDelayMonths = style === 'progress' && incomeRep === 'card' ? feederTravelMonths(effMode) : 0;
+  const dimmed = dimmedNodes(dataset, effMode, Math.min(now, simSpan) - fillDelayMonths);
 
   // HOME-PAGE flow: the money map mimics a real monthly income WATERFALL as the
   // user scrubs FORWARD in time. Each month behaves like: (1) Core & Spend refill
@@ -1523,7 +1530,11 @@ export default function App() {
           </div>
         </div>
         )}
-        {style === 'progress' && (
+        {/* "Income" (Individual pills / Account-style card) is HIDDEN from the panel
+            (same `{false && …}` approach as the other removed configs): the `incomeRep`
+            state stays and defaults to the Account-style card, so all its behavior is
+            intact — the toggle is simply no longer rendered/selectable. */}
+        {false && (
           <div className="config-row">
             <span className="config-label">Income</span>
             <div className="mode-toggle" role="tablist" aria-label="Income representation">
@@ -1947,7 +1958,7 @@ export default function App() {
         )}
 
         {cards.map((c) => (
-          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} amountOverride={boardOnboard ? homeAmountsNow : undefined} progressOverride={boardOnboard ? homeProgressNow : undefined} refillOverride={boardOnboard ? homeRefillNow : undefined} />
+          <Card key={c.id} node={c} now={now} mode={effMode} dataset={dataset} style={style} cardStyle="standard" titleVariant="date" map={effMap} dimmed={dimmed.has(c.id)} v1={isV1} condensed={isCondensed} dateMode={dateMode} iconLabeled={style === 'icons' && branch === 'icon-labeled'} pbiGrouped={style === 'progress' && (branch === 'pbi-grouped' || branch === 'pbi-grouped2')} pbiLocked={style === 'progress' && branch === 'pbi-locked'} onConvoTap={style === 'convo' || style === 'illo' ? openConvo : undefined} modalCardId={style === 'convo' || style === 'illo' ? selectedConvo : null} hideIncome={usesHeader} refillVisual={style === 'progress' && refillVisual} fillDelay={fillDelayMonths} amountOverride={boardOnboard ? homeAmountsNow : undefined} progressOverride={boardOnboard ? homeProgressNow : undefined} refillOverride={boardOnboard ? homeRefillNow : undefined} />
         ))}
 
         {!stocksFixed && branch === 'compact' && style !== 'pots' &&
