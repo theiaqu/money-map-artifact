@@ -1704,11 +1704,18 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: 0;
-  bottom: 0;
+  /* the rail wrapper is align-self:stretch, so it only fills the row's CONTENT box
+     (row height − 16px top/bottom padding). Extending the segment −16px past both
+     content edges pushes it to the row's OUTER edges, so each row's segment meets
+     the next row's segment exactly at their shared border — one continuous rail with
+     no gaps in the padding between rows. */
+  top: -16px;
+  bottom: -16px;
   width: 1.5px;
   background: #e4e4e4;
 }
+/* the timeline begins at the first dot's centre and ends at the last dot's centre —
+   no overshoot above the first dot or below the last. */
 .msplit-goal:first-child .msplit-goal-railline { top: 50%; }
 .msplit-goal:last-child .msplit-goal-railline { bottom: 50%; }
 /* gray icon dot (Figma 1288:17048 — ~26px, 16px glyph) sitting on top of the rail. */
