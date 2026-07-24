@@ -1658,154 +1658,96 @@ body {
   font-weight: 500;
   color: #7d7d7d;
 }
-/* goals waterfall list */
+/* ---- goals timeline list (Figma 1288:17025) ----
+   The goals list flows UNDERNEATH the net-worth graph inside the same unified card:
+   a FLAT vertical timeline — each goal is a gray icon "dot" threaded on a connecting
+   rail (left), with "In {duration}" (title) + the goal name (subtitle) on the right.
+   No year headers, no amount / date pill (per the design). */
 .msplit-goals {
   display: flex;
   flex-direction: column;
-  gap: 13px;
 }
-/* the calendar list when it flows UNDERNEATH the net-worth graph INSIDE the same
-   unified card (Figma 1288:17025): flush rows (no per-row cards), padded so the year
-   headers + rows sit comfortably below the divider. */
 .msplit-goals--under {
-  gap: 0;
-  padding: 8px 0 4px;
+  padding: 0;
 }
-.msplit-goals-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-/* year header — matches Figma 1146:3509 (Heading/Size-S 20px, semibold, black,
-   line-height 24) rather than the previous oversized 28px. Inside the unified card it
-   aligns with the row padding (12px) and gets a little breathing room above. */
-.msplit-goals-year {
-  font-family: var(--font-family);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 24px;
-  color: #000000;
-}
-/* standalone list (non-combined views) keeps its own row gap + separation */
-.msplit-goals:not(.msplit-goals--under) .msplit-goal {
-  background: #ffffff;
-  border-radius: 16px;
-}
-.msplit-goals:not(.msplit-goals--under) .msplit-goals-group { gap: 13px; }
-.msplit-goals:not(.msplit-goals--under) .msplit-goals-group + .msplit-goals-group { margin-top: 20px; }
+/* one goal row: px-12 / py-16, ≥92px tall (Figma row) so single-line rows breathe and
+   longer names wrap the row taller. */
 .msplit-goal {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
+  min-height: 92px;
+  box-sizing: border-box;
   padding: 16px 12px;
-  box-shadow: none;
-  border: 2px solid transparent;
+  background: transparent;
   scroll-margin: 24px; /* leave breathing room when scrolled into view */
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+  transition: background 0.25s ease;
 }
-/* inside the unified card the rows are FLUSH with NO per-item dividers — the Figma
-   list (1288:17025 / detailed item 1146:3528) separates items by their padding only, so
-   the year header provides group separation and each row's px-12/py-16 does the rest. */
-.msplit-goals--under .msplit-goals-year {
-  padding: 12px 12px 4px;
-}
-.msplit-goals--under .msplit-goals-group + .msplit-goals-group { margin-top: 0; }
-/* the goal currently selected on the net-worth graph — emphasized in the list and
-   smooth-scrolled into view (see rowRefs effect in MonthlySplit). */
-.msplit-goal--sel {
-  border-color: #d17ea3;
-  background: #fdf4f8;
-}
-/* inside the unified card, a flush selected row reads as a full-bleed tint (no card
-   ring) with a pink left accent instead of an all-around border. */
-.msplit-goals--under .msplit-goal--sel {
-  border-color: transparent;
-  background: #fdf4f8;
-  box-shadow: inset 3px 0 0 #d17ea3;
-}
-.msplit-goal-time {
-  width: 60px;
+/* the goal currently selected on the net-worth graph — full-bleed pink tint (the dot
+   turns pink below), and it is smooth-scrolled into view (see rowRefs effect). */
+.msplit-goal--sel { background: #fdf4f8; }
+/* left 60px column carrying the connecting timeline rail + the icon dot (Figma 1288:17046) */
+.msplit-goal-rail {
+  position: relative;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1;
-}
-.msplit-goal-time-val {
-  font-family: var(--font-family);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
-  color: #000000;
-  margin-bottom: -4px; /* Figma 1146:3531 mb-[-4px]: tuck the unit up under the value */
-}
-.msplit-goal-time-unit {
-  font-family: var(--font-family);
-  font-size: 14px;
-  font-weight: 450;
-  line-height: 20px;
-  color: #adadad;
-}
-.msplit-goal-main {
-  flex: 1;
-  min-width: 0;
+  width: 60px;
+  align-self: stretch;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
 }
-.msplit-goal-info {
+/* vertical rail threading the dots — spans the full row height so consecutive rows'
+   segments join seamlessly through each dot's centre; the first row starts at its dot
+   (no segment above) and the last row ends at its dot (no segment below). */
+.msplit-goal-railline {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: #e4e4e4;
+}
+.msplit-goal:first-child .msplit-goal-railline { top: 50%; }
+.msplit-goal:last-child .msplit-goal-railline { bottom: 50%; }
+/* gray icon dot (Figma 1288:17048 — ~26px, 16px glyph) sitting on top of the rail. */
+.msplit-goal-dot {
+  position: relative;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e4e4e4;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease;
+}
+.msplit-goal--sel .msplit-goal-dot { background: #d17ea3; }
+/* right side: "In {duration}" title + goal-name subtitle (Figma 1288:17051). Capped
+   near the Figma text width (~179px) so long names wrap here, leaving the right open. */
+.msplit-goal-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  max-width: 180px;
 }
-.msplit-goal-name {
-  display: flex;
-  align-items: flex-start; /* top-align the icon so it stays put when the title wraps */
-  gap: 6px;
-  font-family: var(--font-family);
-  font-size: 14px;
-  font-weight: 450; /* Body/Small/Regular (Figma 1146:3537) */
-  color: #000000;
-}
-.msplit-goal-name svg {
-  flex-shrink: 0; /* keep the glyph its full size; never squeeze it to fit text */
-  margin-top: 1px;
-}
-/* Goal titles WRAP instead of truncating — the row/card grows taller to fit the full
-   text (no ellipsis / no fixed-height clip). The card is align-items:center so the
-   time + date columns stay centered against the taller content. */
-.msplit-goal-name span {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  line-height: 20px; /* Body/Line Height S (Figma 1146:3537) */
-  word-break: break-word;
-}
-.msplit-goal-amt {
+.msplit-goal-when {
   font-family: var(--font-family);
   font-size: 16px;
   font-weight: 600;
-  line-height: 24px; /* Body/Line Height M (Figma 1146:3538) */
+  line-height: 24px; /* Body/Line Height M (Figma 1288:17053) */
   color: #111111;
 }
-.msplit-goal-date {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  height: 16px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  background: #eebed4;
+.msplit-goal-name2 {
   font-family: var(--font-family);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: #111111;
-  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 450; /* Body/Small/Regular (Figma 1288:17055) */
+  line-height: 20px; /* Body/Line Height S */
+  color: #000000;
+  white-space: normal;
+  word-break: break-word;
 }
 /* section heading shared by the income-split + net-worth goals views */
 .msplit-goals-h {
@@ -1948,7 +1890,7 @@ body {
 .msplit-nw-title {
   position: absolute;
   left: 16px;
-  top: 12px;
+  top: 16px;
   z-index: 2;
   font-family: var(--font-family);
   font-size: 12px;
@@ -1993,10 +1935,10 @@ body {
   transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #f0cddc;
+  background: #eebede; /* Figma 1288:17034 Secondary/Pink/Petal */
   border: 2px solid #ffffff;
   padding: 0;
   cursor: pointer;

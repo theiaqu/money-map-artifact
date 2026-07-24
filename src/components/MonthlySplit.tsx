@@ -253,18 +253,9 @@ export default function MonthlySplit({
 
   const pct = (amt: number) => (takeHome > 0 ? Math.round((amt / takeHome) * 100) : 0);
 
-  // ---- goals waterfall (funding order + completion year grouping) ----
+  // ---- goals waterfall (funding order) — a FLAT list per Figma 1288:17025 (no
+  //      year-group headers); the graph's x-axis carries the year context instead. ----
   const steps = goalWaterfall(cfg, goals);
-  const yearGroups: { year: number; label: string; rows: typeof steps }[] = [];
-  for (const s of steps) {
-    const { year } = waterfallDate(s.months);
-    let g = yearGroups.find((x) => x.year === year);
-    if (!g) {
-      g = { year, label: isFinite(year) ? String(year) : 'Someday', rows: [] };
-      yearGroups.push(g);
-    }
-    g.rows.push(s);
-  }
 
   // ---- enriched waterfall for the "income-split" + "net worth" goals views ----
   // Each step gains: its contribution % (the goal's weight WITHIN its funding level,
@@ -496,11 +487,11 @@ export default function MonthlySplit({
               // origin (TODAY) sits on the left card edge and the projection reaches the
               // right card edge. PADT/PADB keep room for the title / x-axis labels.
               const GW = 354;
-              const GH = 188;
+              const GH = 246; // Figma 1288:17026 graph area is 246px tall
               const PADL = 0;
               const PADR = 0;
-              const PADT = 20;
-              const PADB = 30;
+              const PADT = 24;
+              const PADB = 44; // x-axis label band (Figma 1288:17029 ≈ 48px)
               const pts = flow.filter((f) => isFinite(f.months));
               // ---- x-axis — FROZEN by default; rescales ONLY once a goal reaches the
               //      right edge (Figma 1146:3797) ----
@@ -631,7 +622,7 @@ export default function MonthlySplit({
               });
               return (
                 /* ONE unified card (Figma 1288:17025): the net-worth graph sits at the top,
-                   a full-width divider separates it from the year-grouped calendar list that
+                   a full-width divider separates it from the flat goals timeline list that
                    flows below — all inside a single rounded card boundary (no per-row cards). */
                 <div className="msplit-nw">
                   {/* clicking anywhere in the plot that ISN'T a goal circle DESELECTS the
@@ -650,12 +641,12 @@ export default function MonthlySplit({
                             <stop offset="100%" stopColor="#eebed4" stopOpacity="0" />
                           </linearGradient>
                         </defs>
-                        <path d={linePath} stroke="#c9c9c9" strokeWidth={2} strokeLinecap="round" />
+                        <path d={linePath} stroke="#e3a7c4" strokeWidth={2} strokeLinecap="round" />
                         {projPath && (
                           <path
                             className="msplit-nw-proj"
                             d={projPath}
-                            stroke="#c9c9c9"
+                            stroke="#e3a7c4"
                             strokeWidth={2}
                             strokeLinecap="round"
                             fill="none"
@@ -693,7 +684,7 @@ export default function MonthlySplit({
                             aria-label={`${p.title} — ${p.date}`}
                             aria-pressed={on}
                           >
-                            <PtIcon size={on ? 16 : 13} strokeWidth={2} color={on ? '#ffffff' : '#7a4a5f'} />
+                            <PtIcon size={on ? 18 : 16} strokeWidth={2} color={on ? '#ffffff' : '#191919'} />
                           </button>
                         );
                       })}
@@ -703,44 +694,39 @@ export default function MonthlySplit({
                       1288:17044) — one card, two stacked sections. */}
                   <div className="msplit-nw-divider" aria-hidden="true" />
 
-                  {/* ---- calendar list, flowing UNDERNEATH the graph INSIDE the same card.
-                       The selected goal's row is highlighted + smooth-scrolled into view. ---- */}
+                  {/* ---- goals timeline list, flowing UNDERNEATH the graph INSIDE the same
+                       card (Figma 1288:17025). A FLAT list (no year headers): each row is a
+                       gray icon "dot" on a connecting vertical rail (left), with "In {duration}"
+                       (title) + the goal name (subtitle) on the right — no amount / date pill.
+                       The selected goal's row is tinted + its dot turns pink, and it is
+                       smooth-scrolled into view. ---- */}
                   <div className="msplit-goals msplit-goals--under">
-                    {yearGroups.map((g) => (
-                      <div className="msplit-goals-group" key={g.label}>
-                        <div className="msplit-goals-year">{g.label}</div>
-                        {g.rows.map((row) => {
-                          const Icon = goalIcon(row.title);
-                          const d = durParts(row.months);
-                          const date = waterfallDate(row.months).label;
-                          const sel = row.id === selectedGoal;
-                          return (
-                            <div
-                              className={`msplit-goal${sel ? ' msplit-goal--sel' : ''}`}
-                              key={row.id}
-                              ref={(el) => {
-                                rowRefs.current[row.id] = el;
-                              }}
-                            >
-                              <div className="msplit-goal-time">
-                                <span className="msplit-goal-time-val">{d.value}</span>
-                                {d.unit && <span className="msplit-goal-time-unit">{d.unit}</span>}
-                              </div>
-                              <div className="msplit-goal-main">
-                                <div className="msplit-goal-info">
-                                  <div className="msplit-goal-name">
-                                    <Icon size={16} strokeWidth={1.75} color="#191919" />
-                                    <span>{row.title}</span>
-                                  </div>
-                                  <span className="msplit-goal-amt">Goal: {money(row.target)}</span>
-                                </div>
-                                <span className="msplit-goal-date">{date}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                    {steps.map((row) => {
+                      const Icon = goalIcon(row.title);
+                      const d = durParts(row.months);
+                      const when = d.unit ? `In ${d.value} ${d.unit}` : 'Someday';
+                      const sel = row.id === selectedGoal;
+                      return (
+                        <div
+                          className={`msplit-goal${sel ? ' msplit-goal--sel' : ''}`}
+                          key={row.id}
+                          ref={(el) => {
+                            rowRefs.current[row.id] = el;
+                          }}
+                        >
+                          <div className="msplit-goal-rail">
+                            <span className="msplit-goal-railline" aria-hidden="true" />
+                            <span className="msplit-goal-dot">
+                              <Icon size={16} strokeWidth={1.75} color={sel ? '#ffffff' : '#191919'} />
+                            </span>
+                          </div>
+                          <div className="msplit-goal-text">
+                            <span className="msplit-goal-when">{when}</span>
+                            <span className="msplit-goal-name2">{row.title}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
