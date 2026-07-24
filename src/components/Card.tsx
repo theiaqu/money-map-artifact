@@ -307,9 +307,9 @@ export function IncomeAccountCard({
   // PUSH/SLIDE mode (standard app only): drive one bar-push per income fire off the
   // SAME feeder clock as the comet + depletion. Onboarding keeps its slow scrub drain.
   const push = incomeAnim === 'push' && !onboarding;
-  // gap (px) held BETWEEN the outgoing + incoming push pills throughout the slide, so
-  // they read as two separate bars with space between them (Figma 1110:17640).
-  const PUSH_GAP = 10;
+  // gap (px) held BETWEEN the outgoing + incoming push pills throughout the slide.
+  // 0 = the two bars push flush against each other (no gap).
+  const PUSH_GAP = 0;
   const slide = push ? feederPushSlide(dataset, mode, now, feederTravelMonths(mode)) : null;
   const depSweep = onboarding || push ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederTravelMonths(mode));
   const amount = DATASETS[dataset].incomeAmount;
