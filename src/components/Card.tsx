@@ -275,6 +275,29 @@ function PaycheckCarousel({
   );
 }
 
+// PUSH/SLIDE color crossover palette + smooth blend. The two push bars fade between
+// the ACTIVE lemon and the PALE yellow rather than swapping in a single frame: the
+// "lemon-ness" of each bar is interpolated (RGB lerp) across a short window centred on
+// the 50% crossover, so the swap eases through the midpoint instead of snapping.
+const PUSH_LEMON = [246, 220, 114] as const; // #f6dc72 — active income color
+const PUSH_PALE = [251, 237, 184] as const; // #fbedb8 — subordinate/pale color
+// window (in push progress p) over which each bar blends between the two colors; a
+// smoothstep across [LO, HI] eases the transition so there's no one-frame snap.
+const PUSH_CROSS_LO = 0.34;
+const PUSH_CROSS_HI = 0.66;
+const smoothstep01 = (e0: number, e1: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+// t = 0 → PALE, t = 1 → LEMON (RGB lerp, rounded to a css rgb() string).
+const pushMix = (t: number): string => {
+  const k = Math.max(0, Math.min(1, t));
+  const r = Math.round(PUSH_PALE[0] + (PUSH_LEMON[0] - PUSH_PALE[0]) * k);
+  const g = Math.round(PUSH_PALE[1] + (PUSH_LEMON[1] - PUSH_PALE[1]) * k);
+  const b = Math.round(PUSH_PALE[2] + (PUSH_LEMON[2] - PUSH_PALE[2]) * k);
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
 // "Account-style card" income representation (Figma 1054:10928): instead of the
 // paycheck pills, income renders as an account card (aligned with the Core/Spend
 // column) whose bar DEPLETES BACKWARDS. The solid-lemon "remaining income" fill is
@@ -334,14 +357,17 @@ export function IncomeAccountCard({
             {/* TWO DISTINCT PILLS WITH A CONSTANT GAP (Figma 1110:17640): each is a full-
                 track-width pill; the pair shifts by (100% + gap), always separated by
                 PUSH_GAP px — never flush/overlapping. The gap reveals the card behind.
-                COLOR CROSSOVER at the 50% mark (Figma stage A 1110:17883 → stage B
-                1110:18011), keyed to feederPushSlide's `p`:
-                • before 50% — the incoming (new) bar is the LIGHT/pale yellow (#fbedb8)
-                  and the outgoing (old) bar stays the ACTIVE lemon (#f6dc72).
-                • past 50% (and at rest) — the incoming bar flips to the ACTIVE lemon and
-                  the outgoing bar turns PALE as it's pushed out. So the "active" lemon
-                  always belongs to whichever bar owns >50% of the track. No drop shadow —
-                  the gap alone separates the two bars.
+                COLOR CROSSOVER through the 50% mark (Figma stage A 1110:17883 → stage B
+                1110:18011), keyed to feederPushSlide's `p` — a SMOOTH blend, not a snap:
+                • before the crossover window — the incoming (new) bar is the LIGHT/pale
+                  yellow (#fbedb8) and the outgoing (old) bar is the ACTIVE lemon (#f6dc72).
+                • through ~[0.34, 0.66] each bar's background EASES between the two colors
+                  (RGB interpolation via `pushMix`/`smoothstep01`) so they fade past each
+                  other rather than switching in one frame.
+                • past the window (and at rest) — the incoming bar is the ACTIVE lemon and
+                  the outgoing bar is PALE as it's pushed out. So the "active" lemon always
+                  belongs to whichever bar owns >50% of the track. No drop shadow — the gap
+                  alone separates the two bars.
                 OLD-BAR TEXT ANCHORING (Figma 1110:17883 → 1110:18011): the old bar's amount
                 label stays PINNED in its original left position while the bar shape slides
                 left — it does NOT ride with the bar. It is counter-translated by the exact
@@ -352,7 +378,8 @@ export function IncomeAccountCard({
             <div
               className="pbi-push-old"
               style={{
-                background: slide.active && slide.p < 0.5 ? '#f6dc72' : '#fbedb8',
+                // outgoing bar: LEMON → PALE, easing across the crossover window
+                background: pushMix(slide.active ? 1 - smoothstep01(PUSH_CROSS_LO, PUSH_CROSS_HI, slide.p) : 0),
                 transform: `translateX(calc(${(-slide.p).toFixed(4)} * (100% + ${PUSH_GAP}px)))`,
               }}
             >
@@ -366,7 +393,8 @@ export function IncomeAccountCard({
             <div
               className="pbi-push-new"
               style={{
-                background: !slide.active || slide.p >= 0.5 ? '#f6dc72' : '#fbedb8',
+                // incoming bar: PALE → LEMON, easing across the crossover window (LEMON at rest)
+                background: pushMix(slide.active ? smoothstep01(PUSH_CROSS_LO, PUSH_CROSS_HI, slide.p) : 1),
                 transform: `translateX(calc(${(1 - slide.p).toFixed(4)} * (100% + ${PUSH_GAP}px)))`,
               }}
             >
