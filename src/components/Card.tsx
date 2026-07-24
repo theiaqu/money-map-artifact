@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, Landmark, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiIncomeSectionPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletionSweep, feederPushSlide, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletionSweep, feederPushSlide, coreSpendRefillSweep, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -978,6 +978,14 @@ export default function Card({
     // layer-in-progress) instead of the live simulation. Falls back to the sim.
     const p = progressOverride?.[node.id] ?? progressAt(dataset, mode, node.id, fillNow);
     const reached = node.kind === 'goal' && isReached(dataset, mode, node.id, fillNow);
+    // Core/Spend refill overlay, keyed to the monthly income clock (one sweep per
+    // deposit, none during the initial fill) — computed on the SAME fillNow the base
+    // fill uses so it stays in lockstep. HOME/onboarding drives the overlay via
+    // refillOverride instead, so only compute this for the live-sim standard case.
+    const refillSweepVal =
+      refillVisual && node.kind === 'account' && refillOverride?.[node.id] === undefined
+        ? coreSpendRefillSweep(dataset, mode, node.id, fillNow)
+        : null;
     // every pbi gate (Text gates / Text gates + backgrounds / Indented) shares the
     // default uniform-pitch rows; the panels/tree are built around these same rows.
     const top = pbiRowTopFor(dataset)[node.id] ?? node.y;
@@ -1008,6 +1016,8 @@ export default function Card({
             refill={refillVisual && node.kind === 'account'}
             now={now}
             refillOverride={node.kind === 'account' ? refillOverride?.[node.id] : undefined}
+            refillW={refillSweepVal?.w}
+            refillOp={refillSweepVal?.op}
             refillMaxMonth={Math.floor(animMonths(dataset, mode))}
             morphRole={node.kind === 'goal' ? 'goals' : node.id === 'core' ? 'bills' : node.id === 'spend' ? 'spend' : undefined}
             perMonth={node.kind === 'account'}

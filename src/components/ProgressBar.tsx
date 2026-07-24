@@ -63,6 +63,8 @@ export default function ProgressBar({
   refill = false,
   now = 0,
   refillOverride,
+  refillW,
+  refillOp,
   refillMaxMonth,
   morphRole,
   perMonth = false,
@@ -75,6 +77,8 @@ export default function ProgressBar({
   refill?: boolean;
   now?: number;
   refillOverride?: number; // HOME flow: drive the refill OVERLAY width (0..1 of the whole bar) from the scrub position instead of the time-based monthly sweep. The overlay leads and the base fill (driven separately) trails it up to 100%.
+  refillW?: number; // live sim: per-month refill overlay width (0..1), keyed to the income-event clock (coreSpendRefillSweep). Supersedes the internal floor(now) sweep — one refill per monthly deposit, none during the initial fill.
+  refillOp?: number; // live sim: paired opacity for refillW.
   refillMaxMonth?: number; // live sim: month index at/after which the monthly refill sweep is suppressed (the freeze month), so the final partial round is dropped and the sequence ends on a completed refill.
   morphRole?: string; // "bills" | "spend" | "goals" — tags the bar for the Monthly-split shared-element morph
   perMonth?: boolean; // account cards (Core/Spend) append a small secondary "per month" after the amount
@@ -84,7 +88,11 @@ export default function ProgressBar({
   // steady visible opacity, and spans the WHOLE bar (0..1) so it can sweep up to
   // full and lead the base fill. Standard app: the faint per-month time sweep.
   const driven = refillOverride !== undefined;
-  const sweep = refillSweep(now, refillMaxMonth ?? Infinity);
+  // Prefer the income-event-keyed sweep (refillW/refillOp from coreSpendRefillSweep):
+  // one refill per monthly deposit, none during the initial fill. Fall back to the old
+  // internal floor(now) per-month sweep only if no keyed value was supplied.
+  const keyed = refillW !== undefined;
+  const sweep = keyed ? { w: refillW as number, op: refillOp ?? 0 } : refillSweep(now, refillMaxMonth ?? Infinity);
   const overlayW = driven ? Math.max(0, Math.min(1, refillOverride)) : sweep.w * p;
   const overlayOp = driven ? REFILL_DRIVEN_OPACITY : sweep.op;
   return (

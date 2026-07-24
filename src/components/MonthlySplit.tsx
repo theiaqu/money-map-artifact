@@ -502,54 +502,24 @@ export default function MonthlySplit({
               const PADT = 20;
               const PADB = 30;
               const pts = flow.filter((f) => isFinite(f.months));
-              // ---- ADAPTIVE x-axis — frozen by default, ZOOMS IN when goals bunch
-              //      (Figma 1146:3797) ----
-              // Normally the time axis stays FROZEN to the dataset's default allocation, so
-              // dragging the slider just moves the points along it (bunching/clustering as
-              // before). But once the goals compress into the left of the plot — dragging
-              // toward Goals makes them all complete much sooner than the default, so ~3+
-              // markers pile together — we ZOOM the axis into that compressed time range so
-              // the goals spread back out and stay legible, updating the ≤4 year labels to
-              // the new range. `fill` (how much of the frozen span the live goals occupy)
-              // drives the zoom; it depends ONLY on the data (not on rendered positions), so
-              // there's no feedback loop with the clustering and it can't oscillate.
-              // Dragging back toward Spend grows the range past the frozen span again → we
-              // hold the frozen axis (points clamp/bunch at the right edge as before).
+              // ---- x-axis — FROZEN by default; rescales ONLY once a goal reaches the
+              //      right edge (Figma 1146:3797) ----
+              // The time axis stays FROZEN to the dataset's default allocation, so dragging
+              // the slider just slides the goals ALONG it. As goals get closer together the
+              // FIRST response is spacing — the clustering/fan-out below tightens/clumps them
+              // in place — NOT an axis change. The axis rescale is only a FALLBACK: once the
+              // furthest goal would reach/cross the plot's RIGHT edge (dragging toward Spend
+              // makes goals complete later, pushing the last one outward), the axis EXPANDS
+              // just enough to hold that goal inside with a small marker-radius margin, so
+              // nothing ever renders outside the plot. `liveLastM` moves continuously with
+              // the slider, so `max(...)` ramps smoothly (points glide, no snap), and the ≤4
+              // year labels update to the (possibly expanded) range.
               const frozenMaxM = axisRef.maxM;
               const liveLastM = pts.length ? Math.max(1, ...pts.map((p) => p.months)) : 1;
-              const zoomedMaxM = liveLastM * PROJECT_HEADROOM; // range that just fits the furthest goal + headroom
-              // Crowding gate: measure how tightly the closest THREE consecutive goals pack
-              // on the FROZEN axis (a fixed reference, so the gate depends only on the data —
-              // never on the zoom we apply — and therefore can't oscillate). When ~3 markers
-              // crowd into a small window, ramp `zoomT` up to fit the live range and spread
-              // them back out; when they're comfortably apart, stay on the frozen axis.
-              const PLOTW = GW - PADL - PADR;
-              const xf = pts.map((p) => PADL + (Math.min(p.months, frozenMaxM) / frozenMaxM) * PLOTW);
-              let tight3 = Infinity;
-              for (let i = 2; i < xf.length; i++) tight3 = Math.min(tight3, xf[i] - xf[i - 2]);
-              // px thresholds scale with the (now full-width) plot so the bunching
-              // sensitivity is unchanged from the previous narrower plot (PLOTW 288→354).
-              const TIGHT3_NONE = 57; // 3 goals spanning ≥57px read fine → frozen axis
-              const TIGHT3_FULL = 32; // 3 goals within 32px are crowded → full zoom to fit
-              const zoomT =
-                xf.length >= 3
-                  ? Math.max(0, Math.min(1, (TIGHT3_NONE - tight3) / (TIGHT3_NONE - TIGHT3_FULL)))
-                  : 0;
-              // AXIS RECALIBRATION — goals must NEVER fall off the chart (Figma 1146:3797):
-              //   • zoomedMaxM > frozenMaxM  → the furthest goal would push toward/off the
-              //     RIGHT edge (dragging toward Spend makes goals complete later). EXPAND the
-              //     axis to fit them + projection headroom, so every marker "bounces back"
-              //     inside the plot. Because liveLastM moves continuously with the slider,
-              //     this ramps smoothly (no snap) and holds the furthest goal ~inside the
-              //     headroom boundary rather than letting it clamp/pile at the edge.
-              //   • zoomedMaxM ≤ frozenMaxM  → the goals fit within the frozen span; keep the
-              //     frozen axis so points slide along it, and only zoom IN (via zoomT) when
-              //     ~3 markers bunch, spreading them back out.
-              // Both branches meet continuously at the crossover (zoomedMaxM == frozenMaxM).
-              const maxM =
-                zoomedMaxM > frozenMaxM
-                  ? zoomedMaxM
-                  : frozenMaxM + (zoomedMaxM - frozenMaxM) * zoomT;
+              // hold the furthest goal at ~1/EDGE_MARGIN of the plot once it reaches the edge
+              // (leaving room for the marker circle so it stays fully on-chart).
+              const EDGE_MARGIN = 1.1;
+              const maxM = Math.max(frozenMaxM, liveLastM * EDGE_MARGIN);
               const maxNW = axisRef.maxNW;
               const xOf = (m: number) => PADL + (Math.min(m, maxM) / maxM) * (GW - PADL - PADR);
               const yOf = (nw: number) => GH - PADB - (Math.min(nw, maxNW) / maxNW) * (GH - PADT - PADB);

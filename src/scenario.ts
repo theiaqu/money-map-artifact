@@ -950,6 +950,37 @@ export function feederDepletionSweep(dataset: Dataset, mode: Mode, now: number, 
   return best;
 }
 
+/* Core/Spend "refill visual" monthly sweep — the soft left→right topping-up overlay
+   that plays ONCE PER MONTHLY INCOME EVENT, in lockstep with the deposit reaching this
+   card (the SAME income clock + `fillOffset` the fill itself uses, so it fires exactly
+   when the month's money lands — like every other flow now that income is one deposit a
+   month). Crucially the FIRST deposit is the card's INITIAL fill, so it shows NO refill
+   overlay: the base bar simply fills that first month, and only from the 2nd month on
+   does each deposit sweep an overlay 0→1 over one fill span, then fade before the next.
+   Pass the SAME `now` the fill uses (fillNow = now − fillDelay); `fillOffset` is applied
+   here so the sweep tracks the deposit's arrival at the card and never overlaps the
+   initial fill. Returns the overlay width fraction (0..1) + opacity. */
+export const CORE_SPEND_REFILL_PEAK_OPACITY = 0.3; // subtle, matching the depletion overlay
+export function coreSpendRefillSweep(dataset: Dataset, mode: Mode, id: string, now: number): { w: number; op: number } {
+  const sc = getScenario(dataset, mode);
+  const events = sc.eventActive;
+  const off = fillOffset(mode, id); // when a monthly deposit reaches (touches) this card
+  const span = FILL_SPAN_BY_MODE[mode]; // sweep duration = the per-event fill ramp
+  const fadeTail = Math.max(0.05, FEEDER_EVENT_SPACING - span);
+  let best = { w: 0, op: 0 };
+  for (let i = 0; i < sc.income.length; i++) {
+    const t = sc.income[i];
+    if (t > now + 1e-9) break;
+    if (i === 0) continue; // first deposit = the card's initial fill → no refill overlay
+    if (!events[t]?.has('c-income-monthly')) continue; // stop once income stops flowing
+    const local = now - (t + off);
+    if (local < 0) continue;
+    if (local <= span) best = { w: smootherstep(clamp(local / span)), op: CORE_SPEND_REFILL_PEAK_OPACITY }; // newest sweep wins
+    else best = { w: 1, op: CORE_SPEND_REFILL_PEAK_OPACITY * (1 - clamp((local - span) / fadeTail)) };
+  }
+  return best;
+}
+
 /* pbi "Account-style card" income PUSH/SLIDE — the alternative to the refill-overlay
    depletion (feederDepletionSweep). On each income fire a NEW income bar slides in
    from the RIGHT and pushes the current bar OUT to the LEFT, replacing it. Keyed to

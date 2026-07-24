@@ -1629,6 +1629,9 @@ body {
   height: 18px;
   border-radius: 50%;
   background: #ffffff;
+  /* the ONE intentional drop shadow kept in the flat design: the Spend/Goals dragger
+     knob, so it reads as a lifted control above the track. */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
