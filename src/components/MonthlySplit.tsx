@@ -630,16 +630,18 @@ export default function MonthlySplit({
                 return cl.map((p, i) => ({ ...p, x: clampX(ax + offs[i].dx), y: clampY(ay + offs[i].dy), clustered: true }));
               });
               return (
+                /* ONE unified card (Figma 1288:17025): the net-worth graph sits at the top,
+                   a full-width divider separates it from the year-grouped calendar list that
+                   flows below — all inside a single rounded card boundary (no per-row cards). */
                 <div className="msplit-nw">
-                  <div className="msplit-nw-card">
-                    {/* clicking anywhere in the plot that ISN'T a goal circle DESELECTS
-                        the current goal (the point buttons stopPropagation, so they still
-                        select / switch selection). */}
-                    <div
-                      className="msplit-nw-plot"
-                      style={{ width: GW, height: GH }}
-                      onClick={() => setSelectedGoal(null)}
-                    >
+                  {/* clicking anywhere in the plot that ISN'T a goal circle DESELECTS the
+                      current goal (the point buttons stopPropagation, so they still select /
+                      switch selection). */}
+                  <div
+                    className="msplit-nw-plot"
+                    style={{ width: GW, height: GH }}
+                    onClick={() => setSelectedGoal(null)}
+                  >
                       <svg width={GW} height={GH} viewBox={`0 0 ${GW} ${GH}`} fill="none" className="msplit-nw-svg">
                         {areaPath && <path d={areaPath} fill="url(#nwfill)" />}
                         <defs>
@@ -695,11 +697,14 @@ export default function MonthlySplit({
                           </button>
                         );
                       })}
-                    </div>
                   </div>
 
-                  {/* ---- calendar list, stacked UNDERNEATH the graph. The selected
-                       goal's row is highlighted + smooth-scrolled into view. ---- */}
+                  {/* full-width divider between the graph and the calendar list (Figma
+                      1288:17044) — one card, two stacked sections. */}
+                  <div className="msplit-nw-divider" aria-hidden="true" />
+
+                  {/* ---- calendar list, flowing UNDERNEATH the graph INSIDE the same card.
+                       The selected goal's row is highlighted + smooth-scrolled into view. ---- */}
                   <div className="msplit-goals msplit-goals--under">
                     {yearGroups.map((g) => (
                       <div className="msplit-goals-group" key={g.label}>

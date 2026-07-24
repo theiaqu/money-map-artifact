@@ -1664,19 +1664,21 @@ body {
   flex-direction: column;
   gap: 13px;
 }
-/* the calendar list when stacked UNDERNEATH the net-worth graph (default combined
-   view) — a touch of separation from the graph card above it. */
+/* the calendar list when it flows UNDERNEATH the net-worth graph INSIDE the same
+   unified card (Figma 1288:17025): flush rows (no per-row cards), padded so the year
+   headers + rows sit comfortably below the divider. */
 .msplit-goals--under {
-  margin-top: 6px;
+  gap: 0;
+  padding: 8px 0 4px;
 }
 .msplit-goals-group {
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 0;
 }
-.msplit-goals-group + .msplit-goals-group { margin-top: 20px; }
 /* year header — matches Figma 1146:3509 (Heading/Size-S 20px, semibold, black,
-   line-height 24) rather than the previous oversized 28px. */
+   line-height 24) rather than the previous oversized 28px. Inside the unified card it
+   aligns with the row padding (12px) and gets a little breathing room above. */
 .msplit-goals-year {
   font-family: var(--font-family);
   font-size: 20px;
@@ -1684,23 +1686,47 @@ body {
   line-height: 24px;
   color: #000000;
 }
+/* standalone list (non-combined views) keeps its own row gap + separation */
+.msplit-goals:not(.msplit-goals--under) .msplit-goal {
+  background: #ffffff;
+  border-radius: 16px;
+}
+.msplit-goals:not(.msplit-goals--under) .msplit-goals-group { gap: 13px; }
+.msplit-goals:not(.msplit-goals--under) .msplit-goals-group + .msplit-goals-group { margin-top: 20px; }
 .msplit-goal {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #ffffff;
-  border-radius: 16px;
+  background: transparent;
   padding: 16px 12px;
   box-shadow: none;
   border: 2px solid transparent;
   scroll-margin: 24px; /* leave breathing room when scrolled into view */
   transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
+/* inside the unified card: rows are flush with a hairline between consecutive rows /
+   year groups (a clean in-card list, Figma 1288:17025). */
+.msplit-goals--under .msplit-goals-year {
+  padding: 12px 12px 4px;
+}
+.msplit-goals--under .msplit-goals-group + .msplit-goals-group { margin-top: 0; }
+/* hairline only between consecutive rows within a year group (never directly under a
+   year header, which already separates groups via its own spacing). */
+.msplit-goals--under .msplit-goal + .msplit-goal {
+  border-top: 1px solid #f1f1f1;
+}
 /* the goal currently selected on the net-worth graph — emphasized in the list and
    smooth-scrolled into view (see rowRefs effect in MonthlySplit). */
 .msplit-goal--sel {
   border-color: #d17ea3;
   background: #fdf4f8;
+}
+/* inside the unified card, a flush selected row reads as a full-bleed tint (no card
+   ring) with a pink left accent instead of an all-around border. */
+.msplit-goals--under .msplit-goal--sel {
+  border-color: transparent;
+  background: #fdf4f8;
+  box-shadow: inset 3px 0 0 #d17ea3;
 }
 .msplit-goal-time {
   width: 60px;
@@ -1893,24 +1919,32 @@ body {
   height: 32px;
 }
 
-/* ---- (c) Net worth graph (Figma 1099:15988) ---- */
+/* ---- (c) Net worth graph + calendar list in ONE unified card (Figma 1288:17025) ----
+   A single rounded card holds the "Goals accounts over time" graph at the top, a full-
+   width divider, then the year-grouped calendar list beneath — one outer boundary, no
+   per-row cards, no drop shadow. */
 .msplit-nw {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-.msplit-nw-card {
   background: #ffffff;
+  border: 1px solid #ececec;
   border-radius: 16px;
-  /* no horizontal padding: the plot fills the full card width so the net-worth
-     line runs edge-to-edge (Figma 1146:3511). overflow:hidden clips the line's
-     bleed + any steep projection cleanly at the rounded card edges. */
-  padding: 0;
+  /* clips the edge-to-edge net-worth line + any steep projection bleed cleanly at the
+     rounded card corners, and keeps the graph/list flush to the card edges. */
   overflow: hidden;
   box-shadow: none;
 }
 .msplit-nw-plot {
   position: relative;
+  /* the plot fills the full card width so the net-worth line runs edge-to-edge
+     (Figma 1146:3511); the card's overflow:hidden clips the 1px border overlap. */
+}
+/* full-width hairline dividing the graph from the calendar list (Figma 1288:17044) */
+.msplit-nw-divider {
+  height: 1px;
+  width: 100%;
+  background: #ececec;
+  flex-shrink: 0;
 }
 /* chart title sitting INSIDE the graph, top-left (Figma 1146:3526) */
 .msplit-nw-title {
