@@ -729,7 +729,7 @@ export default function MonthlySplit({
                               <div className="msplit-goal-main">
                                 <div className="msplit-goal-info">
                                   <div className="msplit-goal-name">
-                                    <Icon size={16} strokeWidth={1.75} color="#111" />
+                                    <Icon size={16} strokeWidth={1.75} color="#191919" />
                                     <span>{row.title}</span>
                                   </div>
                                   <span className="msplit-goal-amt">Goal: {money(row.target)}</span>

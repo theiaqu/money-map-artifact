@@ -1704,17 +1704,13 @@ body {
   scroll-margin: 24px; /* leave breathing room when scrolled into view */
   transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
-/* inside the unified card: rows are flush with a hairline between consecutive rows /
-   year groups (a clean in-card list, Figma 1288:17025). */
+/* inside the unified card the rows are FLUSH with NO per-item dividers — the Figma
+   list (1288:17025 / detailed item 1146:3528) separates items by their padding only, so
+   the year header provides group separation and each row's px-12/py-16 does the rest. */
 .msplit-goals--under .msplit-goals-year {
   padding: 12px 12px 4px;
 }
 .msplit-goals--under .msplit-goals-group + .msplit-goals-group { margin-top: 0; }
-/* hairline only between consecutive rows within a year group (never directly under a
-   year header, which already separates groups via its own spacing). */
-.msplit-goals--under .msplit-goal + .msplit-goal {
-  border-top: 1px solid #f1f1f1;
-}
 /* the goal currently selected on the net-worth graph — emphasized in the list and
    smooth-scrolled into view (see rowRefs effect in MonthlySplit). */
 .msplit-goal--sel {
@@ -1742,6 +1738,7 @@ body {
   font-weight: 600;
   line-height: 24px;
   color: #000000;
+  margin-bottom: -4px; /* Figma 1146:3531 mb-[-4px]: tuck the unit up under the value */
 }
 .msplit-goal-time-unit {
   font-family: var(--font-family);
@@ -1770,7 +1767,7 @@ body {
   gap: 6px;
   font-family: var(--font-family);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 450; /* Body/Small/Regular (Figma 1146:3537) */
   color: #000000;
 }
 .msplit-goal-name svg {
@@ -1784,13 +1781,14 @@ body {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
-  line-height: 1.3;
+  line-height: 20px; /* Body/Line Height S (Figma 1146:3537) */
   word-break: break-word;
 }
 .msplit-goal-amt {
   font-family: var(--font-family);
   font-size: 16px;
   font-weight: 600;
+  line-height: 24px; /* Body/Line Height M (Figma 1146:3538) */
   color: #111111;
 }
 .msplit-goal-date {
