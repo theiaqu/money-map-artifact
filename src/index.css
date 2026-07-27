@@ -1711,21 +1711,24 @@ body {
      no gaps in the padding between rows. */
   top: -16px;
   bottom: -16px;
-  width: 1.5px;
+  width: 4px; /* match the 4px net-worth chart line (Figma 1387:5646 rail stroke) */
+  border-radius: 2px;
   background: #e4e4e4;
 }
 /* the timeline begins at the first dot's centre and ends at the last dot's centre —
    no overshoot above the first dot or below the last. */
 .msplit-goal:first-child .msplit-goal-railline { top: 50%; }
 .msplit-goal:last-child .msplit-goal-railline { bottom: 50%; }
-/* gray icon dot (Figma 1288:17048 — ~26px, 16px glyph) sitting on top of the rail. */
+/* pink icon dot sitting on top of the rail — reconciled to match the chart markers
+   (Figma 1387:5644 uses Secondary/Pink/Petal): same glyph, same pink circle, same 28px
+   size so the timeline dots read as the SAME element as the graph circles. */
 .msplit-goal-dot {
   position: relative;
   z-index: 1;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #e4e4e4;
+  background: #eebed4;
   display: grid;
   place-items: center;
   transition: background 0.2s ease;

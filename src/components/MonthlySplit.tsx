@@ -559,6 +559,12 @@ export default function MonthlySplit({
               const edgeY = yTop + slope * (edgeX - xLast);
               const hasProj = pts.length > 0 && edgeX > xLast + 0.5;
               const projPath = hasProj ? `M ${xLast.toFixed(1)} ${yTop.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
+              // area fill hugs the solid line, THEN the projection, then drops to the
+              // baseline at the right edge — so the gray gradient sits under the whole
+              // curve with no abrupt diagonal drop-off at the last goal (Figma 1404:5845).
+              const areaPath = pts.length
+                ? `${linePath}${hasProj ? ` L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : ''} L ${edgeX.toFixed(1)} ${(GH - PADB).toFixed(1)} L ${x0.toFixed(1)} ${(GH - PADB).toFixed(1)} Z`
+                : '';
               // x-axis ticks: TODAY at the origin + each January boundary within range
               const allTicks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
               for (let m = 1; m <= Math.ceil(maxM); m++) {
@@ -627,17 +633,24 @@ export default function MonthlySplit({
                     style={{ width: GW, height: GH }}
                     onClick={() => setSelectedGoal(null)}
                   >
-                      {/* Figma 1387:5626: the net-worth curve is a flat GRAY line with NO
-                          area fill (the earlier pink line + gradient fill is gone); the pink
-                          now lives only in the goal markers riding the line. */}
+                      {/* Figma 1387:5626: a flat GRAY 4px net-worth curve with a soft gray
+                          gradient area fill fading from the line down to the baseline (Figma
+                          1404:5845). The pink lives only in the goal markers riding the line. */}
                       <svg width={GW} height={GH} viewBox={`0 0 ${GW} ${GH}`} fill="none" className="msplit-nw-svg">
-                        <path d={linePath} stroke="#d9d9d9" strokeWidth={2} strokeLinecap="round" />
+                        <defs>
+                          <linearGradient id="nwfill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#d9d9d9" stopOpacity="0.6" />
+                            <stop offset="100%" stopColor="#d9d9d9" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        {areaPath && <path d={areaPath} fill="url(#nwfill)" />}
+                        <path d={linePath} stroke="#e4e4e4" strokeWidth={4} strokeLinecap="round" />
                         {projPath && (
                           <path
                             className="msplit-nw-proj"
                             d={projPath}
-                            stroke="#d9d9d9"
-                            strokeWidth={2}
+                            stroke="#e4e4e4"
+                            strokeWidth={4}
                             strokeLinecap="round"
                             fill="none"
                           />
@@ -707,7 +720,7 @@ export default function MonthlySplit({
                           <div className="msplit-goal-rail">
                             <span className="msplit-goal-railline" aria-hidden="true" />
                             <span className="msplit-goal-dot">
-                              <Icon size={16} strokeWidth={1.75} color={sel ? '#ffffff' : '#191919'} />
+                              <Icon size={16} strokeWidth={2} color={sel ? '#ffffff' : '#191919'} />
                             </span>
                           </div>
                           <div className="msplit-goal-main">
