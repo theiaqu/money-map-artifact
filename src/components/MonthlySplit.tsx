@@ -89,7 +89,7 @@ function smoothPath(pts: { x: number; y: number }[]): string {
 }
 
 // How the GOALS section under the monthly split is represented:
-//  • 'networth' — (default) the "Goals accounts over time" net-worth graph on top
+//  • 'networth' — (default) the "Goals net worth over time" net-worth graph on top
 //    with the year-grouped calendar list stacked UNDERNEATH it (Figma 1146:3465).
 //    Selecting a goal on the graph smooth-scrolls to + highlights its row in the list.
 //  • 'split'    — the "Like our income split" contribution-card waterfall (Figma 1079:12915).
@@ -474,7 +474,7 @@ export default function MonthlySplit({
             </div>
           )}
 
-          {/* ---- (a) DEFAULT combined view — "Goals accounts over time" net-worth graph
+          {/* ---- (a) DEFAULT combined view — "Goals net worth over time" net-worth graph
                on top + the year-grouped calendar list stacked UNDERNEATH (Figma 1146:3465).
                The axes are FIXED (axisRef), so moving the Spend↔Goals slider slides the
                goal points ALONG the graph (and they bunch when close) without rescaling
@@ -559,12 +559,6 @@ export default function MonthlySplit({
               const edgeY = yTop + slope * (edgeX - xLast);
               const hasProj = pts.length > 0 && edgeX > xLast + 0.5;
               const projPath = hasProj ? `M ${xLast.toFixed(1)} ${yTop.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
-              // area fill hugs the solid line, THEN the projection, then drops to the
-              // baseline at the right edge — so there's no abrupt diagonal drop-off at
-              // the last goal. Falls back to a straight top when there's no projection room.
-              const areaPath = pts.length
-                ? `${linePath}${hasProj ? ` L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : ''} L ${edgeX.toFixed(1)} ${(GH - PADB).toFixed(1)} L ${x0.toFixed(1)} ${(GH - PADB).toFixed(1)} Z`
-                : '';
               // x-axis ticks: TODAY at the origin + each January boundary within range
               const allTicks: { x: number; label: string }[] = [{ x: xOf(0), label: 'TODAY' }];
               for (let m = 1; m <= Math.ceil(maxM); m++) {
@@ -633,29 +627,25 @@ export default function MonthlySplit({
                     style={{ width: GW, height: GH }}
                     onClick={() => setSelectedGoal(null)}
                   >
+                      {/* Figma 1387:5626: the net-worth curve is a flat GRAY line with NO
+                          area fill (the earlier pink line + gradient fill is gone); the pink
+                          now lives only in the goal markers riding the line. */}
                       <svg width={GW} height={GH} viewBox={`0 0 ${GW} ${GH}`} fill="none" className="msplit-nw-svg">
-                        {areaPath && <path d={areaPath} fill="url(#nwfill)" />}
-                        <defs>
-                          <linearGradient id="nwfill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#eebed4" stopOpacity="0.28" />
-                            <stop offset="100%" stopColor="#eebed4" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <path d={linePath} stroke="#e3a7c4" strokeWidth={2} strokeLinecap="round" />
+                        <path d={linePath} stroke="#d9d9d9" strokeWidth={2} strokeLinecap="round" />
                         {projPath && (
                           <path
                             className="msplit-nw-proj"
                             d={projPath}
-                            stroke="#e3a7c4"
+                            stroke="#d9d9d9"
                             strokeWidth={2}
                             strokeLinecap="round"
                             fill="none"
                           />
                         )}
                       </svg>
-                      {/* chart title INSIDE the card, top-left (Figma 1146:3526):
+                      {/* chart title INSIDE the card, top-left (Figma 1387:5639):
                           12px medium, secondary gray (#7d7d7d). */}
-                      <span className="msplit-nw-title">Goals accounts over time</span>
+                      <span className="msplit-nw-title">Goals net worth over time</span>
                       {/* x-axis labels: the ≤4 range labels (TODAY + the January years
                           within the — possibly rescaled — range) are laid out EVENLY across
                           the full width (Figma 1146:3513, justify-between + 16px inset), so
@@ -695,16 +685,16 @@ export default function MonthlySplit({
                   <div className="msplit-nw-divider" aria-hidden="true" />
 
                   {/* ---- goals timeline list, flowing UNDERNEATH the graph INSIDE the same
-                       card (Figma 1288:17025). A FLAT list (no year headers): each row is a
-                       gray icon "dot" on a connecting vertical rail (left), with "In {duration}"
-                       (title) + the goal name (subtitle) on the right — no amount / date pill.
-                       The selected goal's row is tinted + its dot turns pink, and it is
-                       smooth-scrolled into view. ---- */}
+                       card (Figma 1387:5641). A FLAT list (no year headers): each row is a
+                       gray icon "dot" on a connecting vertical rail (left); a center block
+                       with the goal NAME (bold) above a date pill (completion month) + an
+                       amount pill (goal value); and the time-to-fund on the right as a big
+                       number + unit ("5" / "months"). The selected goal's row is tinted + its
+                       dot turns pink, and it is smooth-scrolled into view. ---- */}
                   <div className="msplit-goals msplit-goals--under">
-                    {steps.map((row) => {
+                    {flow.map((row) => {
                       const Icon = goalIcon(row.title);
                       const d = durParts(row.months);
-                      const when = d.unit ? `In ${d.value} ${d.unit}` : 'Someday';
                       const sel = row.id === selectedGoal;
                       return (
                         <div
@@ -720,9 +710,16 @@ export default function MonthlySplit({
                               <Icon size={16} strokeWidth={1.75} color={sel ? '#ffffff' : '#191919'} />
                             </span>
                           </div>
-                          <div className="msplit-goal-text">
-                            <span className="msplit-goal-when">{when}</span>
-                            <span className="msplit-goal-name2">{row.title}</span>
+                          <div className="msplit-goal-main">
+                            <span className="msplit-goal-name">{row.title}</span>
+                            <div className="msplit-goal-pills">
+                              <span className="msplit-goal-pill msplit-goal-pill--date">{row.date}</span>
+                              <span className="msplit-goal-pill msplit-goal-pill--amt">{money(row.target)}</span>
+                            </div>
+                          </div>
+                          <div className="msplit-goal-dur">
+                            <span className="msplit-goal-dur-val">{d.value}</span>
+                            {d.unit && <span className="msplit-goal-dur-unit">{d.unit}</span>}
                           </div>
                         </div>
                       );

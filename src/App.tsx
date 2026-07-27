@@ -342,7 +342,7 @@ const MONTHLY_BG_OPTS: { id: MonthlyBg; label: string }[] = [
 ];
 
 // How the GOALS section under the monthly-split graphic is represented:
-// 'networth' = (default) the "Goals accounts over time" net-worth graph on TOP with
+// 'networth' = (default) the "Goals net worth over time" net-worth graph on TOP with
 //   the year-grouped calendar list stacked UNDERNEATH it (Figma 1146:3465); selecting
 //   a goal on the graph smooth-scrolls to + highlights its row in the list. Points move
 //   live along a FIXED axis as the Spend↔Goals slider drags, bunching when they get close;

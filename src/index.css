@@ -1731,30 +1731,77 @@ body {
   transition: background 0.2s ease;
 }
 .msplit-goal--sel .msplit-goal-dot { background: #d17ea3; }
-/* right side: "In {duration}" title + goal-name subtitle (Figma 1288:17051). Capped
-   near the Figma text width (~179px) so long names wrap here, leaving the right open. */
-.msplit-goal-text {
+/* center block: goal NAME (bold) above a pill row (Figma 1387:5647). Flexes to fill
+   the space between the rail and the duration column; the name wraps (no truncation). */
+.msplit-goal-main {
+  flex: 1 0 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  max-width: 180px;
 }
-.msplit-goal-when {
+.msplit-goal-name {
   font-family: var(--font-family);
   font-size: 16px;
-  font-weight: 600;
-  line-height: 24px; /* Body/Line Height M (Figma 1288:17053) */
-  color: #111111;
-}
-.msplit-goal-name2 {
-  font-family: var(--font-family);
-  font-size: 14px;
-  font-weight: 450; /* Body/Small/Regular (Figma 1288:17055) */
-  line-height: 20px; /* Body/Line Height S */
+  font-weight: 600; /* Body/Medium/Emphasized (Figma 1387:5651) */
+  line-height: 24px;
   color: #000000;
   white-space: normal;
   word-break: break-word;
+}
+/* date + amount pills under the goal name (Figma 1387:5728) */
+.msplit-goal-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.msplit-goal-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* completion month — solid pink pill, dark text (Figma 1387:5714) */
+.msplit-goal-pill--date {
+  background: #eebed4;
+  color: #111111;
+}
+/* goal amount — light pink pill, petal-dark text (Figma 1387:5726) */
+.msplit-goal-pill--amt {
+  background: #fdf6f9;
+  color: #a17187;
+}
+/* right column: time-to-fund as a big number + unit (Figma 1387:5729) */
+.msplit-goal-dur {
+  flex-shrink: 0;
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.msplit-goal-dur-val {
+  font-family: var(--font-family);
+  font-size: 16px;
+  font-weight: 600; /* Body/Medium/Emphasized (Figma 1387:5731) */
+  line-height: 24px;
+  color: #000000;
+}
+.msplit-goal-dur-unit {
+  font-family: var(--font-family);
+  font-size: 14px;
+  font-weight: 450; /* Body/Small/Regular (Figma 1387:5732) */
+  line-height: 20px;
+  color: #adadad;
 }
 /* section heading shared by the income-split + net-worth goals views */
 .msplit-goals-h {
@@ -1866,15 +1913,15 @@ body {
   height: 32px;
 }
 
-/* ---- (c) Net worth graph + calendar list in ONE unified card (Figma 1288:17025) ----
-   A single rounded card holds the "Goals accounts over time" graph at the top, a full-
-   width divider, then the year-grouped calendar list beneath — one outer boundary, no
+/* ---- (c) Net worth graph + calendar list in ONE unified card (Figma 1387:5625) ----
+   A single rounded card holds the "Goals net worth over time" graph at the top, a full-
+   width divider, then the flat goals timeline list beneath — one outer boundary, no
    per-row cards, no drop shadow. */
 .msplit-nw {
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid #ececec;
+  border: 1px solid #e4e4e4;
   border-radius: 16px;
   /* clips the edge-to-edge net-worth line + any steep projection bleed cleanly at the
      rounded card corners, and keeps the graph/list flush to the card edges. */
@@ -1890,7 +1937,7 @@ body {
 .msplit-nw-divider {
   height: 1px;
   width: 100%;
-  background: #ececec;
+  background: #e4e4e4;
   flex-shrink: 0;
 }
 /* chart title sitting INSIDE the graph, top-left (Figma 1146:3526) */
@@ -1945,9 +1992,10 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #eebede; /* Figma 1288:17034 Secondary/Pink/Petal */
-  border: 2px solid #ffffff;
-  padding: 0;
+  background: #eebed4; /* Figma 1387:5787 Secondary/Pink/Petal */
+  border: none;
+  padding: 6px;
+  box-sizing: border-box;
   cursor: pointer;
   z-index: 1;
   /* left/top are transitioned so points GLIDE to their new spot as the Spend↔Goals
@@ -1955,17 +2003,15 @@ body {
   transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1), top 0.3s cubic-bezier(0.22, 1, 0.36, 1),
     width 0.18s ease, height 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
-/* clumped markers (close-together goals): a crisper white ring + a touch more
-   shadow so overlapping circles stay separable, and they sit above lone points. */
+/* clumped markers (close-together goals) simply overlap as flat pink circles (Figma
+   1387:5791/5793); they sit above lone points so the top one stays fully tappable. */
 .msplit-nw-pt--clustered {
-  border-width: 2.5px;
   z-index: 3;
 }
 .msplit-nw-pt--on {
   width: 36px;
   height: 36px;
   background: #d17ea3;
-  border-width: 3px;
   z-index: 6;
 }
 .msplit-nw-detail {
