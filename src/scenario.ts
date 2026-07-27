@@ -623,8 +623,29 @@ export const armTravelMonths = (mode: Mode): number => BRANCH_PACING[mode].trave
 // before the next month's fire. Capped at 80% of the spacing so the pulse fully
 // reaches the gate (finishing its depletion sweep) before the next deposit departs.
 export const FEEDER_EVENT_SPACING = 1.0;
-export const feederTravelMonths = (mode: Mode): number =>
+
+// FULL visual travel of the reversed feeder comet (income card → income gate) and
+// of the Direct-deposit bar's depletion/push overlay — how long the deposit pulse
+// takes to sweep the whole card→gate arm end-to-end.
+export const feederCometTravelMonths = (mode: Mode): number =>
   Math.min(armTravelMonths(mode) * 2, FEEDER_EVENT_SPACING * 0.8);
+
+// CAUSAL HAND-OFF point: how long AFTER an income event the deposit has visibly
+// REACHED the income gate — i.e. when the gate→Monthly system is released and the
+// card fills begin (this value feeds `departDelay`, the section-done `gateDelay`,
+// and App's card `fillDelay`, keeping the out-flow + fills in lockstep).
+//
+// The feeder comet is a moving BAND (see pulseDash): its band length is half the
+// arm, so the bright HEAD touches the gate at p = len/(len+band) ≈ 2/3 of the full
+// travel, while the tail keeps sweeping in behind it. Releasing the out-flow at the
+// FULL travel (the old behaviour) therefore left a visible pause — the deposit had
+// clearly landed at the gate ~1/3 of a travel before anything left it. We now hand
+// off at head-arrival, so the out-flow departs essentially the instant the deposit
+// reaches the gate, with the comet's trailing tail overlapping the departing flow
+// for a fluid, immediate continuation. Kept causal (never before the head lands).
+export const FEEDER_HANDOFF_FRACTION = 0.66; // ≈ head-arrival point of the band
+export const feederTravelMonths = (mode: Mode): number =>
+  feederCometTravelMonths(mode) * FEEDER_HANDOFF_FRACTION;
 
 type BranchKind = 'spine' | 'arm';
 // gateDepth = # of near-instant spine hops before this branch departs its event.

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { Check, Lock, LockOpen } from 'lucide-react';
 import { connectorsFor, connectorsCompactFor, connectorsMoneyMapFor, connectorsSkinnyFor, connectorsIconFor, connectorsIconLabeledFor, connectorsConvoFor, connectorsV1For, connectorsCondensedFor, connectorsSheetFor, connectorsIlloFor, connectorsProgressFor, connectorsProgressLockedFor, connectorsProgressGroupedFor, connectorsProgressGrouped2For, connectorsProgressIndentedFor, pbiIndentedPillsFor, PBI_INDENTED_PILL_X, pbiLockDiscsFor, pbiGroupedLockDiscsFor, pbiGrouped2LockDiscsFor, PBI_LOCK_SPINE_X, PBI_GROUPED_SPINE_X, PBI_GROUPED2_RISER_X, PBI_INCOME_GATE_Y, PBI_CARD_LEFT, connectorsPotsFor, connectorsGridFor, gridValuePillsFor, sheetRevealStyle, badgesFor, type BranchStyle, type Connector, type MapStyle } from '../data';
-import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, feederTravelMonths, type Dataset, type Mode } from '../scenario';
+import { animMonths, branchFlow, firstIncomeMonth, isReached, progressAt, sheetGrowWindows, spineTravelMonths, feederTravelMonths, feederCometTravelMonths, type Dataset, type Mode } from '../scenario';
 
 // "Today's money map" — thick pastel ropes keyed by destination branch
 const MM_ROPE = (id: string): string =>
@@ -274,16 +274,20 @@ export default function Connectors({
         })
     : pilledConns;
 
-  // feeder travel span; the whole gate→Monthly system is delayed by it so the
-  // deposit visibly ARRIVES at the gate before the rest of the tree starts flowing.
-  const feederTravel = feederTravelMonths(mode);
-  const incomeDelay = incomeGate ? { departDelay: feederTravel } : undefined;
-  // CAUSAL CARD FILL: same feeder travel the comets are delayed by, applied to the
+  // Two spans for the reversed feeder: the FULL comet travel (how long the deposit
+  // pulse visibly sweeps card→gate) and the shorter HAND-OFF delay (when the pulse's
+  // head has REACHED the gate). The out-flow is released at the hand-off — not the
+  // full travel — so it departs the instant the deposit lands, with the comet's tail
+  // still sweeping in behind it (minimal in→out pause; see feederTravelMonths).
+  const feederCometTravel = feederCometTravelMonths(mode);
+  const feederHandoff = feederTravelMonths(mode);
+  const incomeDelay = incomeGate ? { departDelay: feederHandoff } : undefined;
+  // CAUSAL CARD FILL: same hand-off the out-flow is delayed by, applied to the
   // section-done gate so the waterfall release waits for the (delayed) fills.
-  const gateDelay = incomeGate ? feederTravel : 0;
+  const gateDelay = incomeGate ? feederHandoff : 0;
   // reversed feeder pulse: reuses c-income-monthly's income events (fires every
-  // income cadence) but travels the paced ARM span from card out to the gate.
-  const feederFlows = incomeGate ? branchFlow(dataset, mode, now, 'c-income-monthly', -Infinity, { travel: feederTravel }) : [];
+  // income cadence) but travels the FULL paced span from card out to the gate.
+  const feederFlows = incomeGate ? branchFlow(dataset, mode, now, 'c-income-monthly', -Infinity, { travel: feederCometTravel }) : [];
 
   // Optimizer's appended 3rd gate extends the spine/braces past the 960px Simple
   // canvas, so the SVG (and its viewBox) grows to match the taller Optimizer board

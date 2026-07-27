@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Receipt, CreditCard, Umbrella, PiggyBank, Home, Plane, TrendingUp, Landmark, type LucideIcon } from 'lucide-react';
 import { slimRowTopFor, iconRowTopFor, ICON_LIST_LEFT, iconLabeledRowTopFor, ICON_LABELED_INCOME_LEFT, ICON_LABELED_INCOME_TOP, ICON_LABELED_TILE_LEFT, convoRowTopFor, CONVO_CARD_LEFT, CONVO_INCOME_LEFT, CONVO_INCOME_TOP, v1RowTopFor, V1_CARD_LEFT, condensedRowTopFor, CONDENSED_CARD_LEFT, sheetRowTopFor, sheetRevealMonths, sheetRevealStyle, SHEET_INCOME_LEFT, SHEET_INCOME_TOP, SHEET_ACCT_LEFT, SHEET_GOAL_LEFT, SHEET_GOAL_W, illoRowTopFor, ILLO_INCOME_LEFT, ILLO_INCOME_TOP, ILLO_CARD_LEFT, ILLO_CARD_W, pbiRowTopFor, pbiGroupedRowTopFor, pbiGroupedPanelsFor, pbiIncomeSectionPanelsFor, pbiGrouped2PanelsFor, PBI_CARD_LEFT, PBI_CARD_W, PBI_INCOME_LEFT, PBI_INCOME_TOP, potRowTopFor, POT_CARD_LEFT, POT_CONTAINER_W, gridRowTopFor, GRID_CARD_LEFT, GRID_SPINE_X, GRID_INCOME_CY, GRID_MARKER, type CardNode, type MapStyle } from '../data';
-import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederTravelMonths, feederDepletionSweep, feederPushSlide, coreSpendRefillSweep, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
+import { isReached, progressAt, goalDateLabel, heroHeadline, animMonths, scrubMonthLabel, scrubMonthShort, feederCometTravelMonths, feederDepletionSweep, feederPushSlide, coreSpendRefillSweep, DATASETS, type Dataset, type Mode, type DateMode } from '../scenario';
 import FruitfulLogo from './FruitfulLogo';
 import GraphStrip, { type GraphVariant } from './GraphStrip';
 import PieChart from './PieChart';
@@ -333,8 +333,8 @@ export function IncomeAccountCard({
   // gap (px) held BETWEEN the outgoing + incoming push pills throughout the slide.
   // 0 = the two bars push flush against each other (no gap).
   const PUSH_GAP = 0;
-  const slide = push ? feederPushSlide(dataset, mode, now, feederTravelMonths(mode)) : null;
-  const depSweep = onboarding || push ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederTravelMonths(mode));
+  const slide = push ? feederPushSlide(dataset, mode, now, feederCometTravelMonths(mode)) : null;
+  const depSweep = onboarding || push ? { w: 0, op: 0 } : feederDepletionSweep(dataset, mode, now, feederCometTravelMonths(mode));
   const amount = DATASETS[dataset].incomeAmount;
   const amtLabel = (
     <span className="pbi-bar-amount">{amount}<span className="pbi-bar-amount-suffix"> per month</span></span>
