@@ -2942,7 +2942,7 @@ body.is-dragging-noselect * {
 .pot-plants {
   position: absolute;
   left: 9px;
-  bottom: 60px; /* band bottom sits at the body/rim top edge */
+  bottom: 66px; /* band raised 6px above the body/rim top edge so the plants pop up 6px higher (bases still hidden behind the lip) */
   z-index: 2; /* above the body, behind the lip (rim) */
 }
 .pot-plant {
