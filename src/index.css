@@ -1734,6 +1734,11 @@ body {
   transition: background 0.2s ease;
 }
 .msplit-goal--sel .msplit-goal-dot { background: #d17ea3; }
+/* debt row echoes the chart's debt line: peach rail dot (Secondary/Peach/Peach),
+   deepening to peach-dark when selected (mirrors the debt marker). Only applied
+   when "Show debt separately" is ON (the row gets .msplit-goal--debt). */
+.msplit-goal--debt .msplit-goal-dot { background: #f2d8b8; }
+.msplit-goal--debt.msplit-goal--sel .msplit-goal-dot { background: #d1a883; }
 /* center block: goal NAME (bold) above a pill row (Figma 1387:5647). Flexes to fill
    the space between the rail and the duration column; the name wraps (no truncation). */
 .msplit-goal-main {

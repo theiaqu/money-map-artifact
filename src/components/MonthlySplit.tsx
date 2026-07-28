@@ -541,7 +541,37 @@ export default function MonthlySplit({
               const yTop = yOf(topNW);
               const xLast = pts.length ? xOf(pts[pts.length - 1].months) : x0;
               const spanX = Math.max(1, xLast - x0);
-              const curveY = (x: number) => y0 - (y0 - yTop) * shape((x - x0) / spanX);
+              // ---- "Show debt separately": couple the debt + net-worth curves (Figma 1442:5214) ----
+              // Detect the debt goal (Simple only) and the two shared inflection x's the debt
+              // and net-worth lines pivot around: the FIRST goal completing (debt starts to
+              // pay down) and the debt PAYOFF (debt hits $0 → net-worth growth accelerates).
+              const debtRow = showDebtSeparately ? flow.find((f) => /debt/i.test(f.title) && isFinite(f.months)) : undefined;
+              const debtId = debtRow?.id;
+              const xFirstGoal = pts.length ? xOf(pts[0].months) : x0; // first goal completes here
+              const xDebtPayoff = debtRow ? xOf(debtRow.months) : xLast; // debt reaches $0 here
+              // Net-worth shape:
+              //  • default (debt folded in): ONE gentle, barely-bowed climb (unchanged).
+              //  • debt shown separately: a TWO-SLOPE climb that is GENTLER while the debt is
+              //    still being paid off (up to the payoff x) and STEEPER after — the money
+              //    freed by clearing the debt visibly accelerates net-worth growth. The slope
+              //    change is pinned to the debt-payoff x so it lines up with the debt line.
+              let curveY: (x: number) => number;
+              let finalSlope: number; // dCurveY/dx at xLast → drives the dashed projection angle
+              if (debtRow) {
+                const uInf = Math.max(0.08, Math.min(0.92, (xDebtPayoff - x0) / spanX));
+                const GENTLE = 0.5; // pre-payoff climb accrues at half its proportional share
+                const nwMidFrac = uInf * GENTLE; // net-worth fraction reached at the payoff x
+                const s2 = (1 - nwMidFrac) / (1 - uInf); // steeper post-payoff slope (per unit u)
+                const g = (u: number) => {
+                  const c = Math.max(0, Math.min(1, u));
+                  return c <= uInf ? nwMidFrac * (c / uInf) : nwMidFrac + (1 - nwMidFrac) * ((c - uInf) / (1 - uInf));
+                };
+                curveY = (x: number) => y0 - (y0 - yTop) * g((x - x0) / spanX);
+                finalSlope = -((y0 - yTop) / spanX) * s2;
+              } else {
+                curveY = (x: number) => y0 - (y0 - yTop) * shape((x - x0) / spanX);
+                finalSlope = -((y0 - yTop) / spanX) * (1 + ARCH); // tangent slope at x = xLast
+              }
               // sample the gentle curve densely so smoothPath stays overshoot-free
               const NSAMP = 40;
               const solid = pts.length
@@ -552,16 +582,16 @@ export default function MonthlySplit({
                 : [{ x: x0, y: y0 }];
               const linePath = smoothPath(solid);
               // ---- dashed PROJECTION past the last goal (Figma 1146:3715) ----
-              // Continue the SAME gentle slope from the last goal to the right edge, drawn
+              // Continue the line's FINAL slope from the last goal to the right edge, drawn
               // DASHED so it reads as a forward projection rather than real, funded goals.
-              const slope = -((y0 - yTop) / spanX) * (1 + ARCH); // dCurveY/dx at x = xLast
+              // (When debt is shown separately this is the steeper post-payoff slope.)
               // Continue at the EXACT tangent slope of the solid line's final segment so
               // the dashed projection is a straight, tangent-continuous extension of the
               // goals line (same angle, not a shallower one). We do NOT clamp edgeY — an
               // earlier top/bottom clamp changed the endpoint's y while keeping its x, which
               // FLATTENED the drawn slope. If the projection would exit the top it simply
               // bleeds off and the card's overflow:hidden clips it, preserving the slope.
-              const edgeY = yTop + slope * (edgeX - xLast);
+              const edgeY = yTop + finalSlope * (edgeX - xLast);
               const hasProj = pts.length > 0 && edgeX > xLast + 0.5;
               const projPath = hasProj ? `M ${xLast.toFixed(1)} ${yTop.toFixed(1)} L ${edgeX.toFixed(1)} ${edgeY.toFixed(1)}` : '';
               // area fill hugs the solid line, THEN the projection, then drops to the
@@ -626,31 +656,29 @@ export default function MonthlySplit({
                 return cl.map((p, i) => ({ ...p, x: clampX(ax + offs[i].dx), y: clampY(ay + offs[i].dy), clustered: true }));
               });
               // ---- separate "Debt over time" line (Figma 1442:5214) ----
-              // When the "Show debt separately" config is ON, the debt goal is lifted OUT
-              // of the net-worth markers and drawn as its OWN peach line: it starts at the
-              // amount owed TODAY (on the shared $ y-axis) and eases DOWN to zero at its
-              // payoff month, with its piggy-bank marker riding the debt line at payoff.
-              // The net-worth line/area/projection above are UNCHANGED — this is a pure
-              // overlay, and it only exists here (never in the goals list / other views).
-              const debtRow = showDebtSeparately ? flow.find((f) => /debt/i.test(f.title) && isFinite(f.months)) : undefined;
-              const debtId = debtRow?.id;
+              // When "Show debt separately" is ON the debt goal is lifted OUT of the
+              // net-worth markers and drawn as its OWN peach line modelling a realistic
+              // payoff: it HOLDS FLAT at the amount owed from today until the FIRST goal
+              // completes (xFirstGoal), then slopes DOWN to $0 at its payoff (xDebtPayoff),
+              // where its piggy-bank marker rides the line. The flat→decline hand-off and
+              // the $0 arrival both ease (smoothstep) so the corner reads clean and lines
+              // up with the net-worth line's payoff inflection on the shared $ axis.
               let debtLinePath = '';
               let debtMarker: { x: number; y: number; id: string; title: string } | null = null;
               if (debtRow) {
-                const dxEnd = xOf(debtRow.months); // payoff x (debt reaches $0)
-                const dSpan = Math.max(1, dxEnd - x0);
                 const yOwed = yOf(debtRow.target); // amount owed today, on the shared $ axis
                 const yZero = yOf(0); // == baseline (GH - PADB): debt fully paid off
-                // convex, decelerating payoff: steep at first, flattening toward $0 —
-                // mirrors the Figma peach curve easing down as the debt is cleared.
-                const decay = (u: number) => Math.pow(1 - Math.max(0, Math.min(1, u)), 1.7);
-                const DSAMP = 32;
+                const xFlatEnd = Math.min(xFirstGoal, xDebtPayoff); // debt is held flat until here
+                const declSpan = Math.max(1, xDebtPayoff - xFlatEnd);
+                const smoothstep = (t: number) => { const c = Math.max(0, Math.min(1, t)); return c * c * (3 - 2 * c); };
+                const DSAMP = 44;
                 const dpts = Array.from({ length: DSAMP + 1 }, (_, i) => {
-                  const x = x0 + dSpan * (i / DSAMP);
-                  return { x, y: yOwed + (yZero - yOwed) * (1 - decay((x - x0) / dSpan)) };
+                  const x = x0 + (xDebtPayoff - x0) * (i / DSAMP);
+                  if (x <= xFlatEnd) return { x, y: yOwed }; // flat: still owed in full
+                  return { x, y: yOwed + (yZero - yOwed) * smoothstep((x - xFlatEnd) / declSpan) };
                 });
                 debtLinePath = smoothPath(dpts);
-                debtMarker = { x: clampX(dxEnd), y: clampY(yZero), id: debtRow.id, title: debtRow.title };
+                debtMarker = { x: clampX(xDebtPayoff), y: clampY(yZero), id: debtRow.id, title: debtRow.title };
               }
               return (
                 /* ONE unified card (Figma 1288:17025): the net-worth graph sits at the top,
@@ -779,9 +807,10 @@ export default function MonthlySplit({
                       const Icon = goalIcon(row.title);
                       const d = durParts(row.months);
                       const sel = row.id === selectedGoal;
+                      const isDebt = row.id === debtId; // peach row echoing the debt line (ON only)
                       return (
                         <div
-                          className={`msplit-goal${sel ? ' msplit-goal--sel' : ''}`}
+                          className={`msplit-goal${sel ? ' msplit-goal--sel' : ''}${isDebt ? ' msplit-goal--debt' : ''}`}
                           key={row.id}
                           ref={(el) => {
                             rowRefs.current[row.id] = el;
