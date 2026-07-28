@@ -99,6 +99,7 @@ export default function MonthlySplit({
   dataset,
   onboarding = false,
   goalsView = 'networth',
+  showDebtSeparately = false,
   transitionSeq = false,
   squeezeMs = 1200,
   exitSeq = false,
@@ -107,6 +108,10 @@ export default function MonthlySplit({
   dataset: Dataset;
   onboarding?: boolean;
   goalsView?: GoalsView;
+  // "Goals net worth over time" chart ONLY: when true, the debt goal is drawn as its
+  // OWN peach line (declining from amount-owed today to zero at payoff) overlaid on
+  // the unchanged net-worth line (Figma 1442:5214). Default false = today's behavior.
+  showDebtSeparately?: boolean;
   // When true, this mount was entered via the "Sections" Full→Monthly morph, so the
   // diagram builds itself in a 4-phase choreography off the shared morph clock:
   //   1 SQUEEZE   — the section-band ghosts fly into the take-home card + bars (owned
@@ -620,6 +625,33 @@ export default function MonthlySplit({
                 const offs = clusterOffsets(cl.length);
                 return cl.map((p, i) => ({ ...p, x: clampX(ax + offs[i].dx), y: clampY(ay + offs[i].dy), clustered: true }));
               });
+              // ---- separate "Debt over time" line (Figma 1442:5214) ----
+              // When the "Show debt separately" config is ON, the debt goal is lifted OUT
+              // of the net-worth markers and drawn as its OWN peach line: it starts at the
+              // amount owed TODAY (on the shared $ y-axis) and eases DOWN to zero at its
+              // payoff month, with its piggy-bank marker riding the debt line at payoff.
+              // The net-worth line/area/projection above are UNCHANGED — this is a pure
+              // overlay, and it only exists here (never in the goals list / other views).
+              const debtRow = showDebtSeparately ? flow.find((f) => /debt/i.test(f.title) && isFinite(f.months)) : undefined;
+              const debtId = debtRow?.id;
+              let debtLinePath = '';
+              let debtMarker: { x: number; y: number; id: string; title: string } | null = null;
+              if (debtRow) {
+                const dxEnd = xOf(debtRow.months); // payoff x (debt reaches $0)
+                const dSpan = Math.max(1, dxEnd - x0);
+                const yOwed = yOf(debtRow.target); // amount owed today, on the shared $ axis
+                const yZero = yOf(0); // == baseline (GH - PADB): debt fully paid off
+                // convex, decelerating payoff: steep at first, flattening toward $0 —
+                // mirrors the Figma peach curve easing down as the debt is cleared.
+                const decay = (u: number) => Math.pow(1 - Math.max(0, Math.min(1, u)), 1.7);
+                const DSAMP = 32;
+                const dpts = Array.from({ length: DSAMP + 1 }, (_, i) => {
+                  const x = x0 + dSpan * (i / DSAMP);
+                  return { x, y: yOwed + (yZero - yOwed) * (1 - decay((x - x0) / dSpan)) };
+                });
+                debtLinePath = smoothPath(dpts);
+                debtMarker = { x: clampX(dxEnd), y: clampY(yZero), id: debtRow.id, title: debtRow.title };
+              }
               return (
                 /* ONE unified card (Figma 1288:17025): the net-worth graph sits at the top,
                    a full-width divider separates it from the flat goals timeline list that
@@ -655,10 +687,24 @@ export default function MonthlySplit({
                             fill="none"
                           />
                         )}
+                        {/* separate debt line — peach, solid, same 4px weight as the
+                            net-worth rail (Figma 1442:5214 Secondary/Peach/Peach). */}
+                        {debtLinePath && (
+                          <path
+                            className="msplit-nw-debtline"
+                            d={debtLinePath}
+                            stroke="#f2d8b8"
+                            strokeWidth={4}
+                            strokeLinecap="round"
+                            fill="none"
+                          />
+                        )}
                       </svg>
                       {/* chart title INSIDE the card, top-left (Figma 1387:5639):
-                          12px medium, secondary gray (#7d7d7d). */}
+                          12px medium, secondary gray (#7d7d7d). When debt is shown
+                          separately a peach "Debt over time" legend row sits beneath it. */}
                       <span className="msplit-nw-title">Goals net worth over time</span>
+                      {debtRow && <span className="msplit-nw-title msplit-nw-title--debt">Debt over time</span>}
                       {/* x-axis labels: the ≤4 range labels (TODAY + the January years
                           within the — possibly rescaled — range) are laid out EVENLY across
                           the full width (Figma 1146:3513, justify-between + 16px inset), so
@@ -671,7 +717,9 @@ export default function MonthlySplit({
                           </span>
                         ))}
                       </div>
-                      {positioned.map((p) => {
+                      {positioned
+                        .filter((p) => p.id !== debtId)
+                        .map((p) => {
                         const PtIcon = goalIcon(p.title);
                         const on = p.id === selectedGoal;
                         return (
@@ -691,6 +739,28 @@ export default function MonthlySplit({
                           </button>
                         );
                       })}
+                      {/* debt marker rides the separate debt line at payoff (peach) — still
+                          tappable: selecting it highlights + scrolls to its calendar row. */}
+                      {debtMarker && (() => {
+                        const on = debtMarker.id === selectedGoal;
+                        const PtIcon = goalIcon(debtMarker.title);
+                        return (
+                          <button
+                            key={debtMarker.id}
+                            type="button"
+                            className={`msplit-nw-pt msplit-nw-pt--debt${on ? ' msplit-nw-pt--on' : ''}`}
+                            style={{ left: debtMarker.x, top: debtMarker.y }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGoal(debtMarker.id);
+                            }}
+                            aria-label={debtMarker.title}
+                            aria-pressed={on}
+                          >
+                            <PtIcon size={on ? 18 : 16} strokeWidth={2} color={on ? '#ffffff' : '#191919'} />
+                          </button>
+                        );
+                      })()}
                   </div>
 
                   {/* full-width divider between the graph and the calendar list (Figma

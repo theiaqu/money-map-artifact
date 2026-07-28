@@ -2017,6 +2017,20 @@ body {
   background: #d17ea3;
   z-index: 6;
 }
+/* "Debt over time" legend row beneath the chart title (Figma 1442:5235):
+   12px medium, peach-dark, sits just below the "Goals net worth over time" title. */
+.msplit-nw-title--debt {
+  top: 34px;
+  color: #d1a883; /* Secondary/Peach/Peach Dark */
+}
+/* debt marker — peach (Secondary/Peach/Peach) instead of the pink net-worth marker;
+   its selected state deepens to peach-dark (keeps the shared --on size bump). */
+.msplit-nw-pt--debt {
+  background: #f2d8b8;
+}
+.msplit-nw-pt--debt.msplit-nw-pt--on {
+  background: #d1a883;
+}
 .msplit-nw-detail {
   display: flex;
   align-items: center;

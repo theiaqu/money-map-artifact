@@ -355,6 +355,14 @@ const GOALS_VIEW_OPTS: { id: GoalsView; label: string }[] = [
   { id: 'split', label: 'Like our income split' },
 ];
 
+// "Show debt separately" — a boolean config for the "Goals net worth over time"
+// chart only (Figma 1442:5214). OFF (default) folds debt into the single net-worth
+// line as today; ON overlays the debt goal as its own peach declining line.
+const SHOW_DEBT_OPTS: { id: 'off' | 'on'; label: string }[] = [
+  { id: 'off', label: 'Off' }, // default first (current behavior)
+  { id: 'on', label: 'On' },
+];
+
 // "Data type" reparameterizes the whole scenario/data model (income, expense
 // caps, and the goal waterfall). Simple keeps the original weighted 2nd gate;
 // Optimizer funds goals sequentially and ends with a House goal.
@@ -664,6 +672,7 @@ export default function App() {
   const exitTimerRef = useRef<number | null>(null);
   const [monthlyBg, setMonthlyBg] = useState<MonthlyBg>('teal'); // Monthly Expenses section background: teal (default) vs. blue→green gradient
   const [goalsView, setGoalsView] = useState<GoalsView>('networth'); // Goals section under the monthly split: net-worth graph + calendar list (default) vs. income-split style
+  const [showDebtSeparately, setShowDebtSeparately] = useState(false); // "Goals net worth over time" chart: overlay debt as its own peach line (default OFF = folded into the net-worth line)
   // "Onboarding view" (Figma 977:11967 → 12099 → 12246 → 12773): preview the pbi
   // money map inside a mock Fruitful home page. null = normal configurator; 'home'
   // = mock home with the draggable sheet; 'map' = the money map with a compact
@@ -1618,6 +1627,27 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* "Show debt separately" — overlays the debt goal as its OWN peach line in the
+            "Goals net worth over time" chart (Figma 1442:5214). Offered on the styles that
+            expose the Monthly-split view (progress / pills). OFF keeps today's behavior. */}
+        {(style === 'progress' || style === 'pills') && (
+          <div className="config-row">
+            <span className="config-label">Show debt separately</span>
+            <div className="mode-toggle" role="tablist" aria-label="Show debt separately">
+              {SHOW_DEBT_OPTS.map((o) => (
+                <button
+                  key={o.id}
+                  role="tab"
+                  aria-selected={showDebtSeparately === (o.id === 'on')}
+                  className={`mode-opt${showDebtSeparately === (o.id === 'on') ? ' active' : ''}`}
+                  onClick={() => setShowDebtSeparately(o.id === 'on')}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* How the GOALS section under the monthly-split graphic is represented.
             Offered on the styles that expose the Monthly-split view (progress / pills):
             calendar list (default) vs. income-split style vs. interactive net-worth graph. */}
@@ -1871,7 +1901,7 @@ export default function App() {
         </div>
       )}
 
-      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} transitionSeq={enterSeq} squeezeMs={enterSeq ? SECTION_PHASE1_MS : MORPH_MS.monthly} exitSeq={exitSeq} exitMs={SECTION_EXIT_CONTENT_MS} />}
+      {monthlyView && <MonthlySplit dataset={dataset} onboarding={onboardMap} goalsView={goalsView} showDebtSeparately={showDebtSeparately} transitionSeq={enterSeq} squeezeMs={enterSeq ? SECTION_PHASE1_MS : MORPH_MS.monthly} exitSeq={exitSeq} exitMs={SECTION_EXIT_CONTENT_MS} />}
 
       {/* the SHARED header (hero + paycheck-scrubber carousel) sits at the very
           top of every artifact, OUTSIDE the shifted tree so it never moves. The
