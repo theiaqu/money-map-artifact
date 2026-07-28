@@ -4164,18 +4164,20 @@ body.is-dragging-noselect * {
   animation: illo-fade 340ms cubic-bezier(0.22, 0.7, 0.16, 1);
   transition: opacity 340ms cubic-bezier(0.55, 0, 0.85, 0.35);
 }
-/* centered white card: bg white, radius 32, 359 wide, height 434, top 382 (matches
-   731:10520). Fades + gently scales in synced with the illustration grow. The
-   translateX(-50%) centering is baked into the animated transform. */
+/* bottom-sheet white card: bg white, 359 wide, height 434. Anchored FLUSH to the
+   bottom of the 874-tall phone screen (top 440 = 874 − 434) so its bottom edge sits
+   at the device screen bottom instead of floating with a gap (bottom-sheet style).
+   Rounded top corners only. Fades + gently scales in synced with the illustration
+   grow. The translateX(-50%) centering is baked into the animated transform. */
 .illo-modal-card {
   position: absolute;
   left: 50%;
-  top: 382px;
+  top: 440px;
   width: 359px;
   height: 434px;
   transform: translateX(-50%);
   background: #fff;
-  border-radius: 32px;
+  border-radius: 32px 32px 0 0;
   box-shadow: none;
   overflow: hidden;
   z-index: 2;
@@ -4235,7 +4237,7 @@ body.is-dragging-noselect * {
 .illo-modal-illo {
   position: absolute;
   left: calc(50% - 103.5px);
-  top: 430px;
+  top: 488px; /* shifted down 58px with the bottom-anchored card */
   width: 207px;
   z-index: 3;
   transform-origin: top left;
@@ -4248,7 +4250,15 @@ body.is-dragging-noselect * {
    crowd the title. The bill stickers are a separate fixed-size overlay (below),
    so enlarging the chrome makes them read smaller relative to it. MODAL_CAL_W in
    IlloModal.tsx must equal this width so the discs land on the right grid cells. */
-.illo-modal-illo--cal { width: 248px; left: calc(50% - 124px); top: 386px; }
+.illo-modal-illo--cal {
+  width: 248px;
+  left: calc(50% - 124px);
+  top: 444px; /* shifted down 58px with the bottom-anchored card */
+  /* subtle drop shadow UNDER the calendar illustration so it separates from the
+     white sheet and reads more clearly. Intentional, one-off exception to the
+     project's shadow-free treatment — scoped to the Illustrated modal calendar. */
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.12));
+}
 
 /* fixed-size bill stickers, popped in one-by-one AFTER the grow settles. The
    overlay tracks the chrome box; each disc is a constant px size (does NOT scale

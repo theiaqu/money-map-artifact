@@ -1274,11 +1274,13 @@ export const illoRowTopOptimizer: Record<string, number> = {
 // gate's child midpoint: monthly 411, goals1 549, goals2 687, goals3 871.
 // (Wishbone neck x = 76, i.e. 28px right of the x=48 spine.)
 export const connectorsIllo: Connector[] = [
-  // income card -> green circle -> monthly junction (yellow). The swoop leaves the
-  // income card, sweeps down-left, and ARRIVES VERTICALLY into the circle top
-  // (48,256) so it continues as one straight line down through the circle (drawn
-  // BEHIND it) to the monthly junction (48,411) — no kink at the circle.
-  { id: 'c-income-monthly', d: 'M201 190 C 201 240, 48 224, 48 256 L 48 411', arrow: false },
+  // income -> green circle -> monthly junction (yellow). A STRAIGHT vertical
+  // segment that HUGS THE LEFT at x=48 (the spine), starting at the bottom of the
+  // active income pill (the leftmost/yellow carousel pill, centered on x≈50, its
+  // bottom at viewBox y≈182) so the branch intersects/aligns with the active
+  // income pill, drops straight THROUGH the green circle (256–296, drawn BEHIND
+  // it) and continues to the monthly junction (48,411) — no curve/offset.
+  { id: 'c-income-monthly', d: 'M48 180 L 48 411', arrow: false },
   // pink spine hops between gates
   { id: 'c-monthly-goals1', d: 'M48 411 L 48 549', arrow: false },
   { id: 'c-goals1-goals2', d: 'M48 549 L 48 687', arrow: false },
@@ -1295,7 +1297,8 @@ export const connectorsIllo: Connector[] = [
 // goals2 -> goals3 (junction at the travel/brokerage midpoint 871), then a
 // symmetric wishbone up to travel(825) / down to brokerage(917).
 export const connectorsIlloOptimizer: Connector[] = [
-  { id: 'c-income-monthly', d: 'M201 190 C 201 240, 48 224, 48 256 L 48 411', arrow: false },
+  // straight left-hugging income branch — see connectorsIllo for the geometry.
+  { id: 'c-income-monthly', d: 'M48 180 L 48 411', arrow: false },
   { id: 'c-monthly-goals1', d: 'M48 411 L 48 549', arrow: false },
   { id: 'c-goals1-goals2', d: 'M48 549 L 48 687', arrow: false },
   { id: 'c-monthly-core', d: 'M48 411 L 76 411 C 92 411, 114 365, 139 365', arrow: false },
